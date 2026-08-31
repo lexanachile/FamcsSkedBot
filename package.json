@@ -1,0 +1,21 @@
+{
+  "name": "famcsSkedBot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Monorepo for Telegram bot, Cloudflare Workers API, and frontend Mini App",
+  "type": "module",
+  "scripts": {
+    "dev:telegram": "cd pkgs/telegram-bot && npm run dev",
+    "start:telegram": "cd pkgs/telegram-bot && npm start",
+    "install:all": "cd pkgs/telegram-bot && npm install && cd ../worker-api && npm install && cd ../frontend && npm install",
+    "build:frontend": "cd pkgs/frontend && npm install && npm run build",
+    "deploy:worker": "cd pkgs/worker-api && npm run deploy",
+    "deploy:frontend": "cd pkgs/frontend && npm run deploy",
+    "deploy:all": "npm run deploy:worker && npm run deploy:frontend"
+  },
+  "workspaces": [
+    "pkgs/telegram-bot",
+    "pkgs/worker-api",
+    "pkgs/frontend"
+  ]
+}

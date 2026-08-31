@@ -1,0 +1,6 @@
+# Правила переадресации для Cloudflare Pages
+# Документация: https://developers.cloudflare.com/pages/platform/redirects/
+
+# Редирект index.html для всех несуществующих маршрутов
+# Это важно для SPA приложений
+/* /index.html 200

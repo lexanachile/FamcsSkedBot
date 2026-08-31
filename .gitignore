@@ -1,0 +1,58 @@
+# Зависимости Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+pnpm-debug.log
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Переменные окружения
+.env
+.env.local
+.env.*.local
+
+# Cloudflare Wrangler
+.wrangler/
+dist/
+build/
+
+# IDE и редакторы
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.env.example.local
+
+# Production
+node_modules
+dist
+build
+
+# Логи
+*.log
+logs/
+
+# Кэш
+.cache/
+.eslintcache
+
+# TypeScript
+*.tsbuildinfo
+dist/
+
+# Terraform (если используется)
+terraform/
+*.tfstate
+*.tfvars
+
+# Локальная разработка
+.local/
+.tmp/
+
+# Database локальная
+.wrangler/state/d1/
+
+other/

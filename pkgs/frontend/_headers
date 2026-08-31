@@ -1,0 +1,31 @@
+# HTTP заголовки для Cloudflare Pages
+# Документация: https://cloudflare.com
+
+/*
+  # Строка кэша: кэшировать на 1 день для статических файлов
+  Cache-Control: public, max-age=86400
+  # Разрешаем iframe внутри Telegram Web и убираем X-Frame-Options
+  Content-Security-Policy: frame-ancestors 'self' https://telegram.org https://*.telegram.org https://web.telegram.org https://t.me
+  # Предотвращение XSS атак
+  X-Content-Type-Options: nosniff
+  X-XSS-Protection: 1; mode=block
+  # CORS заголовки для обращения к другим доменам
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Methods: GET, POST, OPTIONS
+
+/index.html
+  Cache-Control: no-cache, must-revalidate
+
+/app.js
+  Content-Type: application/javascript; charset=utf-8
+  Cache-Control: no-cache, must-revalidate
+
+/styles.css
+  Content-Type: text/css; charset=utf-8
+  Cache-Control: no-cache, must-revalidate
+
+# Шрифты: имена файлов версионированы (v20/v9) и не меняются между деплоями
+/fonts/*
+  Content-Type: font/woff2
+  Cache-Control: public, max-age=31536000, immutable
+  Access-Control-Allow-Origin: *

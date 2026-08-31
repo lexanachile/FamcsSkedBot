@@ -1,0 +1,41 @@
+name: Daily Parser
+
+on:
+  schedule:
+    # Запуск каждый день в 14:30 UTC (17:30 по Минску)
+    - cron: '30 14 * * *'
+  workflow_dispatch:   # Кнопка ручного запуска
+
+jobs:
+  parse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          # Встроенный кэш pip. Указываем путь к файлу зависимостей для расчета хэша
+          cache: 'pip'
+          cache-dependency-path: 'pkgs/parser/requirements.txt'
+
+      # Шаг 'Cache pip packages' больше не нужен, удаляем егоds
+
+      - name: Install dependencies
+        run: |
+          cd pkgs/parser
+          pip install -r requirements.txt
+
+      - name: Run parser
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          DRIVE_FOLDER_ID: ${{ secrets.DRIVE_FOLDER_ID }}
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+          BACKEND_AUTH_TOKEN: ${{ secrets.BACKEND_AUTH_TOKEN }}
+        run: |
+          cd pkgs/parser
+          python parser.py

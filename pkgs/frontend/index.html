@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="description" content="Telegram Mini App для просмотра расписания" />
+    <meta name="theme-color" content="#000000" />
+    <title>Расписание</title>
+
+    <script>
+        // ═══════════════════════════════════════════════════════════════
+        // НАСТРОЙКА: ВРЕМЕННОЕ ОТКЛЮЧЕНИЕ КЭША styles.css 
+        // ═══════════════════════════════════════════════════════════════
+        // По умолчанию false — сайт грузится как обычно, с версией "?v=15"
+        // из статического тега <link> ниже (обновляете число вручную при
+        // каждом деплое, как раньше).
+        //
+        // Поставьте true, если на каком-то телефоне сайт выглядит "старым"
+        // (нет свежих стилей/логики) и вы подозреваете, что дело в кэше
+        // WebView Telegram на этом устройстве. Пока флаг = true, styles.css
+        // на КАЖДОЙ загрузке страницы запрашивается заново с уникальным
+        // ?v=<текущее время> — это гарантированно не даст WebView отдать
+        // старую сохранённую копию, независимо от заголовков Cache-Control.
+        //
+        // Минус: пока флаг включён — (1) стили скачиваются заново при
+        // каждом открытии мини-аппа (чуть медленнее для всех пользователей)
+        // и (2) на время диагностики возвращается риск того самого "голого"
+        // HTML на долю секунды, потому что подмена href происходит уже
+        // после того, как статический <link> ниже начал грузиться —
+        // поэтому включайте только на время диагностики и не забудьте
+        // вернуть false, когда проблема с конкретным телефоном прояснится.
+        var FORCE_DISABLE_CACHE = false;
+
+        // ВАЖНО: раньше styles.css подключался через JS
+        // (document.createElement('link') + appendChild), чтобы можно было
+        // подставить версию в href динамически. Проблема: тег, вставленный
+        // через JS уже ПОСЛЕ начала парсинга HTML, не всегда блокирует
+        // отрисовку страницы так же надёжно, как обычный <link> прямо в
+        // разметке — из-за этого иногда успевал промелькнуть голый
+        // неоформленный HTML до применения стилей.
+        // Теперь styles.css подключён статическим <link> ниже (гарантированно
+        // блокирует отрисовку, никакого JS для обычного случая не нужно), а
+        // этот скрипт только на время диагностики (FORCE_DISABLE_CACHE = true)
+        // на лету подменяет его href на версию с меткой времени.
+        if (FORCE_DISABLE_CACHE) {
+            document.addEventListener('DOMContentLoaded', function () {
+                var l = document.getElementById('mainStyle');
+                if (l) l.href = '/styles.css?v=' + Date.now();
+            });
+        }
+    </script>
+
+    <!-- styles.css — статический, render-blocking тег: браузер обязан
+         дождаться его загрузки и разбора, прежде чем показать страницу,
+         поэтому голый HTML физически не может промелькнуть в обычном
+         режиме (FORCE_DISABLE_CACHE = false). Версия "?v=15" — меняйте
+         вручную при каждом деплое, как и раньше. -->
+    <link rel="stylesheet" id="mainStyle" href="/styles.css?v=15">
+
+    <!-- ПРЕДЗАГРУЗКА ШРИФТОВ, которые нужны для первого экрана (шапка,
+         подписи, кнопка) — чтобы браузер начал их скачивать параллельно
+         с styles.css, а не только после того, как разберёт CSS и дойдёт
+         до правил @font-face. Список специально короткий (3 файла) —
+         преload всех 8 файлов сразу только замедлил бы первую отрисовку.
+         Остальные начертания (Inter 500/600/700, используются ниже по
+         странице — в списке групп и в самом расписании) подгружаются
+         обычным образом, когда до них дойдёт дело. -->
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/inter-v20-cyrillic_latin-regular.woff2" crossorigin>
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/inter-v20-cyrillic_latin-800.woff2" crossorigin>
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/inter-tight-v9-cyrillic_latin-700.woff2" crossorigin>
+
+    <!-- Заранее устанавливаем соединение (DNS + TLS) с Worker'ом, откуда
+         грузятся группы и расписание — на момент, когда app.js реально
+         сделает fetch(), соединение уже будет "тёплым", и первый запрос
+         отработает быстрее. Сам домен взят из API_BASE_URL в app.js —
+         если поменяете там, поменяйте и здесь. -->
+    <link rel="preconnect" href="https://famcsschedulebot.yarashsei.workers.dev" crossorigin>
+
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <main class="main-content">
+            <!-- ИСПРАВЛЕНИЕ: шапка перенесена ВНУТРЬ .main-content (была
+                 снаружи, сестрой .main-content). Раньше это не имело
+                 значения, т.к. скроллилась вся страница целиком. Но после
+                 того как .main-content стал настоящим внутренним
+                 скролл-контейнером (см. styles.css, .app-container: height
+                 вместо min-height — нужно было для sticky-навигации по
+                 дням), всё, что осталось СНАРУЖИ .main-content, перестало
+                 скроллиться и превратилось в постоянно видимую "шапку"
+                 сверху экрана. Шапка с текстом такой быть не должна —
+                 поэтому она теперь внутри .main-content и скроллится
+                 вместе со всем остальным контентом. Прилипает (sticky)
+                 по-прежнему только #day-navigation. -->
+            <header class="header">
+                <div class="header-mark">
+                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-terminal-icon lucide-terminal">
+                    <path d="M12 19h8"/>
+                    <path d="m4 17 6-6-6-6"/>
+                </svg>
+                    <span>Расписание ФПМИ</span>
+                </div>
+                <p class="subtitle">Выберите курс и группу чтобы вывести занятия</p>
+            </header>
+
+            <section class="controls-section">
+                <!-- ВЫБОР КУРСА И ГРУППЫ: кастомная плашка вместо системного меню.
+                     Настоящий <select> остаётся в DOM (визуально скрыт классом
+
+                     .native-select-hidden) и продолжает хранить выбранное значение —
+                     вся остальная логика сайта (app.js) работает с ним как раньше и
+                     её трогать не пришлось. Кнопка ".select-trigger" — это то, что
+                     видит и на что нажимает пользователь: по тапу открывается плашка
+                     #picker-overlay внизу экрана (см. index.html ниже и app.js,
+                     функция setupCustomSelects()), оформленная в цветах сайта —
+                     в отличие от системного меню, которое на разных телефонах
+                     выглядит по-разному и почти не поддаётся стилизации. -->
+                <div class="control-group">
+                    <label for="course-select">Курс</label>
+                    <button type="button" id="course-select-trigger" class="select-input select-trigger placeholder" aria-haspopup="listbox" aria-expanded="false">
+                        <span id="course-select-trigger-text" class="select-trigger-text">Не выбран</span>
+                    </button>
+                    <select id="course-select" class="native-select-hidden" tabindex="-1" aria-hidden="true">
+                        <option value="">Не выбран</option>
+                        <option value="1">1 курс</option>
+                        <option value="2">2 курс</option>
+                        <option value="3">3 курс</option>
+                        <option value="4">4 курс</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="group-select">Группа</label>
+                    <button type="button" id="group-select-trigger" class="select-input select-trigger placeholder" disabled aria-haspopup="listbox" aria-expanded="false">
+                        <span id="group-select-trigger-text" class="select-trigger-text">Сначала выберите курс</span>
+                    </button>
+                    <select id="group-select" class="native-select-hidden" tabindex="-1" aria-hidden="true" disabled>
+                        <option value="">Сначала выберите курс</option>
+                    </select>
+                </div>
+
+                <button id="load-button" class="button button-primary">
+                    Показать расписание
+                </button>
+            </section>
+
+            <!-- Служебный маячок высотой 1px прямо ПЕРЕД навигацией по дням.
+                 Сам по себе ничего не показывает — нужен только для того,
+                 чтобы JS (см. app.js, setupStickyDayNav()) через
+                 IntersectionObserver точно знал момент, когда #day-navigation
+                 прилипает к верху экрана (см. position: sticky в styles.css):
+                 как только этот маячок уходит из видимой области — навигация
+                 прилипла, и на неё добавляется класс .is-stuck (тень/линия
+                 снизу, чтобы плашка выглядела как настоящий хэдер). -->
+            <div id="day-nav-sentinel" aria-hidden="true"></div>
+
+            <!-- Навигация по дням: "камни на тропе" -->
+            <nav id="day-navigation" class="day-navigation hidden">
+                <button class="day-nav-btn" data-day="Понедельник">Пн</button>
+                <button class="day-nav-btn" data-day="Вторник">Вт</button>
+                <button class="day-nav-btn" data-day="Среда">Ср</button>
+                <button class="day-nav-btn" data-day="Четверг">Чт</button>
+                <button class="day-nav-btn" data-day="Пятница">Пт</button>
+                <button class="day-nav-btn" data-day="Суббота">Сб</button>
+            </nav>
+
+            <div id="loading-spinner" class="loading-spinner hidden">
+                <div class="spinner"></div>
+                <p>Загрузка</p>
+            </div>
+
+            <div id="error-message" class="error-message hidden"></div>
+
+            <section id="schedule-container" class="schedule-container hidden">
+                <div class="schedule-info">
+                    <h2 id="schedule-title">Расписание</h2>
+                    <p id="schedule-metadata"></p>
+                </div>
+                <div id="schedule-days" class="schedule-days"></div>
+
+                <!-- Информационная плашка после Субботы: без названия дня недели,
+                     просто текст. Текст в неё вписывается кодом в app.js —
+                     см. константу INFO_PANEL_TEXT и функцию renderInfoPanel().
+                     Пока текст пустой, плашка скрыта классом .hidden. -->
+                <div id="info-panel" class="info-panel hidden">
+                    <p id="info-panel-text" class="info-panel-text"></p>
+                </div>
+
+                <div id="empty-state" class="empty-state hidden">
+                    <p>Занятий не найдено</p>
+                    <p class="empty-state-hint">Проверьте курс и группу или выберите другие</p>
+                </div>
+            </section>
+
+            <section id="welcome-section" class="welcome-section">
+                <div class="welcome-content">
+                    <span class="welcome-eyebrow">Справка</span>
+                    <h2>Выберите курс и группу</h2>
+                    <p>После чего на экране сразу появиться расписание по дням недели</p>
+                    <ul class="feature-list">
+                        <li>Разделение по дням недели</li>
+                        <li>Преподаватели и аудитории</li>
+                        <li>Разделение на подгруппы в одном таймслоте</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- ИСПРАВЛЕНИЕ: футер тоже перенесён ВНУТРЬ .main-content —
+                 по той же причине, что и шапка выше (см. комментарий там).
+                 Иначе он бы навсегда "прилип" внизу экрана поверх
+                 контента вместо того, чтобы быть обычным подвалом
+                 страницы, до которого доскролливаешь. -->
+            <footer class="footer">
+                <p>Cloudflare Workers &amp; Pages</p>
+            </footer>
+        </main>
+    </div>
+
+    <!-- Кнопка "наверх": появляется, когда кружки навигации по дням
+         (#day-navigation) уходят выше видимой области экрана.
+         Структура из двух вложенных элементов — намеренно, чтобы разделить
+         две разные вещи (см. app.js, setupScrollTopButton()):
+         - #scroll-top-btn-position — внешняя обёртка, JS двигает её на
+           каждый кадр (позиция на экране), БЕЗ CSS-анимации, чтобы кнопка
+           не отставала от скролла и не дрожала;
+         - #scroll-top-btn — сама видимая кнопка внутри, у неё CSS-переход
+           (плавное появление/исчезание), никак не пересекается с логикой
+           позиционирования обёртки. -->
+    <div id="scroll-top-btn-position" class="scroll-top-btn-position">
+        <button id="scroll-top-btn" class="scroll-top-btn" aria-label="Наверх" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 19V5"/>
+                <path d="M5 12l7-7 7 7"/>
+            </svg>
+        </button>
+    </div>
+
+    <!-- ПЛАШКА ВЫБОРА (bottom sheet) для полей "Курс" и "Группа".
+         Один блок на оба поля — при открытии app.js подставляет в него
+         заголовок и список пунктов нужного <select>, см. функцию
+         setupCustomSelects() и константы PICKER_SHEET_* в начале app.js.
+         Изначально скрыта классом .hidden, открывается добавлением
+         класса .open (плавное появление — см. styles.css). -->
+    <div id="picker-overlay" class="picker-overlay hidden">
+        <div id="picker-sheet" class="picker-sheet" role="listbox" aria-label="Выбор">
+            <div class="picker-sheet-handle" aria-hidden="true"></div>
+            <div class="picker-sheet-header">
+                <span id="picker-sheet-title" class="picker-sheet-title">Выбор</span>
+                <button type="button" id="picker-sheet-close" class="picker-sheet-close" aria-label="Закрыть">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M18 6 6 18"/>
+                        <path d="M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div id="picker-sheet-list" class="picker-sheet-list"></div>
+        </div>
+    </div>
+
+    <!-- ИСПРАВЛЕНО: Абсолютный путь и сброс кэша.
+         Раньше скрипт создавался через document.createElement (оверинжиниринг,
+         который ломался). Теперь используется простой и надежный <script src>. 
+         Изменяйте ?v=16 на следующее число при выкатке новых версий app.js! -->
+    <script src="/app.js?v=16"></script>
+</body>
+</html>
