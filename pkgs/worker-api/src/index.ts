@@ -99,12 +99,14 @@ async function setCached(key: string, data: any, ttl: number): Promise<void> {
 app.use(
   "*",
   cors({
-    origin: "*",
+    origin: ["https://famcs.online"],
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization"],
     maxAge: 600,
   })
 );
+
+
 
 /**
  * Middleware для логирования входящих запросов
