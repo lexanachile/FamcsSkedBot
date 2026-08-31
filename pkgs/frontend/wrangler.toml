@@ -6,5 +6,5 @@ pages_build_output_dir = "."
 [env.production]
 vars = { ENVIRONMENT = "production" }
 
-[env.development]
-vars = { ENVIRONMENT = "development" }
+[env.preview]
+vars = { ENVIRONMENT = "preview" }
