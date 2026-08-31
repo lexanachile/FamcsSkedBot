@@ -2,11 +2,11 @@
   "compilerOptions": {
     /* Версия JavaScript для компиляции */
     "target": "ES2020",
-    
+
     /* Модульная система */
     "module": "ESNext",
     "moduleResolution": "bundler",
-    
+
     /* Типизация */
     "strict": true,
     "noImplicitAny": true,
@@ -14,30 +14,30 @@
     "strictFunctionTypes": true,
     "strictPropertyInitialization": true,
     "noImplicitThis": true,
-    
+
     /* Дополнительные проверки */
     "alwaysStrict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
-    
+
     /* Результаты компиляции */
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
     "outDir": "./dist",
-    
+
     /* Совместимость */
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    
+
     /* Разрешения */
     "resolveJsonModule": true,
     "allowJs": true,
-    
+
     /* Типы */
     "types": ["@cloudflare/workers-types"]
   },

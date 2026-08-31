@@ -1,4 +1,5 @@
-const TELEGRAM_METHOD = (token, method) => `https://api.telegram.org/bot${token}/${method}`;
+const TELEGRAM_METHOD = (token, method) =>
+  `https://api.telegram.org/bot${token}/${method}`;
 
 // ИСПРАВЛЕНО: аргумент функции BOT_NAME заменен на botName, чтобы не возникала ошибка ReferenceError
 const HELP_TEXT = (botName) => `*Справка по ${botName}*
@@ -93,7 +94,7 @@ async function handleMessage(message, env) {
     if (text.startsWith("/start")) {
       await telegramRequest(env.TELEGRAM_BOT_TOKEN, "sendMessage", {
         chat_id: chatId,
-        // ИСПРАВЛЕНО: грамматика "откроется". 
+        // ИСПРАВЛЕНО: грамматика "откроется".
         // ИСПРАВЛЕНО: убран parse_mode: "Markdown", чтобы избежать ошибок 400 из-за спецсимволов в botName
         text: `Вы попали в ${botName}!\n\nЖмите кнопку ниже для открытия расписания\nФидбеку буду рад в лс @lexanachile`,
         reply_markup: buildKeyboard(miniAppUrl),
@@ -166,19 +167,29 @@ export default {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             // ИСПРАВЛЕНО: Добавлен Secret Token для защиты webhook
-            body: JSON.stringify({ 
-              url: webhookUrl, 
+            body: JSON.stringify({
+              url: webhookUrl,
               allowed_updates: ["message", "callback_query"],
-              secret_token: env.WEBHOOK_SECRET || "default_secret_123_please_change"
+              secret_token:
+                env.WEBHOOK_SECRET || "default_secret_123_please_change",
             }),
-          }
+          },
         );
         const result = await response.json();
-        return new Response(JSON.stringify({ ok: result.ok, webhook_url: webhookUrl, result }, null, 2), {
-          headers: { "Content-Type": "application/json" },
-        });
+        return new Response(
+          JSON.stringify(
+            { ok: result.ok, webhook_url: webhookUrl, result },
+            null,
+            2,
+          ),
+          {
+            headers: { "Content-Type": "application/json" },
+          },
+        );
       } catch (e) {
-        return new Response(JSON.stringify({ error: e.message }, null, 2), { status: 500 });
+        return new Response(JSON.stringify({ error: e.message }, null, 2), {
+          status: 500,
+        });
       }
     }
 
@@ -191,27 +202,37 @@ export default {
       try {
         const response = await fetch(
           `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/getWebhookInfo`,
-          { method: "POST" }
+          { method: "POST" },
         );
         const result = await response.json();
         return new Response(JSON.stringify(result, null, 2), {
           headers: { "Content-Type": "application/json" },
         });
       } catch (e) {
-        return new Response(JSON.stringify({ error: e.message }, null, 2), { status: 500 });
+        return new Response(JSON.stringify({ error: e.message }, null, 2), {
+          status: 500,
+        });
       }
     }
 
     // POST /webhook - handle Telegram updates
     if (path === "/webhook" && request.method === "POST") {
       if (!env.TELEGRAM_BOT_TOKEN || !env.MINI_APP_URL) {
-        console.error("Missing env:", { token: !!env.TELEGRAM_BOT_TOKEN, miniApp: !!env.MINI_APP_URL });
-        return new Response("Missing Cloudflare env variables", { status: 500 });
+        console.error("Missing env:", {
+          token: !!env.TELEGRAM_BOT_TOKEN,
+          miniApp: !!env.MINI_APP_URL,
+        });
+        return new Response("Missing Cloudflare env variables", {
+          status: 500,
+        });
       }
 
       // ИСПРАВЛЕНО: Защита от поддельных запросов (Security)
-      const secretToken = request.headers.get("X-Telegram-Bot-Api-Secret-Token");
-      const expectedSecret = env.WEBHOOK_SECRET || "default_secret_123_please_change";
+      const secretToken = request.headers.get(
+        "X-Telegram-Bot-Api-Secret-Token",
+      );
+      const expectedSecret =
+        env.WEBHOOK_SECRET || "default_secret_123_please_change";
       if (secretToken !== expectedSecret) {
         return new Response("Unauthorized", { status: 403 });
       }
@@ -241,30 +262,40 @@ export default {
     if (path === "/debug-config" && request.method === "GET") {
       const miniAppUrl = env.MINI_APP_URL ? env.MINI_APP_URL.trim() : null;
       const botName = env.BOT_NAME ? env.BOT_NAME.trim() : null;
-      
+
       return new Response(
-        JSON.stringify({
-          hasToken: !!env.TELEGRAM_BOT_TOKEN,
-          hasWebhookSecret: !!env.WEBHOOK_SECRET, // ИСПРАВЛЕНО: добавлено для отладки
-          miniAppUrl: miniAppUrl,
-          miniAppUrlValid: miniAppUrl ? miniAppUrl.startsWith("https://") : false,
-          botName: botName,
-          miniAppUrlLength: miniAppUrl ? miniAppUrl.length : 0,
-        }, null, 2),
-        { headers: { "Content-Type": "application/json" } }
+        JSON.stringify(
+          {
+            hasToken: !!env.TELEGRAM_BOT_TOKEN,
+            hasWebhookSecret: !!env.WEBHOOK_SECRET, // ИСПРАВЛЕНО: добавлено для отладки
+            miniAppUrl: miniAppUrl,
+            miniAppUrlValid: miniAppUrl
+              ? miniAppUrl.startsWith("https://")
+              : false,
+            botName: botName,
+            miniAppUrlLength: miniAppUrl ? miniAppUrl.length : 0,
+          },
+          null,
+          2,
+        ),
+        { headers: { "Content-Type": "application/json" } },
       );
     }
 
     // GET / - health check
     if (request.method === "GET") {
       return new Response(
-        JSON.stringify({
-          status: "ok",
-          setupWebhook: `${new URL(request.url).origin}/setup-webhook`,
-          webhookInfo: `${new URL(request.url).origin}/webhook-info`,
-          debugConfig: `${new URL(request.url).origin}/debug-config`,
-        }, null, 2),
-        { headers: { "Content-Type": "application/json" } }
+        JSON.stringify(
+          {
+            status: "ok",
+            setupWebhook: `${new URL(request.url).origin}/setup-webhook`,
+            webhookInfo: `${new URL(request.url).origin}/webhook-info`,
+            debugConfig: `${new URL(request.url).origin}/debug-config`,
+          },
+          null,
+          2,
+        ),
+        { headers: { "Content-Type": "application/json" } },
       );
     }
 

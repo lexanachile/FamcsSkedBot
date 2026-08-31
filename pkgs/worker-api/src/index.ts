@@ -39,7 +39,7 @@ function extractLastName(fullName: string): string {
 
   if (match && match.index !== undefined) {
     const before = trimmed.substring(0, match.index);
-    const words = before.split(/\s+/).filter(w => w.length > 0);
+    const words = before.split(/\s+/).filter((w) => w.length > 0);
     if (words.length > 0) {
       return words[words.length - 1];
     }
@@ -50,14 +50,14 @@ function extractLastName(fullName: string): string {
 
 // Массив временных интервалов для пар (по номеру пары)
 const TIME_SLOTS: { start: string; end: string }[] = [
-  { start: "8:15", end: "9:40" },    // 1
-  { start: "9:50", end: "11:15" },   // 2
-  { start: "11:25", end: "12:50" },  // 3
-  { start: "13:15", end: "14:40" },  // 4
-  { start: "14:50", end: "16:15" },  // 5
-  { start: "16:25", end: "17:50" },  // 6
-  { start: "18:10", end: "19:35" },  // 7
-  { start: "19:45", end: "21:10" },  // 8
+  { start: "8:15", end: "9:40" }, // 1
+  { start: "9:50", end: "11:15" }, // 2
+  { start: "11:25", end: "12:50" }, // 3
+  { start: "13:15", end: "14:40" }, // 4
+  { start: "14:50", end: "16:15" }, // 5
+  { start: "16:25", end: "17:50" }, // 6
+  { start: "18:10", end: "19:35" }, // 7
+  { start: "19:45", end: "21:10" }, // 8
 ];
 
 /**
@@ -103,10 +103,8 @@ app.use(
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization"],
     maxAge: 600,
-  })
+  }),
 );
-
-
 
 /**
  * Middleware для логирования входящих запросов
@@ -115,7 +113,6 @@ app.use("*", async (c, next) => {
   console.log(`📥 ${c.req.method} ${c.req.path}`);
   await next();
 });
-
 
 // ===== МАРШРУТЫ API =====
 
@@ -129,7 +126,7 @@ const handleHealth = (c: any) => {
       timestamp: new Date().toISOString(),
       message: "Backend сервер работает корректно",
     },
-    200
+    200,
   );
 };
 
@@ -145,7 +142,10 @@ app.get("/api/schedule", async (c) => {
     const group = c.req.query("group");
 
     if (!course || !group) {
-      return c.json({ success: false, error: "Missing required parameters" }, 400);
+      return c.json(
+        { success: false, error: "Missing required parameters" },
+        400,
+      );
     }
 
     const courseNum = parseInt(course, 10);
@@ -155,7 +155,10 @@ app.get("/api/schedule", async (c) => {
 
     const db = c.env.DB;
     if (!db) {
-      return c.json({ success: false, error: "Database connection error" }, 500);
+      return c.json(
+        { success: false, error: "Database connection error" },
+        500,
+      );
     }
 
     const cacheKey = c.req.url;
@@ -166,7 +169,7 @@ app.get("/api/schedule", async (c) => {
 
     const result = await db
       .prepare(
-        `SELECT * FROM schedule WHERE course = ? AND groupName = ? ORDER BY dayOfWeek, startTime`
+        `SELECT * FROM schedule WHERE course = ? AND groupName = ? ORDER BY dayOfWeek, startTime`,
       )
       .bind(courseNum, group)
       .all();
@@ -176,7 +179,12 @@ app.get("/api/schedule", async (c) => {
     if (!result.results || result.results.length === 0) {
       responseData = {
         success: true,
-        data: { course: courseNum, group, classes: [], message: "Расписание не найдено" },
+        data: {
+          course: courseNum,
+          group,
+          classes: [],
+          message: "Расписание не найдено",
+        },
       };
     } else {
       const formattedClasses = result.results.map((record: any) => {
@@ -199,18 +207,26 @@ app.get("/api/schedule", async (c) => {
             classroom: record.classroomA,
             comments: comments,
           },
-          subgroupB: isCommon ? null : {
-            classTitle: record.classTitleB,
-            professorName: record.professorNameB,
-            classroom: record.classroomB,
-            comments: comments,
-          },
+          subgroupB: isCommon
+            ? null
+            : {
+                classTitle: record.classTitleB,
+                professorName: record.professorNameB,
+                classroom: record.classroomB,
+                comments: comments,
+              },
         };
       });
 
       responseData = {
         success: true,
-        data: { course: courseNum, group, totalClasses: formattedClasses.length, classes: formattedClasses, updatedAt: new Date().toISOString() },
+        data: {
+          course: courseNum,
+          group,
+          totalClasses: formattedClasses.length,
+          classes: formattedClasses,
+          updatedAt: new Date().toISOString(),
+        },
       };
     }
 
@@ -228,7 +244,11 @@ app.get("/api/schedule", async (c) => {
 app.get("/api/groups", async (c) => {
   try {
     const course = c.req.query("course");
-    if (!course) return c.json({ success: false, error: "Missing parameter: course" }, 400);
+    if (!course)
+      return c.json(
+        { success: false, error: "Missing parameter: course" },
+        400,
+      );
 
     const courseNum = parseInt(course, 10);
     const db = c.env.DB;
@@ -237,11 +257,21 @@ app.get("/api/groups", async (c) => {
     const cachedResponse = await getCached(cacheKey);
     if (cachedResponse) return cachedResponse;
 
-    const result = await db.prepare(`SELECT DISTINCT groupName FROM schedule WHERE course = ? ORDER BY groupName`).bind(courseNum).all();
+    const result = await db
+      .prepare(
+        `SELECT DISTINCT groupName FROM schedule WHERE course = ? ORDER BY groupName`,
+      )
+      .bind(courseNum)
+      .all();
 
     const responseData = {
       success: true,
-      data: { course: courseNum, groups: (result.results || []).map((row: any) => ({ groupName: row.groupName })) },
+      data: {
+        course: courseNum,
+        groups: (result.results || []).map((row: any) => ({
+          groupName: row.groupName,
+        })),
+      },
     };
 
     await setCached(cacheKey, responseData, CACHE_TTL);
@@ -261,13 +291,19 @@ app.get("/api/teachers", async (c) => {
     const cachedResponse = await getCached(cacheKey);
     if (cachedResponse) return cachedResponse;
 
-    const result = await db.prepare(`
+    const result = await db
+      .prepare(
+        `
       SELECT DISTINCT professorNameA AS name FROM schedule WHERE professorNameA IS NOT NULL AND TRIM(professorNameA) != ''
       UNION
       SELECT DISTINCT professorNameB AS name FROM schedule WHERE professorNameB IS NOT NULL AND TRIM(professorNameB) != ''
-    `).all();
+    `,
+      )
+      .all();
 
-    const fullNames = (result.results || []).map((row: any) => row.name as string);
+    const fullNames = (result.results || []).map(
+      (row: any) => row.name as string,
+    );
     const lastNameSet = new Set<string>();
 
     for (const fullName of fullNames) {
@@ -275,7 +311,9 @@ app.get("/api/teachers", async (c) => {
       if (lastName) lastNameSet.add(lastName);
     }
 
-    const teachers = Array.from(lastNameSet).sort((a, b) => a.localeCompare(b, "ru"));
+    const teachers = Array.from(lastNameSet).sort((a, b) =>
+      a.localeCompare(b, "ru"),
+    );
 
     const responseData = { success: true, data: { teachers } };
     await setCached(cacheKey, responseData, CACHE_TTL);
@@ -291,7 +329,8 @@ app.get("/api/teachers", async (c) => {
 app.get("/api/teacher", async (c) => {
   try {
     const name = c.req.query("name");
-    if (!name || name.trim().length === 0) return c.json({ success: false, error: "Missing parameter: name" }, 400);
+    if (!name || name.trim().length === 0)
+      return c.json({ success: false, error: "Missing parameter: name" }, 400);
 
     const db = c.env.DB;
     const cacheKey = c.req.url;
@@ -299,11 +338,16 @@ app.get("/api/teacher", async (c) => {
     if (cachedResponse) return cachedResponse;
 
     const searchPattern = `%${name.trim()}%`;
-    const result = await db.prepare(`
+    const result = await db
+      .prepare(
+        `
       SELECT * FROM schedule 
       WHERE professorNameA LIKE ? OR professorNameB LIKE ? 
       ORDER BY dayOfWeek, startTime
-    `).bind(searchPattern, searchPattern).all();
+    `,
+      )
+      .bind(searchPattern, searchPattern)
+      .all();
 
     const formatted = (result.results || []).map((record: any) => ({
       classId: record.classId,
@@ -324,7 +368,10 @@ app.get("/api/teacher", async (c) => {
       comments: record.comments,
     }));
 
-    const responseData = { success: true, data: { teacher: name.trim(), classes: formatted } };
+    const responseData = {
+      success: true,
+      data: { teacher: name.trim(), classes: formatted },
+    };
     await setCached(cacheKey, responseData, CACHE_TTL);
     return c.json(responseData, 200);
   } catch (error) {
@@ -341,13 +388,18 @@ app.get("/api/rooms/free", async (c) => {
     const dayOfWeek = c.req.query("dayOfWeek");
     const pairNumber = c.req.query("pairNumber");
 
-    if (!dayOfWeek || !pairNumber) return c.json({ success: false, error: "Missing required parameters" }, 400);
+    if (!dayOfWeek || !pairNumber)
+      return c.json(
+        { success: false, error: "Missing required parameters" },
+        400,
+      );
 
     const dayNum = parseInt(dayOfWeek, 10);
     const pairNum = parseInt(pairNumber, 10);
     const slot = TIME_SLOTS[pairNum - 1];
 
-    if (!slot) return c.json({ success: false, error: "Invalid pairNumber" }, 400);
+    if (!slot)
+      return c.json({ success: false, error: "Invalid pairNumber" }, 400);
 
     const db = c.env.DB;
     const cacheKey = c.req.url;
@@ -432,7 +484,10 @@ app.post("/api/schedule/import", async (c) => {
     const db = c.env.DB;
 
     if (clear === true) {
-      await db.prepare("DELETE FROM schedule WHERE course = ?").bind(course).run();
+      await db
+        .prepare("DELETE FROM schedule WHERE course = ?")
+        .bind(course)
+        .run();
     }
 
     const insertStmt = db.prepare(`
@@ -449,13 +504,21 @@ app.post("/api/schedule/import", async (c) => {
       const chunk = classes.slice(i, i + batchSize);
       const statements = chunk.map((item: any) =>
         insertStmt.bind(
-          item.groupName, item.course, item.dayOfWeek, item.startTime, item.endTime,
-          item.isCommon ? 1 : 0,  // ИСПРАВЛЕНО: приводим boolean к integer для SQLite
+          item.groupName,
+          item.course,
+          item.dayOfWeek,
+          item.startTime,
+          item.endTime,
+          item.isCommon ? 1 : 0, // ИСПРАВЛЕНО: приводим boolean к integer для SQLite
           item.isLecture ? 1 : 0, // ИСПРАВЛЕНО: приводим boolean к integer для SQLite
-          item.classTitleA ?? null, item.professorNameA ?? null, item.classroomA ?? null,
-          item.classTitleB ?? null, item.professorNameB ?? null, item.classroomB ?? null,
-          item.comments ?? null
-        )
+          item.classTitleA ?? null,
+          item.professorNameA ?? null,
+          item.classroomA ?? null,
+          item.classTitleB ?? null,
+          item.professorNameB ?? null,
+          item.classroomB ?? null,
+          item.comments ?? null,
+        ),
       );
 
       await db.batch(statements);
@@ -475,14 +538,20 @@ app.post("/api/schedule/import", async (c) => {
       });
 
       // 2. Очищаем общие списки
-      deletePromises.push(cache.delete(new Request(`${origin}/api/groups?course=${course}`)));
+      deletePromises.push(
+        cache.delete(new Request(`${origin}/api/groups?course=${course}`)),
+      );
       deletePromises.push(cache.delete(new Request(`${origin}/api/teachers`)));
 
       // 3. Очищаем каждую группу
-      uniqueGroups.forEach(groupName => {
+      uniqueGroups.forEach((groupName) => {
         const encodedGroup = encodeURIComponent(groupName);
         deletePromises.push(
-          cache.delete(new Request(`${origin}/api/schedule?course=${course}&group=${encodedGroup}`))
+          cache.delete(
+            new Request(
+              `${origin}/api/schedule?course=${course}&group=${encodedGroup}`,
+            ),
+          ),
         );
       });
 
@@ -491,7 +560,14 @@ app.post("/api/schedule/import", async (c) => {
       console.warn("Cache deletion error during import:", cacheError);
     }
 
-    return c.json({ success: true, imported: importedCount, message: `Расписание для курса ${course} обновлено` }, 200);
+    return c.json(
+      {
+        success: true,
+        imported: importedCount,
+        message: `Расписание для курса ${course} обновлено`,
+      },
+      200,
+    );
   } catch (error) {
     console.error(error);
     return c.json({ success: false, error: "Internal server error" }, 500);
@@ -502,7 +578,14 @@ app.post("/api/schedule/import", async (c) => {
  * 404 Handler
  */
 app.all("*", (c) => {
-  return c.json({ success: false, error: "Not Found", message: `Маршрут ${c.req.path} не существует` }, 404);
+  return c.json(
+    {
+      success: false,
+      error: "Not Found",
+      message: `Маршрут ${c.req.path} не существует`,
+    },
+    404,
+  );
 });
 
 export default app;

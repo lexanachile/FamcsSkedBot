@@ -22,78 +22,76 @@
    ===================================================================================== */
 
 :root {
-
-    /* color-scheme: dark — подсказка браузеру, что сайт тёмный, чтобы
+  /* color-scheme: dark — подсказка браузеру, что сайт тёмный, чтобы
        нативные системные элементы (в частности — само окно выпадающего
        списка <select> на телефоне, а также scrollbar/автозаполнение)
        по умолчанию тоже рисовались в тёмной теme, а не светлыми поверх
        нашего чёрного фона. Часть внешнего вида этого системного окна
        (скругления углов, тень) задаёт сама ОС/браузер и кодом сайта не
        переопределяется — это ограничение платформы, а не недоработка. */
-    color-scheme: dark;
+  color-scheme: dark;
 
-    /* ===================================================================
+  /* ===================================================================
        1. ЦВЕТА
        =================================================================== */
 
-    /* --bg — фон ВСЕГО приложения (body, .app-container), истинный чёрный.
+  /* --bg — фон ВСЕГО приложения (body, .app-container), истинный чёрный.
        Значение продублировано в app.js (initializeTelegramWebApp, переменные
        headerColor/bgColor) — там оно красит системную шапку и фон самого
        Telegram. Меняете --bg здесь → ОБЯЗАТЕЛЬНО поправьте то же значение
        в app.js, иначе шапка Telegram и фон сайта разъедутся по цвету. */
-    --bg: #0f0f11;
+  --bg: #0f0f11;
 
-    /* --surface — ГЛАВНЫЙ "серый" цвет интерфейса (Apple secondary system
+  /* --surface — ГЛАВНЫЙ "серый" цвет интерфейса (Apple secondary system
        background в тёмной теме). Используется для: плашки с названием дня
        недели, фона каждой карточки-пары (.class-slot), заливки ячеек
        подгрупп, карточки приветствия и "занятий не найдено". Один hex-код
        здесь — и все серые "плашки" на сайте меняют оттенок разом. */
-    --surface: #1C1C1E;
+  --surface: #1c1c1e;
 
-    /* --ink — ИСТИННЫЙ белый без оттенков. Используется для: названия дня
+  /* --ink — ИСТИННЫЙ белый без оттенков. Используется для: названия дня
        недели, названия предмета, времени пары и номера аудитории. */
-    --ink: #fcfaea;
+  --ink: #fcfaea;
 
-    /* --ink-soft — светло-серый (Apple systemGray) для ВСЕГО остального
+  /* --ink-soft — светло-серый (Apple systemGray) для ВСЕГО остального
        текста: подзаголовок шапки, подписи КУРС/ГРУППА, имя преподавателя,
        метаданные расписания, бейдж "Лекция". */
-    --ink-soft: #8E8E93;
+  --ink-soft: #8e8e93;
 
-    --ink-lecture: #e48c3f;
+  --ink-lecture: #e48c3f;
 
-    /* --ink-faint — более тусклый серый (Apple systemGray4) для самого
+  /* --ink-faint — более тусклый серый (Apple systemGray4) для самого
        второстепенного текста: плейсхолдер "—", комментарии к паре, футер. */
-    --ink-faint: #636366;
+  --ink-faint: #636366;
 
-    /* --line — цвет тонких линий-разделителей в интерфейсе (НЕ у карточек
+  /* --line — цвет тонких линий-разделителей в интерфейсе (НЕ у карточек
        пар — там теперь обводка, см. секцию 2 ниже). Используется у: рамки
        полей выбора курса/группы, кружков навигации по дням, линии-"тропы"
        под ними, разделителей в списке "что умеет приложение". */
-    --line: #2C2C2E;
+  --line: #2c2c2e;
 
-    /* --accent / --accent-ink — акцентная (не серая) пара цветов для
+  /* --accent / --accent-ink — акцентная (не серая) пара цветов для
        кликабельных элементов: заливка кнопки "Показать расписание" и
        активного кружка дня. По умолчанию белая заливка + чёрный текст —
        единственное "яркое" пятно в монохромном интерфейсе. */
-    --accent: #fcfaea;
-    --accent-ink: #1C1C1E;
+  --accent: #fcfaea;
+  --accent-ink: #1c1c1e;
 
-    /* --error / --error-bg — цвет текста и фона блока с ошибкой (например,
+  /* --error / --error-bg — цвет текста и фона блока с ошибкой (например,
        "Не удалось загрузить список групп"). Единственный не-монохромный
        цвет во всём файле — оставлен специально, чтобы ошибка считывалась
        мгновенно (серым текстом это не передать). */
-    --error: #FF453A;
-    --error-bg: #2B1615;
+  --error: #ff453a;
+  --error-bg: #2b1615;
 
-    /* --info-panel-ink — цвет ТЕКСТА информационной плашки, которая
+  /* --info-panel-ink — цвет ТЕКСТА информационной плашки, которая
        выводится после субботы (см. #info-panel в index.html и функцию
        renderInfoPanel() в app.js — именно туда вписывается текст кодом).
        Отдельная переменная, не завязанная на --ink-soft, чтобы можно
        было настроить цвет этого текста независимо от всего остального. */
-    --info-panel-ink: #bab9b0;
+  --info-panel-ink: #bab9b0;
 
-
-    /* ===================================================================
+  /* ===================================================================
        2. ОБВОДКА КАРТОЧЕК ПАР
        Каждая карточка занятия рисуется с тонкой обводкой внутри общей
        серой карточки пары (.class-slot) — это касается КАК ячеек
@@ -103,120 +101,131 @@
        для лекций (можно включать/выключать независимо), и цвет обводки.
        =================================================================== */
 
-    /* --subgroup-outline-width-regular — толщина обводки у ОБЫЧНЫХ
+  /* --subgroup-outline-width-regular — толщина обводки у ОБЫЧНЫХ
        (не лекционных) пар — и у ячеек подгрупп, и у карточек общих пар.
        Поставьте 0px, чтобы полностью выключить обводку для обычных пар
        (аналог "false"); любое значение больше нуля — обводка включена
        (аналог "true"), число = толщина. */
-    --subgroup-outline-width-regular: 2px;
+  --subgroup-outline-width-regular: 2px;
 
-    /* --subgroup-outline-width-lecture — то же самое, но для пар-ЛЕКЦИЙ
+  /* --subgroup-outline-width-lecture — то же самое, но для пар-ЛЕКЦИЙ
        (и у подгрупп, и у общих пар с флагом isLecture). Регулируется
        отдельно от обычных пар: например, можно оставить обводку только
        у лекций (0px выше + значение здесь) или наоборот. */
-    --subgroup-outline-width-lecture: 2px;
+  --subgroup-outline-width-lecture: 2px;
 
-    /* --subgroup-outline-color — цвет обводки. Не привязан к --bg жёстко
+  /* --subgroup-outline-color — цвет обводки. Не привязан к --bg жёстко
        (хотя по умолчанию тоже чёрный) — можно поставить любой другой
        цвет независимо от фона страницы. */
-    --subgroup-outline-color: #19191b;
+  --subgroup-outline-color: #19191b;
 
-
-    /* ===================================================================
+  /* ===================================================================
        3. ШРИФТЫ
        =================================================================== */
 
-    --font-sans: "Inter", -apple-system, BlinkMacSystemFont,
-        "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    --font-condensed: "Inter Tight", "Inter", -apple-system,
-        BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-sans:
+    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-condensed:
+    "Inter Tight", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, Arial, sans-serif;
 
-    /* --font-scale — единственный множитель, который сразу меняет ВЕСЬ
+  /* --font-scale — единственный множитель, который сразу меняет ВЕСЬ
        текст на сайте (все --font-size-* переменные ниже считаются как
        calc(px * --font-scale)). 1 = как есть, 1.15 = крупнее на 15%,
        0.9 = чуть мельче. */
-    --font-scale: 1;
+  --font-scale: 1;
 
-    /* Базовые размеры текста (px), общие для всего интерфейса */
-    --font-size-2xs: calc(10px * var(--font-scale)); /* кружки навигации по дням */
-    --font-size-xs:  calc(12px * var(--font-scale)); /* подписи КУРС/ГРУППА, комментарии к паре, футер */
-    --font-size-sm:  calc(14px * var(--font-scale)); /* subtitle шапки, метаданные, преподаватель, аудитория */
-    --font-size-base:calc(16px * var(--font-scale)); /* базовый текст: поля выбора */
-    --font-size-lg:  calc(19px * var(--font-scale)); /* заголовок "Занятий не найдено" */
-    --font-size-xl:  calc(27px * var(--font-scale)); /* логотип, название дня недели, заголовок расписания */
+  /* Базовые размеры текста (px), общие для всего интерфейса */
+  --font-size-2xs: calc(
+    10px * var(--font-scale)
+  ); /* кружки навигации по дням */
+  --font-size-xs: calc(
+    12px * var(--font-scale)
+  ); /* подписи КУРС/ГРУППА, комментарии к паре, футер */
+  --font-size-sm: calc(
+    14px * var(--font-scale)
+  ); /* subtitle шапки, метаданные, преподаватель, аудитория */
+  --font-size-base: calc(
+    16px * var(--font-scale)
+  ); /* базовый текст: поля выбора */
+  --font-size-lg: calc(
+    19px * var(--font-scale)
+  ); /* заголовок "Занятий не найдено" */
+  --font-size-xl: calc(
+    27px * var(--font-scale)
+  ); /* логотип, название дня недели, заголовок расписания */
 
-    /* --font-size-subject — размер названия ПРЕДМЕТА в карточке пары.
+  /* --font-size-subject — размер названия ПРЕДМЕТА в карточке пары.
        Отдельная переменная (не завязана на --font-size-base), чтобы можно
        было крутить размер названия предмета, не трогая размер шрифта
        у полей выбора курса/группы и прочего "базового" текста. */
-    --font-size-subject: calc(18px * var(--font-scale));
+  --font-size-subject: calc(18px * var(--font-scale));
 
-    /* --font-size-lecture-badge — размер надписи "Лекция". Отдельная
+  /* --font-size-lecture-badge — размер надписи "Лекция". Отдельная
        переменная, специально меньше --font-size-2xs по умолчанию. */
-    --font-size-lecture-badge: calc(9px * var(--font-scale));
+  --font-size-lecture-badge: calc(9px * var(--font-scale));
 
-    /* --font-size-professor — размер имени ПРЕПОДАВАТЕЛЯ в карточке пары.
+  /* --font-size-professor — размер имени ПРЕПОДАВАТЕЛЯ в карточке пары.
        Вынесена в отдельную переменную (раньше была завязана на общий
        --font-size-sm), чтобы крутить размер имени преподавателя отдельно
        от subtitle шапки, метаданных и номера аудитории. */
-    --font-size-professor: calc(18px * var(--font-scale));
+  --font-size-professor: calc(18px * var(--font-scale));
 
-    /* --font-size-time — размер времени начала/окончания пары в колонке
+  /* --font-size-time — размер времени начала/окончания пары в колонке
        слева от карточки (.time-start / .time-end). Раньше было зашито
        прямо в CSS-правило, теперь отдельная настраиваемая переменная. */
-    --font-size-time: calc(14px * var(--font-scale));
+  --font-size-time: calc(14px * var(--font-scale));
 
-    /* --font-size-info-panel — размер текста в информационной плашке
+  /* --font-size-info-panel — размер текста в информационной плашке
        после субботы (#info-panel). Настраивается отдельно, так как это
        не расписание, а произвольный текст, который вписывается кодом
        в app.js (см. константу INFO_PANEL_TEXT). */
-    --font-size-info-panel: calc(14px * var(--font-scale));
+  --font-size-info-panel: calc(14px * var(--font-scale));
 
-
-    /* ===================================================================
+  /* ===================================================================
        4. ОТСТУПЫ
        =================================================================== */
 
-    /* Общая шкала отступов (padding/margin/gap), на неё опирается
+  /* Общая шкала отступов (padding/margin/gap), на неё опирается
        большая часть интерфейса — панель выбора курса/группы, шапка,
        карточка приветствия и т.д. */
-    --spacing-xs: 4px;
-    --spacing-sm: 8px;
-    --spacing-md: 14px;
-    --spacing-lg: 22px;
-    --spacing-xl: 34px;
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 14px;
+  --spacing-lg: 22px;
+  --spacing-xl: 34px;
 
-    /* --screen-edge-x — боковой отступ ОТ КРАЯ ЭКРАНА для шапки и всего
+  /* --screen-edge-x — боковой отступ ОТ КРАЯ ЭКРАНА для шапки и всего
        содержимого (.main-content). Именно эта переменная отвечает за
        "отступы по краям" — уменьшайте её, чтобы контент был шире и ближе
        к краям экрана. */
-    --screen-edge-x: 10px;
+  --screen-edge-x: 10px;
 
-    /* --slot-padding-y / --slot-padding-x — внутренний отступ КАЖДОЙ
+  /* --slot-padding-y / --slot-padding-x — внутренний отступ КАЖДОЙ
        карточки пары (.class-slot) от её рамки до содержимого (времени
        и текста). --slot-padding-y — расстояние СВЕРХУ и СНИЗУ (сейчас
        вдвое меньше прежнего); --slot-padding-x — расстояние СЛЕВА/СПРАВА
        внутри карточки. Регулируются независимо друг от друга. */
-    --slot-padding-y: 5px;
-    --slot-padding-x: 10px;
+  --slot-padding-y: 5px;
+  --slot-padding-x: 10px;
 
-    /* --slot-gap — зазор МЕЖДУ карточками пар внутри одного дня (лёгкий
+  /* --slot-gap — зазор МЕЖДУ карточками пар внутри одного дня (лёгкий
        отступ сверху/снизу от других пар — про расстояние ВНУТРИ одной
        карточки см. --slot-padding-y выше, это разные вещи). */
-    --slot-gap: 10px;
+  --slot-gap: 10px;
 
-    /* --day-gap — зазор МЕЖДУ ДНЯМИ НЕДЕЛИ целиком (Понедельник, Вторник
+  /* --day-gap — зазор МЕЖДУ ДНЯМИ НЕДЕЛИ целиком (Понедельник, Вторник
        и т.д.). Отвечает за "сильное отделение" одного дня от другого. */
-    --day-gap: 100px;
+  --day-gap: 100px;
 
-
-    /* ===================================================================
+  /* ===================================================================
        5. СКРУГЛЕНИЯ УГЛОВ
        =================================================================== */
 
-    --radius-sm: 12px;   /* поля выбора, карточки пар, ячейки подгрупп, плашка дня недели */
-    --radius-md: 18px;   /* крупные карточки: welcome-блок, пустое состояние */
-    --radius-pill: 999px; /* полностью скруглённые кнопки */
+  --radius-sm: 12px; /* поля выбора, карточки пар, ячейки подгрупп, плашка дня недели */
+  --radius-md: 18px; /* крупные карточки: welcome-блок, пустое состояние */
+  --radius-pill: 999px; /* полностью скруглённые кнопки */
 }
 
 /* =====================================================================================
@@ -232,85 +241,93 @@
    ===================================================================== */
 
 @font-face {
-    font-family: "Inter";
-    src: url("/fonts/inter-v20-cyrillic_latin-regular.woff2") format("woff2");
-    font-weight: 400;
-    font-style: normal;
-    font-display: swap;
+  font-family: "Inter";
+  src: url("/fonts/inter-v20-cyrillic_latin-regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
 }
 @font-face {
-    font-family: "Inter";
-    src: url("/fonts/inter-v20-cyrillic_latin-600.woff2") format("woff2");
-    font-weight: 600;
-    font-style: normal;
-    font-display: swap;
+  font-family: "Inter";
+  src: url("/fonts/inter-v20-cyrillic_latin-600.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
 }
 @font-face {
-    font-family: "Inter";
-    src: url("/fonts/inter-v20-cyrillic_latin-700.woff2") format("woff2");
-    font-weight: 700;
-    font-style: normal;
-    font-display: swap;
+  font-family: "Inter";
+  src: url("/fonts/inter-v20-cyrillic_latin-700.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
 }
 @font-face {
-    font-family: "Inter";
-    src: url("/fonts/inter-v20-cyrillic_latin-800.woff2") format("woff2");
-    font-weight: 800;
-    font-style: normal;
-    font-display: swap;
+  font-family: "Inter";
+  src: url("/fonts/inter-v20-cyrillic_latin-800.woff2") format("woff2");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
 }
 
 @font-face {
-    font-family: "Inter Tight";
-    src: url("/fonts/inter-tight-v9-cyrillic_latin-regular.woff2") format("woff2");
-    font-weight: 400;
-    font-style: normal;
-    font-display: swap;
+  font-family: "Inter Tight";
+  src: url("/fonts/inter-tight-v9-cyrillic_latin-regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
 }
 @font-face {
-    font-family: "Inter Tight";
-    src: url("/fonts/inter-tight-v9-cyrillic_latin-600.woff2") format("woff2");
-    font-weight: 600;
-    font-style: normal;
-    font-display: swap;
+  font-family: "Inter Tight";
+  src: url("/fonts/inter-tight-v9-cyrillic_latin-600.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
 }
 @font-face {
-    font-family: "Inter Tight";
-    src: url("/fonts/inter-tight-v9-cyrillic_latin-700.woff2") format("woff2");
-    font-weight: 700;
-    font-style: normal;
-    font-display: swap;
+  font-family: "Inter Tight";
+  src: url("/fonts/inter-tight-v9-cyrillic_latin-700.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
 }
 @font-face {
-    font-family: "Inter Tight";
-    src: url("/fonts/inter-tight-v9-cyrillic_latin-800.woff2") format("woff2");
-    font-weight: 800;
-    font-style: normal;
-    font-display: swap;
+  font-family: "Inter Tight";
+  src: url("/fonts/inter-tight-v9-cyrillic_latin-800.woff2") format("woff2");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
 }
 
 /* Сброс дефолтных отступов браузера + удобная box-модель везде */
-* { margin: 0; padding: 0; box-sizing: border-box; }
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
 
 /* Убираем нативный "тап-хайлайт" браузера (серо-белую вспышку/обводку при
    нажатии на кликабельный элемент). Именно она и "багается и остаётся" —
    в Android WebView (в т.ч. внутри Telegram) он иногда не гаснет после
    тапа и виснет поверх кнопки как обводка. На iOS Safari такой подсветки
    почти не видно, поэтому баг был заметен только на Android. */
-button, a, [role="button"] {
-    -webkit-tap-highlight-color: transparent;
+button,
+a,
+[role="button"] {
+  -webkit-tap-highlight-color: transparent;
 }
 
-html, body {
-    width: 100%; height: 100%;
-    font-family: var(--font-sans);
-    background-color: var(--bg);
-    color: var(--ink-soft);
-    font-size: var(--font-size-base);
-    line-height: 1.6;
-    -webkit-font-smoothing: antialiased;
+html,
+body {
+  width: 100%;
+  height: 100%;
+  font-family: var(--font-sans);
+  background-color: var(--bg);
+  color: var(--ink-soft);
+  font-size: var(--font-size-base);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
 
-    /* Отключаем автоматический "буст" размера шрифта, который Android-браузеры
+  /* Отключаем автоматический "буст" размера шрифта, который Android-браузеры
        (Chrome/WebView, в т.ч. внутри Telegram) сами применяют к коротким
        изолированным кускам текста (например, к плашке дня недели или номеру
        аудитории), считая, что так их "удобнее читать". iOS Safari такого не
@@ -318,10 +335,10 @@ html, body {
        ЖЕ font-size в px. Без этой строки --font-scale в блоке :root тоже не
        даёт предсказуемого результата на Android, т.к. поверх него ещё
        накладывается это авто-масштабирование браузера. */
-    -webkit-text-size-adjust: 100%;
-    text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 
-    /* Запрещаем браузеру САМОМУ "изобретать" полужирное/курсивное начертание
+  /* Запрещаем браузеру САМОМУ "изобретать" полужирное/курсивное начертание
        (растягивать контуры обычного начертания), если нужный конкретный
        файл шрифта из @font-face почему-то не подгрузился или ещё не готов
        в момент отрисовки. iOS Safari/WKWebView делает такой "fake bold"
@@ -332,13 +349,14 @@ html, body {
        ошибкой/не тем MIME-типом на вашем хостинге, вместо запасного шрифта
        той же насыщенности WebKit будет "утолщать" already загруженное
        начертание программно, и результат будет шире/крупнее визуально. */
-    font-synthesis: none;
-    -webkit-font-synthesis: none;
+  font-synthesis: none;
+  -webkit-font-synthesis: none;
 }
 
 .app-container {
-    display: flex; flex-direction: column;
-    /* ИСПРАВЛЕНИЕ: было min-height: 100vh — контейнер мог расти выше экрана,
+  display: flex;
+  flex-direction: column;
+  /* ИСПРАВЛЕНИЕ: было min-height: 100vh — контейнер мог расти выше экрана,
        и тогда реально скроллилось окно/body, а не .main-content (у него
        ниже overflow-y: auto). Из-за этого .main-content никогда не
        становился настоящим скролл-контейнером со своим scrollport'ом, а
@@ -349,9 +367,9 @@ html, body {
        .day-navigation внутри него нормально прилипает. 100dvh поверх
        100vh — на мобильных (в т.ч. в WebView Telegram) учитывает
        реальную видимую высоту с адресной строкой/панелями Telegram. */
-    height: 100vh;
-    height: 100dvh;
-    background-color: var(--bg);
+  height: 100vh;
+  height: 100dvh;
+  background-color: var(--bg);
 }
 
 /* ============================================================
@@ -359,7 +377,7 @@ html, body {
    ============================================================ */
 
 .header {
-    /* Было "padding: ... var(--screen-edge-x) ...": горизонтальный отступ
+  /* Было "padding: ... var(--screen-edge-x) ...": горизонтальный отступ
        задавала сама шапка, т.к. раньше она была СНАРУЖИ .main-content
        (сестрой, напрямую в .app-container, у которого нет своих
        горизонтальных полей). Теперь шапка — обычный дочерний элемент
@@ -368,45 +386,49 @@ html, body {
        отступ задвоится. flex-shrink тоже больше не нужен: шапка больше
        не flex-элемент .app-container, а обычный блок в потоке
        .main-content. */
-    padding: var(--spacing-xl) 0 var(--spacing-md);
-    text-align: center;
+  padding: var(--spacing-xl) 0 var(--spacing-md);
+  text-align: center;
 }
 
 .header-mark {
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-    font-family: var(--font-sans);
-    font-size: var(--font-size-xl);
-    font-weight: 800;
-    letter-spacing: 0.01em;
-    text-transform: none;
-    color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-xl);
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  color: var(--ink);
 }
 
 .leaf-icon {
-    width: 20px; height: 20px;
-    color: var(--ink-soft);
-    flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  color: var(--ink-soft);
+  flex-shrink: 0;
 }
 
 .header .subtitle {
-    font-size: var(--font-size-sm);
-    color: var(--ink-soft);
-    margin-top: 6px;
+  font-size: var(--font-size-sm);
+  color: var(--ink-soft);
+  margin-top: 6px;
 }
 
 .main-content {
-    flex: 1;
-    /* ИСПРАВЛЕНИЕ: min-height: 0 обязателен для flex-элемента, чтобы он
+  flex: 1;
+  /* ИСПРАВЛЕНИЕ: min-height: 0 обязателен для flex-элемента, чтобы он
        мог реально сжаться до высоты родителя (.app-container) вместо
        того чтобы расти по контенту (поведение по умолчанию у flex-детей —
        min-height: auto). Без этой строки overflow-y: auto ниже был
        "мёртвым": скроллбар внутри .main-content никогда не появлялся,
        блок просто растягивался, и вместе с ним растягивался
        .day-navigation — sticky было не к чему прилипать. */
-    min-height: 0;
-    padding: 0 var(--screen-edge-x) var(--spacing-lg);
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
+  min-height: 0;
+  padding: 0 var(--screen-edge-x) var(--spacing-lg);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* ============================================================
@@ -414,21 +436,23 @@ html, body {
    ============================================================ */
 
 .controls-section {
-    padding-bottom: var(--spacing-md);
-    margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
 }
 
-.control-group { margin-bottom: var(--spacing-md); }
+.control-group {
+  margin-bottom: var(--spacing-md);
+}
 
 .control-group label {
-    display: block;
-    font-family: var(--font-condensed);
-    font-weight: 700;
-    font-size: var(--font-size-xs);
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--ink-soft);
-    margin-bottom: 7px;
+  display: block;
+  font-family: var(--font-condensed);
+  font-weight: 700;
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 7px;
 }
 
 /* Поля выбора Курс/Группа — размер как в исходной версии сайта
@@ -450,28 +474,30 @@ html, body {
    старые телефоны/WebView. */
 .select-input,
 .select-trigger {
-    width: 100%;
-    padding: 13px 34px 13px 16px;
-    border: 1px solid var(--line);
-    border-radius: var(--radius-sm);
-    font-size: var(--font-size-base);
-    font-family: var(--font-sans);
-    font-weight: 500;
-    background-color: var(--surface);
-    color: var(--ink);
-    transition: border-color 0.15s ease;
-    appearance: none;
-    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238E8E93' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-    background-repeat: no-repeat;
-    background-position: right 14px center;
-    background-size: 15px;
+  width: 100%;
+  padding: 13px 34px 13px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-base);
+  font-family: var(--font-sans);
+  font-weight: 500;
+  background-color: var(--surface);
+  color: var(--ink);
+  transition: border-color 0.15s ease;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238E8E93' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 15px;
 }
 
-.select-input:disabled { color: var(--ink-faint); }
+.select-input:disabled {
+  color: var(--ink-faint);
+}
 
 .select-input:focus {
-    outline: none;
-    border-color: var(--ink-soft);
+  outline: none;
+  border-color: var(--ink-soft);
 }
 
 /* Пункты выпадающего списка настоящего <select> — на случай, если он
@@ -479,9 +505,9 @@ html, body {
    (например, при очень медленной загрузке CSS). Основное оформление
    списка теперь — плашка .picker-sheet-item ниже. */
 .select-input option {
-    background-color: var(--bg);
-    color: var(--ink);
-    font-family: var(--font-sans);
+  background-color: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
 }
 
 /* Настоящий <select> скрыт визуально, но остаётся в DOM и в потоке
@@ -490,15 +516,15 @@ html, body {
    читает/пишет app.js — просто человек его не видит и не может нажать
    на него напрямую, вместо него на экране кнопка .select-trigger выше. */
 .native-select-hidden {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* Кнопка-триггер выглядит как прежнее поле select-input (стили общие,
@@ -506,21 +532,21 @@ html, body {
    кнопки: сброс браузерных стилей у <button>, курсор, текст в одну
    строку с многоточием (на случай длинного названия группы). */
 .select-trigger {
-    display: block;
-    text-align: left;
-    cursor: pointer;
+  display: block;
+  text-align: left;
+  cursor: pointer;
 }
 
 .select-trigger:disabled {
-    color: var(--ink-faint);
-    cursor: default;
+  color: var(--ink-faint);
+  cursor: default;
 }
 
 .select-trigger-text {
-    display: block;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Пока ничего не выбрано ("Не выбран" / "Сначала выберите курс") —
@@ -528,7 +554,7 @@ html, body {
    .placeholder ставит/снимает app.js в зависимости от того, выбрано
    ли реальное значение в скрытом <select>. */
 .select-trigger.placeholder .select-trigger-text {
-    color: var(--ink-soft);
+  color: var(--ink-soft);
 }
 
 /* ============================================================
@@ -539,15 +565,15 @@ html, body {
    начале app.js (там же короткое пояснение, как всё это связано). */
 
 .picker-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 1000000; /* выше кнопки "наверх" (999999), чтобы плашка была поверх всего */
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    background-color: rgba(0, 0, 0, 0.55);
-    opacity: 0;
-    transition: opacity var(--picker-anim-ms, 280ms) ease;
+  position: fixed;
+  inset: 0;
+  z-index: 1000000; /* выше кнопки "наверх" (999999), чтобы плашка была поверх всего */
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  transition: opacity var(--picker-anim-ms, 280ms) ease;
 }
 
 /* Класс .hidden (display: none, общий для всего сайта — см. ниже по
@@ -555,164 +581,184 @@ html, body {
    полностью, пока она закрыта. .open отвечает только за анимацию,
    когда плашка уже показана (см. app.js: сначала снимается .hidden,
    в следующем кадре добавляется .open, чтобы CSS-transition сыграл). */
-.picker-overlay.open { opacity: 1; }
-
-.picker-sheet {
-    width: 100%;
-    max-width: 480px;
-    max-height: min(70vh, 520px);
-    display: flex;
-    flex-direction: column;
-    background-color: var(--surface);
-    border: 1px solid var(--line);
-    border-bottom: none;
-    border-radius: var(--radius-md) var(--radius-md) 0 0;
-    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.45);
-    transform: translateY(100%);
-    transition: transform var(--picker-anim-ms, 280ms) cubic-bezier(0.32, 0.72, 0, 1);
-    /* Отступ снизу под жестовую полосу iPhone / системную панель Android,
-       чтобы последний пункт списка и края плашки не оказались под ней. */
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+.picker-overlay.open {
+  opacity: 1;
 }
 
-.picker-overlay.open .picker-sheet { transform: translateY(0); }
+.picker-sheet {
+  width: 100%;
+  max-width: 480px;
+  max-height: min(70vh, 520px);
+  display: flex;
+  flex-direction: column;
+  background-color: var(--surface);
+  border: 1px solid var(--line);
+  border-bottom: none;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.45);
+  transform: translateY(100%);
+  transition: transform var(--picker-anim-ms, 280ms)
+    cubic-bezier(0.32, 0.72, 0, 1);
+  /* Отступ снизу под жестовую полосу iPhone / системную панель Android,
+       чтобы последний пункт списка и края плашки не оказались под ней. */
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.picker-overlay.open .picker-sheet {
+  transform: translateY(0);
+}
 
 .picker-sheet-handle {
-    width: 36px;
-    height: 4px;
-    border-radius: var(--radius-pill);
-    background-color: var(--line);
-    margin: 10px auto 2px;
-    flex-shrink: 0;
+  width: 36px;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background-color: var(--line);
+  margin: 10px auto 2px;
+  flex-shrink: 0;
 }
 
 .picker-sheet-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: var(--spacing-md) var(--spacing-lg) var(--spacing-sm);
-    flex-shrink: 0;
-    border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md) var(--spacing-lg) var(--spacing-sm);
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--line);
 }
 
 .picker-sheet-title {
-    font-family: var(--font-condensed);
-    font-weight: 700;
-    font-size: var(--font-size-sm);
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--ink-soft);
+  font-family: var(--font-condensed);
+  font-weight: 700;
+  font-size: var(--font-size-sm);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
 }
 
 .picker-sheet-close {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 30px;
-    height: 30px;
-    padding: 0;
-    border: none;
-    border-radius: 50%;
-    background-color: var(--bg);
-    color: var(--ink-soft);
-    cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background-color: var(--bg);
+  color: var(--ink-soft);
+  cursor: pointer;
 }
-.picker-sheet-close svg { width: 16px; height: 16px; }
-.picker-sheet-close:active { opacity: 0.7; }
+.picker-sheet-close svg {
+  width: 16px;
+  height: 16px;
+}
+.picker-sheet-close:active {
+  opacity: 0.7;
+}
 
 .picker-sheet-list {
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    padding: var(--spacing-sm) var(--spacing-sm);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: var(--spacing-sm) var(--spacing-sm);
 }
 
 /* Каждый пункт — минимум 46px по высоте, чтобы было удобно попадать
    пальцем (рекомендация Apple/Google для touch-таргетов). */
 .picker-sheet-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--spacing-sm);
-    width: 100%;
-    min-height: 46px;
-    padding: 12px var(--spacing-md);
-    border: none;
-    border-radius: var(--radius-sm);
-    background-color: transparent;
-    color: var(--ink);
-    font-family: var(--font-sans);
-    font-size: var(--font-size-base);
-    font-weight: 500;
-    text-align: left;
-    cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  width: 100%;
+  min-height: 46px;
+  padding: 12px var(--spacing-md);
+  border: none;
+  border-radius: var(--radius-sm);
+  background-color: transparent;
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-base);
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
 }
 
-.picker-sheet-item:active { background-color: var(--bg); }
+.picker-sheet-item:active {
+  background-color: var(--bg);
+}
 
 /* Пункт-плейсхолдер ("Сначала выберите курс", "Загрузка...",
    "Ошибка загрузки") — не выделяется как обычный пункт, оформлен тусклым
    текстом, как и в самом триггере. */
 .picker-sheet-item.picker-sheet-item-placeholder {
-    color: var(--ink-faint);
+  color: var(--ink-faint);
 }
 
 /* Выбранный пункт — акцентный цвет текста + галочка справа. */
 .picker-sheet-item.active {
-    color: var(--accent);
-    font-weight: 700;
+  color: var(--accent);
+  font-weight: 700;
 }
 
 .picker-sheet-item-check {
-    flex-shrink: 0;
-    width: 18px;
-    height: 18px;
-    color: var(--accent);
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  color: var(--accent);
 }
 
 .button {
-    width: 100%;
-    padding: 14px;
-    border: none;
-    border-radius: var(--radius-pill);
-    font-family: var(--font-condensed);
-    font-size: var(--font-size-sm);
-    font-weight: 700;
-    letter-spacing: 0.03em;
-    cursor: pointer;
-    transition: background-color 0.15s ease, transform 0.1s ease;
-    margin-top: var(--spacing-sm);
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-condensed);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    transform 0.1s ease;
+  margin-top: var(--spacing-sm);
 }
 
 .button-primary {
-    background-color: var(--accent);
-    color: var(--accent-ink);
+  background-color: var(--accent);
+  color: var(--accent-ink);
 }
-.button-primary:hover:not(:disabled) { background-color: #D6D6D6; }
-.button-primary:active:not(:disabled) { transform: translateY(1px); }
-.button:disabled { opacity: 0.45; cursor: not-allowed; }
-
+.button-primary:hover:not(:disabled) {
+  background-color: #d6d6d6;
+}
+.button-primary:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 
 /* ============================================================
    НАВИГАЦИЯ ПО ДНЯМ НЕДЕЛИ ("камни на тропе")
    ============================================================ */
 
 .day-navigation {
-    position: sticky;
-    top: -1px; /* небольшое смещение во избежание визуального субпиксельного зазора */
-    z-index: 100;
-    background-color: var(--bg);
-    
-    /* Расширяем фон за пределы отступов .main-content, 
-       чтобы текст расписания не проглядывал по краям при скролле */
-    padding: var(--spacing-md) var(--screen-edge-x);
-    margin: 0 calc(var(--screen-edge-x) * -1) var(--spacing-xl);
-    
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+  position: sticky;
+  top: -1px; /* небольшое смещение во избежание визуального субпиксельного зазора */
+  z-index: 100;
+  background-color: var(--bg);
 
-    /* Плавное появление тени снизу, когда плашка прилипает — см. .is-stuck */
-    transition: box-shadow 0.15s ease;
+  /* Расширяем фон за пределы отступов .main-content, 
+       чтобы текст расписания не проглядывал по краям при скролле */
+  padding: var(--spacing-md) var(--screen-edge-x);
+  margin: 0 calc(var(--screen-edge-x) * -1) var(--spacing-xl);
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  /* Плавное появление тени снизу, когда плашка прилипает — см. .is-stuck */
+  transition: box-shadow 0.15s ease;
 }
 
 /* Добавляется через IntersectionObserver в app.js (setupStickyDayNav()),
@@ -720,37 +766,40 @@ html, body {
    в момент, когда .day-navigation реально прилипла к верху экрана.
    Тень снизу отделяет прилипшую плашку от расписания под ней. */
 .day-navigation.is-stuck {
-    box-shadow: 0 1px 0 var(--line), 0 8px 16px -12px rgba(0, 0, 0, 0.4);
+  box-shadow:
+    0 1px 0 var(--line),
+    0 8px 16px -12px rgba(0, 0, 0, 0.4);
 }
 
 /* Служебный маячок для IntersectionObserver — сам по себе невидим,
    высота 1px достаточна, чтобы observer чётко фиксировал момент выхода
    из области видимости. */
 #day-nav-sentinel {
-    height: 1px;
+  height: 1px;
 }
 
 .day-navigation::before {
-    content: "";
-    position: absolute;
-    top: 50%;
-    /* Т.к. блок расширен за счет padding, линия должна начинаться
+  content: "";
+  position: absolute;
+  top: 50%;
+  /* Т.к. блок расширен за счет padding, линия должна начинаться
        с учетом размера кнопок и отступов контейнера */
-    left: calc(18px + var(--screen-edge-x));
-    right: calc(18px + var(--screen-edge-x));
-    height: 1px;
-    background-color: var(--line);
-    z-index: 0;
-    transform: translateY(-50%);
+  left: calc(18px + var(--screen-edge-x));
+  right: calc(18px + var(--screen-edge-x));
+  height: 1px;
+  background-color: var(--line);
+  z-index: 0;
+  transform: translateY(-50%);
 }
 
 .day-nav-btn {
-    position: relative;
-    z-index: 1;
-    width: 36px; height: 36px;
-    border-radius: 50%;
-    background-color: var(--bg);
-    /* ВАЖНО: раньше здесь была ОБВОДКА через border (1px solid var(--line)),
+  position: relative;
+  z-index: 1;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: var(--bg);
+  /* ВАЖНО: раньше здесь была ОБВОДКА через border (1px solid var(--line)),
        а .active менял border-color на var(--accent). Именно это и было
        причиной "залипающей белой обводки": на элементе с border-radius: 50%
        некоторые Android WebView (в т.ч. внутри Telegram) при переходе
@@ -762,22 +811,25 @@ html, body {
        Решение: убираем border вовсе и рисуем то же самое кольцо через
        box-shadow (inset) — box-shadow красится в одном проходе с фоном
        и таким багом не страдает. Внешне выглядит идентично border. */
-    box-shadow: inset 0 0 0 1px var(--line);
-    border: none;
-    font-family: var(--font-condensed);
-    font-size: calc(12px * var(--font-scale));
-    font-weight: 700;
-    color: var(--ink-soft);
-    cursor: pointer;
-    /* border-color больше не анимируем (свойства и не осталось) —
+  box-shadow: inset 0 0 0 1px var(--line);
+  border: none;
+  font-family: var(--font-condensed);
+  font-size: calc(12px * var(--font-scale));
+  font-weight: 700;
+  color: var(--ink-soft);
+  cursor: pointer;
+  /* border-color больше не анимируем (свойства и не осталось) —
        переходим только по background-color/color/box-shadow. */
-    transition: background-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease;
-    /* Принудительно выносим кнопку на отдельный композитный слой и
+  transition:
+    background-color 0.15s ease,
+    box-shadow 0.15s ease,
+    color 0.15s ease;
+  /* Принудительно выносим кнопку на отдельный композитный слой и
        заставляем WebView перерисовать её "с нуля" при каждом состоянии —
        ещё одна страховка от того же класса багов с "застрявшим" пикселем
        по краю скруглённого элемента. */
-    -webkit-backface-visibility: hidden;
-    backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
 /* :hover обёрнут в @media (hover: hover) — только для устройств с реальной
@@ -788,7 +840,10 @@ html, body {
    только листать страницу, а не тапать ещё раз. На тач-устройствах это
    правило теперь вовсе не применяется, так что залипать нечему. */
 @media (hover: hover) and (pointer: fine) {
-    .day-nav-btn:hover { box-shadow: inset 0 0 0 1px var(--ink-soft); color: var(--ink); }
+  .day-nav-btn:hover {
+    box-shadow: inset 0 0 0 1px var(--ink-soft);
+    color: var(--ink);
+  }
 }
 
 /* outline: none — убирает нативную рамку фокуса браузера. Раньше здесь
@@ -798,12 +853,14 @@ html, body {
    висеть на кружке. Это Telegram Mini App, управление тут touch-first,
    поэтому рамку фокуса убираем полностью и для :focus, и для :focus-visible. */
 .day-nav-btn:focus,
-.day-nav-btn:focus-visible { outline: none; }
+.day-nav-btn:focus-visible {
+  outline: none;
+}
 
 .day-nav-btn.active {
-    background-color: var(--accent);
-    box-shadow: inset 0 0 0 1px var(--accent);
-    color: var(--accent-ink);
+  background-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+  color: var(--accent-ink);
 }
 
 /* ============================================================
@@ -844,15 +901,15 @@ html, body {
    так что баг больше не воспроизводится. Если когда-нибудь снова
    перенесёте эту кнопку внутрь скроллящегося блока — вернётся и баг. */
 .scroll-top-btn-position {
-    position: fixed;
-    z-index: 999999;
-    pointer-events: none; /* клики "проваливаются" сквозь пустую область обёртки */
+  position: fixed;
+  z-index: 999999;
+  pointer-events: none; /* клики "проваливаются" сквозь пустую область обёртки */
 
-    /* Явно выносим на собственный слой композитинга (страховка на
+  /* Явно выносим на собственный слой композитинга (страховка на
        случай более старых/слабых WebView) — рендерится видеокартой
        отдельно от прокручиваемого контента, без пересчёта раскладки. */
-    transform: translateZ(0);
-    will-change: transform;
+  transform: translateZ(0);
+  will-change: transform;
 }
 
 /* Слой 2: сама кнопка. Настройки цвета круга/стрелки/размера —
@@ -861,61 +918,82 @@ html, body {
    снизу вверх и проявляется (opacity + translateY), управляется классом
    .visible, который JS включает/выключает в updateScrollTopVisibility(). */
 .scroll-top-btn {
-    border-radius: 50%;
-    border: 1px solid var(--line);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
-    opacity: 0;
-    transform: translateY(22px);
-    pointer-events: none;
-    transition: opacity 0.28s ease, transform 0.28s ease;
-    /* Резервные значения на случай, если JS ещё не успел применить настройки
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  transform: translateY(22px);
+  pointer-events: none;
+  transition:
+    opacity 0.28s ease,
+    transform 0.28s ease;
+  /* Резервные значения на случай, если JS ещё не успел применить настройки
        из app.js (SCROLL_TOP_BTN_*) — обычно эти инлайн-стили их перекрывают. */
-    width: 46px;
-    height: 46px;
-    background-color: var(--surface);
-    color: var(--ink);
+  width: 46px;
+  height: 46px;
+  background-color: var(--surface);
+  color: var(--ink);
 }
 
 .scroll-top-btn.visible {
-    opacity: 1;
-    transform: translateY(0);
-    pointer-events: auto;
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
 }
 
-.scroll-top-btn svg { width: 55%; height: 55%; }
+.scroll-top-btn svg {
+  width: 55%;
+  height: 55%;
+}
 
 /* Нажатие — лёгкое затемнение вместо translateY (translateY уже занят
    анимацией появления выше, чтобы они не конфликтовали друг с другом). */
-.scroll-top-btn:active { opacity: 0.75; }
+.scroll-top-btn:active {
+  opacity: 0.75;
+}
 
 /* ============================================================
    СОСТОЯНИЯ ЗАГРУЗКИ И ОШИБКИ
    ============================================================ */
 
 .loading-spinner {
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    padding: var(--spacing-xl);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xl);
 }
 .spinner {
-    width: 28px; height: 28px; border: 3px solid var(--line);
-    border-top: 3px solid var(--ink); border-radius: 50%;
-    animation: spin 0.9s linear infinite; margin-bottom: var(--spacing-sm);
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--line);
+  border-top: 3px solid var(--ink);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+  margin-bottom: var(--spacing-sm);
 }
-@keyframes spin { to { transform: rotate(360deg); } }
-.loading-spinner p { color: var(--ink-soft); font-size: var(--font-size-sm); }
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.loading-spinner p {
+  color: var(--ink-soft);
+  font-size: var(--font-size-sm);
+}
 
 .error-message {
-    background-color: var(--error-bg);
-    border-radius: var(--radius-sm);
-    padding: var(--spacing-md) var(--spacing-md);
-    margin-bottom: var(--spacing-lg);
-    color: var(--error);
-    font-size: var(--font-size-base);
-    border-left: 3px solid var(--error);
+  background-color: var(--error-bg);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-md) var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  color: var(--error);
+  font-size: var(--font-size-base);
+  border-left: 3px solid var(--error);
 }
 
 /* ============================================================
@@ -923,57 +1001,64 @@ html, body {
    ============================================================ */
 
 .schedule-info {
-    margin-bottom: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
 }
 .schedule-info h2 {
-    font-family: var(--font-sans);
-    font-size: var(--font-size-xl);
-    font-weight: 800;
-    color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-xl);
+  font-weight: 800;
+  color: var(--ink);
 }
-.schedule-info p { color: var(--ink-soft); font-size: var(--font-size-sm); margin-top: 3px; }
+.schedule-info p {
+  color: var(--ink-soft);
+  font-size: var(--font-size-sm);
+  margin-top: 3px;
+}
 
 /* Вертикальный список дней. Дни отделены друг от друга не линией, а
    большим воздушным зазором (--day-gap, см. секцию 4 в :root). Боковой
    padding у самих дней отсутствует (его даёт один раз .main-content). */
 .schedule-days {
-    display: flex; flex-direction: column;
-    gap: var(--day-gap);
+  display: flex;
+  flex-direction: column;
+  gap: var(--day-gap);
 }
 
 /* Блок одного дня недели — просто группирует заголовок + список пар,
    собственных фона/отступов не имеет: всю "воздушность" между днями
    обеспечивает gap у .schedule-days выше. */
 .day-block {
-    display: flex; flex-direction: column;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Плашка с названием дня недели — отдельное поле того же тёмно-серого
    цвета (--surface), что и карточки пар ниже, со скруглением. */
 .day-header {
-    background-color: var(--surface);
-    border-radius: var(--radius-sm);
-    padding: 10px var(--spacing-md);
-    margin-bottom: var(--spacing-sm);
+  background-color: var(--surface);
+  border-radius: var(--radius-sm);
+  padding: 10px var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
 }
 
 .day-header .day-name {
-    font-family: var(--font-sans);
-    /* Раньше --font-size-xl (23px), уменьшался до --font-size-base (16px)
+  font-family: var(--font-sans);
+  /* Раньше --font-size-xl (23px), уменьшался до --font-size-base (16px)
        только на узких экранах через баг-медиа-запрос (см. историю ниже).
        Теперь 16px — обычный постоянный размер, без привязки к ширине
        экрана. */
-    font-size: var(--font-size-base);
-    font-weight: 800;
-    text-transform: lowercase;
-    color: var(--ink);
+  font-size: var(--font-size-base);
+  font-weight: 800;
+  text-transform: lowercase;
+  color: var(--ink);
 }
 
 /* Список пар внутри одного дня. Зазор МЕЖДУ карточками пар — переменная
    --slot-gap (см. :root). */
 .classes-container {
-    display: flex; flex-direction: column;
-    gap: var(--slot-gap);
+  display: flex;
+  flex-direction: column;
+  gap: var(--slot-gap);
 }
 
 /* Один слот пары — отдельная карточка: тёмно-серый фон (--surface),
@@ -981,36 +1066,41 @@ html, body {
    переменными: --slot-padding-y (сверху/снизу, сейчас уменьшен вдвое
    относительно прежнего) и --slot-padding-x (слева/справа) — см. :root. */
 .class-slot {
-    display: flex; flex-direction: row; align-items: flex-start;
-    gap: var(--spacing-md);
-    background-color: var(--surface);
-    border-radius: var(--radius-sm);
-    padding: var(--slot-padding-y) var(--slot-padding-x);
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+  background-color: var(--surface);
+  border-radius: var(--radius-sm);
+  padding: var(--slot-padding-y) var(--slot-padding-x);
 }
 
 /* Колонка времени слева: сверху начало пары, снизу — конец, без тире
    между ними. Истинный белый, без оттенков. */
 .class-time {
-    flex-shrink: 0;
-    display: flex; flex-direction: column; align-items: flex-start;
-    gap: 2px;
-    padding-top: 2px; /* чуть выравнивает время по первой строке названия предмета */
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding-top: 2px; /* чуть выравнивает время по первой строке названия предмета */
 }
 .class-time .time-start,
 .class-time .time-end {
-    font-family: var(--font-sans);
-    font-variant-numeric: tabular-nums;
-    font-weight: 600;
-    font-size: var(--font-size-time);
-    letter-spacing: 0.02em;
-    color: var(--ink);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-size: var(--font-size-time);
+  letter-spacing: 0.02em;
+  color: var(--ink);
 }
 
 /* Обёртка вокруг одной или двух (подгруппы) карточек занятия */
 .class-info {
-    display: flex; align-items: stretch;
-    flex: 1;
-    min-width: 0; /* чтобы длинный текст предмета мог переноситься, а не растягивать колонку */
+  display: flex;
+  align-items: stretch;
+  flex: 1;
+  min-width: 0; /* чтобы длинный текст предмета мог переноситься, а не растягивать колонку */
 }
 
 /* Если пара общая для всей группы (isCommon) — один блок на всю ширину
@@ -1018,16 +1108,20 @@ html, body {
    правиле ".subgroup, .class-common" — здесь только его собственная
    раскладка (flex, выравнивание). */
 .class-common {
-    flex: 1;
-    display: flex;
-    flex-direction: column; justify-content: center;
-    align-items: flex-start; text-align: left;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  text-align: left;
 }
 
 /* Если пара разная у подгрупп А/Б — два блока рядом. */
 .class-split {
-    display: flex; flex-direction: row; gap: var(--spacing-sm);
-    width: 100%;
+  display: flex;
+  flex-direction: row;
+  gap: var(--spacing-sm);
+  width: 100%;
 }
 
 /* Ячейка одной подгруппы. У самой карточки пары (.class-slot) и у ячейки
@@ -1051,28 +1145,36 @@ html, body {
    обводка выключится сразу и у подгрупп, и у общих пар. */
 .subgroup,
 .class-common {
-    background-color: var(--surface);
-    border-style: solid;
-    border-color: var(--subgroup-outline-color);
-    border-width: var(--subgroup-outline-width-regular); /* обычная пара — толщина по умолчанию */
-    border-radius: var(--radius-sm);
-    padding: var(--spacing-sm) var(--spacing-md);
+  background-color: var(--surface);
+  border-style: solid;
+  border-color: var(--subgroup-outline-color);
+  border-width: var(
+    --subgroup-outline-width-regular
+  ); /* обычная пара — толщина по умолчанию */
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
 }
 .subgroup {
-    flex: 1; display: flex; flex-direction: column; justify-content: flex-start;
-    align-items: flex-start; text-align: left;
-    min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  text-align: left;
+  min-width: 0;
 }
 /* Если вся пара — лекция (.class-slot.is-lecture), у ячеек подгрупп И у
    карточки общей пары применяется отдельная толщина обводки
    --subgroup-outline-width-lecture. */
 .class-slot.is-lecture .subgroup,
 .class-slot.is-lecture .class-common {
-    border-width: var(--subgroup-outline-width-lecture);
+  border-width: var(--subgroup-outline-width-lecture);
 }
 
 /* Блок с названием предмета */
-.class-detail { margin-bottom: 3px; }
+.class-detail {
+  margin-bottom: 3px;
+}
 
 /* Название предмета — истинный белый, размер — отдельная переменная
    --font-size-subject (секция 3 блока :root), чтобы крутить её отдельно
@@ -1080,32 +1182,32 @@ html, body {
    перенос длинных названий предмета, которые не помещаются по ширине
    ячейки (в том числе одним "непрерывным" словом без пробелов). */
 .class-title {
-    font-family: var(--font-sans);
-    font-weight: 700;
-    /* Раньше --font-size-subject (18px), уменьшался до 16px только на
+  font-family: var(--font-sans);
+  font-weight: 700;
+  /* Раньше --font-size-subject (18px), уменьшался до 16px только на
        узких экранах через баг-медиа-запрос (см. историю ниже). Теперь
        16px — обычный постоянный размер. */
-    font-size: calc(16px * var(--font-scale));
-    color: var(--ink);
-    overflow-wrap: break-word;
-    word-break: break-word;
-    hyphens: auto;
+  font-size: calc(16px * var(--font-scale));
+  color: var(--ink);
+  overflow-wrap: break-word;
+  word-break: break-word;
+  hyphens: auto;
 }
 
 /* Имя преподавателя — отдельная строка под названием предмета,
    светло-серая (второстепенный текст). Тот же перенос длинных слов,
    что и у .class-title — длинные фамилии не вылезают за ширину ячейки. */
 .class-professor {
-    align-self: flex-start;
-    /* Раньше --font-size-professor (14px), уменьшался до 11px только на
+  align-self: flex-start;
+  /* Раньше --font-size-professor (14px), уменьшался до 11px только на
        узких экранах через баг-медиа-запрос (см. историю ниже). Теперь
        11px — обычный постоянный размер. */
-    font-size: calc(11px * var(--font-scale));
-    color: var(--ink-soft);
-    margin-top: 3px;
-    overflow-wrap: break-word;
-    word-break: break-word;
-    hyphens: auto;
+  font-size: calc(11px * var(--font-scale));
+  color: var(--ink-soft);
+  margin-top: 3px;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  hyphens: auto;
 }
 
 /* ------------------------------------------------------------
@@ -1118,50 +1220,50 @@ html, body {
    краю именно СВОЕЙ подгруппы, а не всей пары целиком.
    ------------------------------------------------------------ */
 .class-footer {
-    display: flex;
-    align-items: flex-end;
-    width: 100%;
-    margin-top: 6px;
+  display: flex;
+  align-items: flex-end;
+  width: 100%;
+  margin-top: 6px;
 }
 
 /* Бейдж "Лекция" — светло-серый, размер отдельной переменной
    --font-size-lecture-badge (секция 3 блока :root), специально
    уменьшен относительно прежнего значения. */
 .class-type {
-    display: inline-block;
-    font-family: var(--font-sans);
-    font-weight: 700;
-    font-size: var(--font-size-lecture-badge);
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--ink-lecture);
+  display: inline-block;
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: var(--font-size-lecture-badge);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-lecture);
 }
 
 /* Номер аудитории — ТОТ ЖЕ цвет, что у названия предмета (--ink,
    истинный белый), и тот же шрифт/начертание (.class-title). Перенос
    длинных значений — на случай длинного кода аудитории. */
 .class-room {
-    display: block;
-    margin-left: auto;
-    text-align: right;
-    font-family: var(--font-sans);
-    font-weight: 700;
-    /* Раньше --font-size-sm (14px, тот же, что у времени пары), уменьшался
+  display: block;
+  margin-left: auto;
+  text-align: right;
+  font-family: var(--font-sans);
+  font-weight: 700;
+  /* Раньше --font-size-sm (14px, тот же, что у времени пары), уменьшался
        до 11px только на узких экранах через баг-медиа-запрос (см. историю
        ниже). Теперь 11px — обычный постоянный размер, всегда меньше
        времени пары, независимо от ширины экрана. */
-    font-size: calc(11px * var(--font-scale));
-    color: var(--ink);
-    overflow-wrap: break-word;
-    word-break: break-word;
+  font-size: calc(11px * var(--font-scale));
+  color: var(--ink);
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 /* Комментарий к паре (если есть) */
 .class-comments {
-    font-size: var(--font-size-xs);
-    color: var(--ink-faint);
-    margin-top: 4px;
-    font-style: italic;
+  font-size: var(--font-size-xs);
+  color: var(--ink-faint);
+  margin-top: 4px;
+  font-style: italic;
 }
 
 /* ============================================================
@@ -1176,17 +1278,17 @@ html, body {
    ============================================================ */
 
 .info-panel {
-    margin-top: var(--day-gap);
-    background-color: var(--surface);
-    border-radius: var(--radius-sm);
-    padding: var(--spacing-md);
+  margin-top: var(--day-gap);
+  background-color: var(--surface);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-md);
 }
 
 .info-panel-text {
-    font-family: var(--font-sans);
-    font-size: var(--font-size-info-panel);
-    color: var(--info-panel-ink);
-    white-space: pre-wrap; /* сохраняет переносы строк (\n), если они есть в тексте из app.js */
+  font-family: var(--font-sans);
+  font-size: var(--font-size-info-panel);
+  color: var(--info-panel-ink);
+  white-space: pre-wrap; /* сохраняет переносы строк (\n), если они есть в тексте из app.js */
 }
 
 /* ============================================================
@@ -1194,60 +1296,91 @@ html, body {
    ============================================================ */
 
 .empty-state {
-    background-color: var(--surface);
-    border-radius: var(--radius-md);
-    padding: var(--spacing-xl); text-align: center; color: var(--ink-soft);
+  background-color: var(--surface);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-xl);
+  text-align: center;
+  color: var(--ink-soft);
 }
-.empty-state p:first-child { font-family: var(--font-sans); font-weight: 800; font-size: var(--font-size-lg); color: var(--ink); margin-bottom: 6px; }
-.empty-state-hint { font-size: var(--font-size-sm); }
+.empty-state p:first-child {
+  font-family: var(--font-sans);
+  font-weight: 800;
+  font-size: var(--font-size-lg);
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+.empty-state-hint {
+  font-size: var(--font-size-sm);
+}
 
 /* ============================================================
    ПРИВЕТСТВЕННЫЙ ЭКРАН (до выбора курса/группы)
    ============================================================ */
 
 .welcome-section {
-    background-color: var(--surface);
-    border-radius: var(--radius-md);
-    padding: var(--spacing-xl) var(--spacing-lg);
+  background-color: var(--surface);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-xl) var(--spacing-lg);
 }
 .welcome-eyebrow {
-    display: block;
-    font-family: var(--font-condensed);
-    font-size: var(--font-size-xs); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
-    color: var(--ink-soft); margin-bottom: var(--spacing-sm);
+  display: block;
+  font-family: var(--font-condensed);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: var(--spacing-sm);
 }
 .welcome-content h2 {
-    font-family: var(--font-sans);
-    font-size: var(--font-size-xl); font-weight: 800; margin-bottom: var(--spacing-sm); color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-xl);
+  font-weight: 800;
+  margin-bottom: var(--spacing-sm);
+  color: var(--ink);
 }
-.welcome-content p { color: var(--ink-soft); margin-bottom: var(--spacing-md); }
+.welcome-content p {
+  color: var(--ink-soft);
+  margin-bottom: var(--spacing-md);
+}
 
-.feature-list { list-style: none; }
-.feature-list li {
-    padding: 9px 0 9px 20px;
-    color: var(--ink-soft);
-    border-top: 1px solid var(--line);
-    position: relative;
+.feature-list {
+  list-style: none;
 }
-.feature-list li:first-child { border-top: none; }
+.feature-list li {
+  padding: 9px 0 9px 20px;
+  color: var(--ink-soft);
+  border-top: 1px solid var(--line);
+  position: relative;
+}
+.feature-list li:first-child {
+  border-top: none;
+}
 .feature-list li::before {
-    content: "";
-    position: absolute; left: 0; top: 16px;
-    width: 6px; height: 6px; border-radius: 50%;
-    background-color: var(--ink-soft);
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 16px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--ink-soft);
 }
 
 .footer {
-    /* flex-shrink больше не нужен — .footer теперь обычный блок внутри
+  /* flex-shrink больше не нужен — .footer теперь обычный блок внутри
        .main-content, а не flex-элемент .app-container (см. index.html) */
-    padding: var(--spacing-lg) var(--spacing-md);
-    text-align: center;
-    color: var(--ink-faint); font-size: var(--font-size-xs);
-    letter-spacing: 0.03em;
+  padding: var(--spacing-lg) var(--spacing-md);
+  text-align: center;
+  color: var(--ink-faint);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.03em;
 }
 
 /* Утилитарный класс для скрытия элементов через JS (toggle) */
-.hidden { display: none !important; }
+.hidden {
+  display: none !important;
+}
 
 /* ============================================================
    Адаптива под узкие экраны больше нет — раньше здесь был
