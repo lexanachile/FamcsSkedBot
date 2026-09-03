@@ -10,31 +10,44 @@ import io
 import re
 import json
 import time
+import sys
+import types
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple, Any
-from itertools import groupby
+from itertools import groupby, chain
+from collections import defaultdict
+from glob import glob
 
 import requests
 
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseDownload
+import openpyxl
 from openpyxl import load_workbook
 from openpyxl.worksheet.worksheet import Worksheet
+from openpyxl.utils.cell import get_column_letter
 
+DAYS_RANGE = range(0, 7)
+DAYS_OF_WEEK = ["понедельник", "вторник", "среда", "четверг", "пятница", "суббота"]
 
 # ============================================================
 # 1.  КОНФИГУРАЦИЯ И ПЕРЕМЕННЫЕ ОКРУЖЕНИЯ
 # ============================================================
 
+LAST_SCHED = os.environ.get("LAST_SCHED")
+OUTPUT_DIR = os.environ.get("OUTPUT_DIR")
+INPUT_GLOB = os.environ.get("INPUT_GLOB")
 GOOGLE_SERVICE_ACCOUNT_JSON = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")
 DRIVE_FOLDER_ID = os.environ.get("DRIVE_FOLDER_ID")
 BACKEND_URL = os.environ.get("BACKEND_URL")
 BACKEND_AUTH_TOKEN = os.environ.get("BACKEND_AUTH_TOKEN")
 
-if not GOOGLE_SERVICE_ACCOUNT_JSON:
+if GOOGLE_SERVICE_ACCOUNT_JSON:
+    from google.oauth2 import service_account
+    from googleapiclient.discovery import build
+    from googleapiclient.http import MediaIoBaseDownload
+
+if not INPUT_GLOB and not GOOGLE_SERVICE_ACCOUNT_JSON:
     raise ValueError("Не задана переменная GOOGLE_SERVICE_ACCOUNT_JSON")
-if not DRIVE_FOLDER_ID:
+if not INPUT_GLOB and not DRIVE_FOLDER_ID:
     raise ValueError("Не задана переменная DRIVE_FOLDER_ID")
 
 if not BACKEND_URL:
@@ -56,16 +69,17 @@ MAX_SLOT_ROW_SLACK = 1
 # 2.  АВТОРИЗАЦИЯ В GOOGLE DRIVE
 # ============================================================
 
+if GOOGLE_SERVICE_ACCOUNT_JSON:
 
-def get_drive_service():
-    try:
-        creds_dict = json.loads(GOOGLE_SERVICE_ACCOUNT_JSON)
-        creds = service_account.Credentials.from_service_account_info(
-            creds_dict, scopes=["https://www.googleapis.com/auth/drive.readonly"]
-        )
-        return build("drive", "v3", credentials=creds)
-    except Exception as e:
-        raise RuntimeError(f"Ошибка авторизации в Google Drive: {e}")
+    def get_drive_service():
+        try:
+            creds_dict = json.loads(GOOGLE_SERVICE_ACCOUNT_JSON)
+            creds = service_account.Credentials.from_service_account_info(
+                creds_dict, scopes=["https://www.googleapis.com/auth/drive.readonly"]
+            )
+            return build("drive", "v3", credentials=creds)
+        except Exception as e:
+            raise RuntimeError(f"Ошибка авторизации в Google Drive: {e}")
 
 
 # ============================================================
@@ -84,9 +98,9 @@ def list_files_in_folder(service, folder_id: str) -> List[Dict]:
 
 
 def extract_course_number(filename: str) -> Optional[int]:
-    match = re.search(r"(\d+)\s*курс", filename, re.IGNORECASE)
+    match = re.search(r"(\d+)\s*курс\s*(\d+)\s*семестр", filename, re.IGNORECASE)
     if match:
-        return int(match.group(1))
+        return int(match.group(1)), int(match.group(2))
     return None
 
 
@@ -198,7 +212,33 @@ def find_course_range(ws: Worksheet, course_number: int):
     return None
 
 
-def parse_course_1_2(file_content: bytes, course_number: int) -> List[Dict]:
+def flow_idx_to_num(flow_idx):
+    return flow_idx + 1
+
+
+def write_preview_sheet(wb, ws, course, semester, flows, course_range, common_end_row):
+    if not OUTPUT_DIR:
+        return
+    for flow_id, flow in enumerate(flows):
+        if course_range.max_col + 1 < flow.min_col:
+            ws.column_dimensions.group(
+                get_column_letter(course_range.max_col + 1),
+                get_column_letter(flow.min_col - 1),
+                hidden=True,
+                outline_level=1,
+            )
+        ws.page_setup.scale = 30
+        ws.page_setup.orientation = "portrait"
+        ws.print_area = (
+            f"{get_column_letter(course_range.min_col)}{course_range.min_row}:{get_column_letter(flow.max_col + 1)}{common_end_row + 1}",
+        )
+        flow = flow_idx_to_num(flow_id)
+        wb.save(f"{OUTPUT_DIR}/course_{course}_semester_{semester}_flow_{flow}.xlsx")
+
+
+def parse_course_1_2(
+    file_content: bytes, course_number: int, semester: int
+) -> List[Dict]:
     print(f"\n=== Парсинг файла для курса {course_number} ===")
     wb = load_workbook(io.BytesIO(file_content), data_only=True)
     ws: Worksheet = wb.active
@@ -333,6 +373,15 @@ def parse_course_1_2(file_content: bytes, course_number: int) -> List[Dict]:
             {"day_name": day_name, "day_index": day_index, "time_slots": day_time_slots}
         )
 
+    common_end_row = 0
+    for d in days_schedule:
+        for slot in d["time_slots"]:
+            common_end_row = max(common_end_row, slot["end_row"])
+
+    write_preview_sheet(
+        wb, ws, course_number, semester, flows, course_range, common_end_row
+    )
+
     all_parsed = []
     for group in groups_info:
         is_single = flow_counts[group["flow"]] == 1
@@ -360,6 +409,8 @@ def parse_course_1_2(file_content: bytes, course_number: int) -> List[Dict]:
                     rect,
                     group["name"],
                     course_number,
+                    semester,
+                    group["flow"],
                     day["day_index"],
                     slot["label"],
                     lecture_coverage_start=lecture_range[0] if lecture_range else None,
@@ -378,9 +429,11 @@ def parse_course_1_2(file_content: bytes, course_number: int) -> List[Dict]:
 # ============================================================
 
 
-def parse_course_3_4(file_content: bytes, course_number: int) -> List[Dict]:
+def parse_course_3_4(
+    file_content: bytes, course_number: int, semester: int
+) -> List[Dict]:
     print(f"\n=== Парсинг файла для курса {course_number} ===")
-    wb = load_workbook(io.BytesIO(file_content), data_only=True)
+    wb = load_workbook(io.BytesIO(file_content), data_only=True, read_only=False)
     ws: Worksheet = wb.active
 
     course_range = find_course_range(ws, course_number)
@@ -533,6 +586,15 @@ def parse_course_3_4(file_content: bytes, course_number: int) -> List[Dict]:
             {"day_name": day_name, "day_index": day_index, "time_slots": day_time_slots}
         )
 
+    common_end_row = 0
+    for d in days_schedule:
+        for slot in d["time_slots"]:
+            common_end_row = max(common_end_row, slot["end_row"])
+
+    write_preview_sheet(
+        wb, ws, course_number, semester, flows, course_range, common_end_row
+    )
+
     all_parsed = []
     # Для 3-4 курса профилизации теперь считаются просто подгруппами
     # Поэтому мы перебираем базовые группы и передаем их на парсинг как обычно.
@@ -564,6 +626,8 @@ def parse_course_3_4(file_content: bytes, course_number: int) -> List[Dict]:
                     rect,
                     base_name,
                     course_number,
+                    semester,
+                    flow_idx,
                     day["day_index"],
                     slot["label"],
                     lecture_coverage_start=lecture_range[0] if lecture_range else None,
@@ -587,6 +651,8 @@ def extract_class(
     rect: Tuple[int, int, int, int],
     group_name: str,
     course: int,
+    semester: int,
+    flow_idx: int,
     day_of_week: int,
     time_label: str,
     lecture_coverage_start: Optional[int] = None,
@@ -595,6 +661,7 @@ def extract_class(
     is_single_group_flow: bool = False,
 ) -> List[Dict]:
     min_row, min_col, max_row, max_col = rect
+    flow_id = flow_idx_to_num(flow_idx)
 
     # Теперь мы не требуем, чтобы высота была ровно 4 строки, т.к. таймслот может быть 2 строки (например физкультура)
     if max_col - min_col + 1 != 2:
@@ -643,8 +710,10 @@ def extract_class(
         title = ws.cell(row=covering_merge.min_row, column=covering_merge.min_col).value
         return [
             {
-                "groupName": group_name,
                 "course": course,
+                "semester": semester,
+                "flow": flow_id,
+                "groupName": group_name,
                 "dayOfWeek": day_of_week,
                 "startTime": start_time,
                 "endTime": end_time,
@@ -706,8 +775,10 @@ def extract_class(
         if lecture_merge.max_row >= max_row or lecture_merge.max_row >= min_row + 2:
             return [
                 {
-                    "groupName": group_name,
                     "course": course,
+                    "semester": semester,
+                    "flow": flow_id,
+                    "groupName": group_name,
                     "dayOfWeek": day_of_week,
                     "startTime": start_time,
                     "endTime": end_time,
@@ -762,8 +833,10 @@ def extract_class(
 
         return [
             {
-                "groupName": group_name,
                 "course": course,
+                "semester": semester,
+                "flow": flow_id,
+                "groupName": group_name,
                 "dayOfWeek": day_of_week,
                 "startTime": start_time,
                 "endTime": end_time,
@@ -818,8 +891,10 @@ def extract_class(
     if not (title_split or prof_split or classroom_split):
         return [
             {
-                "groupName": group_name,
                 "course": course,
+                "semester": semester,
+                "flow": flow_id,
+                "groupName": group_name,
                 "dayOfWeek": day_of_week,
                 "startTime": start_time,
                 "endTime": end_time,
@@ -837,8 +912,10 @@ def extract_class(
 
     return [
         {
-            "groupName": group_name,
             "course": course,
+            "semester": semester,
+            "flow": flow_id,
+            "groupName": group_name,
             "dayOfWeek": day_of_week,
             "startTime": start_time,
             "endTime": end_time,
@@ -899,11 +976,13 @@ def send_to_backend(parsed: List[Dict], course: int):
 # ============================================================
 
 
-def parse_excel_file(file_content: bytes, course_number: int) -> List[Dict]:
+def parse_excel_file(
+    file_content: bytes, course_number: int, semester: int
+) -> List[Dict]:
     if course_number in [1, 2]:
-        return parse_course_1_2(file_content, course_number)
+        return parse_course_1_2(file_content, course_number, semester)
     elif course_number in [3, 4]:
-        return parse_course_3_4(file_content, course_number)
+        return parse_course_3_4(file_content, course_number, semester)
     else:
         print(f"Курс {course_number} не поддерживается.")
         return []
@@ -914,10 +993,122 @@ def parse_excel_file(file_content: bytes, course_number: int) -> List[Dict]:
 # ============================================================
 
 
+def diff(prev, cur) -> list:
+    prev = [types.SimpleNamespace(**d) for d in prev]
+    cur = [types.SimpleNamespace(**d) for d in cur]
+
+    tup = set()
+    prev_c = defaultdict(lambda: defaultdict(list))
+    cur_c = defaultdict(lambda: defaultdict(list))
+
+    for e in prev:
+        v = (e.course, e.semester, e.groupName)
+        tup.add(v)
+        e.times = f"*{e.startTime}*-{e.endTime}"
+        prev_c[v][e.dayOfWeek].append(e)
+
+    for e in cur:
+        v = (e.course, e.semester, e.groupName)
+        tup.add(v)
+        e.times = f"*{e.startTime}*-{e.endTime}"
+        cur_c[v][e.dayOfWeek].append(e)
+
+    for v in tup:
+        for d in DAYS_RANGE:
+            cur_c[v][d].sort(key=lambda r: (len(r.startTime), r.startTime))
+            prev_c[v][d].sort(key=lambda r: (len(r.startTime), r.startTime))
+
+    res = defaultdict(list)
+    for v in tup:
+        diff = res[v]
+
+        if len(prev_c) and not len(cur_c):
+            diff.append(f"Course deleted (course {v[0]}, group {v[1]})")
+            continue
+
+        if not len(prev_c) and len(cur_c):
+            diff.append(f"Course added (course {v[0]}, group {v[1]})")
+            continue
+
+        for day in DAYS_RANGE:
+            prevs = prev_c[v][day]
+            curs = cur_c[v][day]
+            times = set(map(lambda e: e.times, chain(prevs, curs)))
+
+            lines = []
+            for t in times:
+                prev = next((p for p in prevs if p.times == t), None)
+                cur = next((p for p in curs if p.times == t), None)
+
+                def pad(s, r=""):
+                    return "" if s == "" else f" {r}{s}{r}"
+
+                for prev, cur in [
+                    (
+                        prev
+                        and types.SimpleNamespace(
+                            title=prev.classTitleA,
+                            room=prev.classroomA,
+                        ),
+                        cur
+                        and types.SimpleNamespace(
+                            title=cur.classTitleA,
+                            room=cur.classroomA,
+                        ),
+                    ),
+                    (
+                        prev
+                        and types.SimpleNamespace(
+                            title=prev.classTitleB,
+                            room=prev.classroomB,
+                        ),
+                        cur
+                        and types.SimpleNamespace(
+                            title=cur.classTitleB,
+                            room=cur.classroomB,
+                        ),
+                    ),
+                ]:
+                    if not cur or (prev and prev.title != cur.title):
+                        lines.append(f"{t} ~{prev.title}{pad(prev.room)}~")
+
+                    if not prev or (cur and prev.title != cur.title):
+                        lines.append(f"{t} {cur.title}{pad(cur.room)}")
+
+                    if (
+                        prev
+                        and cur
+                        and prev.title == cur.title
+                        and prev.room != cur.room
+                    ):
+                        lines.append(
+                            f"{t} {cur.title}{pad(prev.room, '~')}{pad(cur.room)}"
+                        )
+
+            if len(lines) > 0:
+                assert 1 <= day and day <= 6
+                diff.append(f"{DAYS_OF_WEEK[day - 1]}:")
+                diff.extend(lines)
+
+    return [
+        {
+            "course": v[0],
+            "semester": v[1],
+            "groupName": v[2],
+            "diff": "\n".join(diff),
+        }
+        for v, diff in filter(lambda x: len(x[1]), res.items())
+    ]
+
+
 def main():
     print("Начало работы парсера...")
-    service = get_drive_service()
-    files = list_files_in_folder(service, DRIVE_FOLDER_ID)
+
+    if GOOGLE_SERVICE_ACCOUNT_JSON:
+        service = get_drive_service()
+        files = list_files_in_folder(service, DRIVE_FOLDER_ID)
+    else:
+        files = glob(INPUT_GLOB)
 
     if not files:
         print("Нет файлов для обработки.")
@@ -926,16 +1117,23 @@ def main():
     all_parsed = []
     failed_files = []
     for file_meta in files:
-        file_id, file_name = file_meta["id"], file_meta["name"]
+        if GOOGLE_SERVICE_ACCOUNT_JSON:
+            file_id, file_name = file_meta["id"], file_meta["name"]
+        else:
+            file_name = os.path.basename(file_meta)
         print(f"\nФайл: {file_name}")
 
-        course_num = extract_course_number(file_name)
+        course_num, semester = extract_course_number(file_name)
         if course_num is None:
             continue
 
         try:
-            file_bytes = read_file_as_bytes(service, file_id)
-            parsed = parse_excel_file(file_bytes, course_num)
+            if GOOGLE_SERVICE_ACCOUNT_JSON:
+                file_bytes = read_file_as_bytes(service, file_id)
+            else:
+                with open(file_meta, "rb") as f:
+                    file_bytes = f.read()
+            parsed = parse_excel_file(file_bytes, course_num, semester)
             if parsed:
                 all_parsed.extend(parsed)
         except Exception as e:
@@ -943,21 +1141,35 @@ def main():
             failed_files.append(file_name)
             continue
 
-    if failed_files:
+    if failed_files or not all_parsed:
         print(
             f"\n⚠️ Не удалось обработать {len(failed_files)} файл(ов): {', '.join(failed_files)}"
         )
+        sys.exit(1)
 
-    if all_parsed:
-        output_path = Path(__file__).parent / "parsed_schedule.json"
-        with open(output_path, "w", encoding="utf-8") as f:
-            json.dump(all_parsed, f, ensure_ascii=False, indent=4)
-        print(f"\nВсе данные сохранены в {output_path}")
+    diffs = []
+    if LAST_SCHED:
+        with open(LAST_SCHED, "rb") as f:
+            diffs = diff(json.load(f), all_parsed)
+        print(f"Изменения: {len(diffs)}")
+    else:
+        print("⚠️ LAST_SCHED не задан")
 
-        if BACKEND_URL and BACKEND_AUTH_TOKEN:
-            sorted_data = sorted(all_parsed, key=lambda x: x["course"])
-            for course, group in groupby(sorted_data, key=lambda x: x["course"]):
-                send_to_backend(list(group), course)
+    dir = Path(OUTPUT_DIR) or Path(__file__).parent
+    diff_path = dir / "diff.json"
+    with open(diff_path, "w", encoding="utf-8") as f:
+        json.dump(diffs, f, ensure_ascii=False, indent=4)
+
+    output_path = dir / "parsed_schedule.json"
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(all_parsed, f, ensure_ascii=False, indent=4)
+    print(f"\nВсе данные сохранены в {output_path}")
+
+    if BACKEND_URL and BACKEND_AUTH_TOKEN:
+        sorted_data = sorted(all_parsed, key=lambda x: x["course"])
+        for course, group in groupby(sorted_data, key=lambda x: x["course"]):
+            send_to_backend(list(group), course)
+
     print("\nПарсер завершил работу.")
 
 
