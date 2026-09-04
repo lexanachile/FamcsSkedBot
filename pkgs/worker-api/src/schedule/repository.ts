@@ -8,47 +8,53 @@ async function readJson<T>(kv: KVNamespace, key: string): Promise<T | null> {
   return kv.get<T>(key, { type: "json", cacheTtl: CACHE_TTL_SECONDS });
 }
 
-async function readVersioned<T>(kv: KVNamespace, course: number, keyFor: (version: string) => string): Promise<T | null> {
+export const readGroupsIndex = async (kv: KVNamespace, course: number) => {
   const manifest = await readJson<CourseManifest>(kv, manifestKey(course));
   if (!manifest) return null;
-  const current = await readJson<T>(kv, keyFor(manifest.current));
-  if (current !== null || !manifest.previous) return current;
-  return readJson<T>(kv, keyFor(manifest.previous));
-}
-
-export const readGroups = async (kv: KVNamespace, course: number) => {
-  const manifest = await readJson<CourseManifest>(kv, manifestKey(course));
-  if (!manifest) return null;
-  if (manifest.groups) return Object.keys(manifest.groups).sort((a, b) => a.localeCompare(b, "ru", { numeric: true }));
-  return readVersioned<string[]>(kv, course, (version) => groupsKey(version, course));
+  let groups: string[] | null;
+  if (manifest.groups) {
+    groups = Object.keys(manifest.groups).sort((a, b) => a.localeCompare(b, "ru", { numeric: true }));
+  } else {
+    groups = await readJson<string[]>(kv, groupsKey(manifest.current, course));
+    if (groups === null && manifest.previous) {
+      groups = await readJson<string[]>(kv, groupsKey(manifest.previous, course));
+    }
+  }
+  return { manifest, groups: groups || [] };
 };
 
-export async function readGroup(kv: KVNamespace, course: number, group: string): Promise<ScheduleRecord[] | null> {
+export async function readGroupSchedule(kv: KVNamespace, course: number, group: string) {
   const manifest = await readJson<CourseManifest>(kv, manifestKey(course));
   if (!manifest) return null;
   const entry = manifest.groups?.[group];
   if (entry) {
     const document = await readJson<GroupScheduleDocument>(kv, groupKey(entry.version, course, group));
-    if (document) return document.records;
+    if (document) return { records: document.records, updatedAt: document.updatedAt };
     if (!entry.previousVersion) return null;
-    return (await readJson<GroupScheduleDocument>(kv, groupKey(entry.previousVersion, course, group)))?.records || null;
+    const previous = await readJson<GroupScheduleDocument>(kv, groupKey(entry.previousVersion, course, group));
+    return previous ? { records: previous.records, updatedAt: previous.updatedAt } : null;
   }
   const current = await readJson<ScheduleRecord[]>(kv, groupKey(manifest.current, course, group));
-  if (current !== null) return current;
+  if (current !== null) return { records: current, updatedAt: manifest.updatedAt };
 
   // A missing group can mean either that it was removed or that a new KV key
   // has not propagated to this edge yet. The immutable course bundle lets us
   // distinguish those cases without returning a removed group from old data.
   const bundle = await readJson<ScheduleRecord[]>(kv, bundleKey(manifest.current, course));
-  if (bundle !== null) return bundle.filter((record) => record.groupName === group);
+  if (bundle !== null) return { records: bundle.filter((record) => record.groupName === group), updatedAt: manifest.updatedAt };
   if (!manifest.previous) return null;
-  return readJson<ScheduleRecord[]>(kv, groupKey(manifest.previous, course, group));
+  const previous = await readJson<ScheduleRecord[]>(kv, groupKey(manifest.previous, course, group));
+  return previous ? { records: previous, updatedAt: manifest.updatedAt } : null;
 }
 
 export const readCourse = (kv: KVNamespace, course: number) =>
   readJson<CourseManifest>(kv, manifestKey(course)).then(async (manifest) => {
     if (!manifest) return null;
-    if (!manifest.groups) return readVersioned<ScheduleRecord[]>(kv, course, (version) => bundleKey(version, course));
+    if (!manifest.groups) {
+      const current = await readJson<ScheduleRecord[]>(kv, bundleKey(manifest.current, course));
+      if (current !== null || !manifest.previous) return current;
+      return readJson<ScheduleRecord[]>(kv, bundleKey(manifest.previous, course));
+    }
     const documents = await Promise.all(
       Object.entries(manifest.groups).map(async ([group, entry]) => {
         const current = await readJson<GroupScheduleDocument>(kv, groupKey(entry.version, course, group));
@@ -106,16 +112,6 @@ export const readManifest = (kv: KVNamespace, course: number) =>
 // groups whose content has not changed.
 export const readManifestFresh = (kv: KVNamespace, course: number) =>
   kv.get<CourseManifest>(manifestKey(course), { type: "json" });
-
-export async function readGroupDocument(kv: KVNamespace, course: number, group: string) {
-  const manifest = await readJson<CourseManifest>(kv, manifestKey(course));
-  const entry = manifest?.groups?.[group];
-  if (!entry) return null;
-  const current = await readJson<GroupScheduleDocument>(kv, groupKey(entry.version, course, group));
-  if (current) return current;
-  if (!entry.previousVersion) return null;
-  return readJson<GroupScheduleDocument>(kv, groupKey(entry.previousVersion, course, group));
-}
 
 export async function uploadGroup(
   kv: KVNamespace,

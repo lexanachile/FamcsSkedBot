@@ -17,7 +17,7 @@
       // ═══════════════════════════════════════════════════════════════
       // НАСТРОЙКА: ВРЕМЕННОЕ ОТКЛЮЧЕНИЕ КЭША styles.css
       // ═══════════════════════════════════════════════════════════════
-      // По умолчанию false — сайт грузится как обычно, с версией "?v=15"
+      // По умолчанию false — сайт грузится как обычно, с версией "?v=16"
       // из статического тега <link> ниже (обновляете число вручную при
       // каждом деплое, как раньше).
       //
@@ -59,9 +59,9 @@
     <!-- styles.css — статический, render-blocking тег: браузер обязан
          дождаться его загрузки и разбора, прежде чем показать страницу,
          поэтому голый HTML физически не может промелькнуть в обычном
-         режиме (FORCE_DISABLE_CACHE = false). Версия "?v=15" — меняйте
+         режиме (FORCE_DISABLE_CACHE = false). Версия "?v=16" — меняйте
          вручную при каждом деплое, как и раньше. -->
-    <link rel="stylesheet" id="mainStyle" href="/styles.css?v=15" />
+    <link rel="stylesheet" id="mainStyle" href="/styles.css?v=16" />
 
     <!-- ПРЕДЗАГРУЗКА ШРИФТОВ, которые нужны для первого экрана (шапка,
          подписи, кнопка) — чтобы браузер начал их скачивать параллельно
@@ -140,7 +140,7 @@
             </svg>
             <span>Расписание ФПМИ</span>
           </div>
-          <p class="subtitle">Выберите курс и группу чтобы вывести занятия</p>
+          <p class="subtitle">Выберите курс и группу</p>
         </header>
 
         <section class="controls-section">
@@ -155,56 +155,58 @@
                      функция setupCustomSelects()), оформленная в цветах сайта —
                      в отличие от системного меню, которое на разных телефонах
                      выглядит по-разному и почти не поддаётся стилизации. -->
-          <div class="control-group">
-            <label for="course-select">Курс</label>
-            <button
-              type="button"
-              id="course-select-trigger"
-              class="select-input select-trigger placeholder"
-              aria-haspopup="listbox"
-              aria-expanded="false"
-            >
-              <span id="course-select-trigger-text" class="select-trigger-text"
-                >Не выбран</span
+          <div class="controls-select-row">
+            <div class="control-group">
+              <label for="course-select">Курс</label>
+              <button
+                type="button"
+                id="course-select-trigger"
+                class="select-input select-trigger placeholder"
+                aria-haspopup="listbox"
+                aria-expanded="false"
               >
-            </button>
-            <select
-              id="course-select"
-              class="native-select-hidden"
-              tabindex="-1"
-              aria-hidden="true"
-            >
-              <option value="">Не выбран</option>
-              <option value="1">1 курс</option>
-              <option value="2">2 курс</option>
-              <option value="3">3 курс</option>
-              <option value="4">4 курс</option>
-            </select>
-          </div>
+                <span id="course-select-trigger-text" class="select-trigger-text"
+                  >Не выбран</span
+                >
+              </button>
+              <select
+                id="course-select"
+                class="native-select-hidden"
+                tabindex="-1"
+                aria-hidden="true"
+              >
+                <option value="">Не выбран</option>
+                <option value="1">1 курс</option>
+                <option value="2">2 курс</option>
+                <option value="3">3 курс</option>
+                <option value="4">4 курс</option>
+              </select>
+            </div>
 
-          <div class="control-group">
-            <label for="group-select">Группа</label>
-            <button
-              type="button"
-              id="group-select-trigger"
-              class="select-input select-trigger placeholder"
-              disabled
-              aria-haspopup="listbox"
-              aria-expanded="false"
-            >
-              <span id="group-select-trigger-text" class="select-trigger-text"
-                >Сначала выберите курс</span
+            <div class="control-group">
+              <label for="group-select">Группа</label>
+              <button
+                type="button"
+                id="group-select-trigger"
+                class="select-input select-trigger placeholder"
+                disabled
+                aria-haspopup="listbox"
+                aria-expanded="false"
               >
-            </button>
-            <select
-              id="group-select"
-              class="native-select-hidden"
-              tabindex="-1"
-              aria-hidden="true"
-              disabled
-            >
-              <option value="">Сначала выберите курс</option>
-            </select>
+                <span id="group-select-trigger-text" class="select-trigger-text"
+                  >Сначала выберите курс</span
+                >
+              </button>
+              <select
+                id="group-select"
+                class="native-select-hidden"
+                tabindex="-1"
+                aria-hidden="true"
+                disabled
+              >
+                <option value="">Сначала выберите курс</option>
+              </select>
+            </div>
           </div>
 
           <button id="load-button" class="button button-primary">
@@ -224,12 +226,28 @@
 
         <!-- Навигация по дням: "камни на тропе" -->
         <nav id="day-navigation" class="day-navigation hidden">
-          <button class="day-nav-btn" data-day="Понедельник">Пн</button>
-          <button class="day-nav-btn" data-day="Вторник">Вт</button>
-          <button class="day-nav-btn" data-day="Среда">Ср</button>
-          <button class="day-nav-btn" data-day="Четверг">Чт</button>
-          <button class="day-nav-btn" data-day="Пятница">Пт</button>
-          <button class="day-nav-btn" data-day="Суббота">Сб</button>
+          <div class="day-navigation-topline">
+            <span id="day-navigation-context" class="day-navigation-context"></span>
+            <button
+              id="refresh-schedule-button"
+              class="refresh-schedule-button"
+              type="button"
+              aria-label="Проверить обновления расписания"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M20 11a8 8 0 1 0-2.3 5.7" />
+                <path d="M20 4v7h-7" />
+              </svg>
+            </button>
+          </div>
+          <div class="day-navigation-days">
+            <button class="day-nav-btn" data-day="Понедельник">Пн</button>
+            <button class="day-nav-btn" data-day="Вторник">Вт</button>
+            <button class="day-nav-btn" data-day="Среда">Ср</button>
+            <button class="day-nav-btn" data-day="Четверг">Чт</button>
+            <button class="day-nav-btn" data-day="Пятница">Пт</button>
+            <button class="day-nav-btn" data-day="Суббота">Сб</button>
+          </div>
         </nav>
 
         <div id="loading-spinner" class="loading-spinner hidden">
@@ -240,6 +258,7 @@
         <div id="error-message" class="error-message hidden"></div>
 
         <section id="schedule-container" class="schedule-container hidden">
+          <div id="stale-notice" class="stale-notice hidden" role="status"></div>
           <div class="schedule-info">
             <h2 id="schedule-title">Расписание</h2>
             <p id="schedule-metadata"></p>
@@ -320,6 +339,8 @@
       </button>
     </div>
 
+    <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
     <!-- ПЛАШКА ВЫБОРА (bottom sheet) для полей "Курс" и "Группа".
          Один блок на оба поля — при открытии app.js подставляет в него
          заголовок и список пунктов нужного <select>, см. функцию
@@ -363,7 +384,7 @@
     <!-- ИСПРАВЛЕНО: Абсолютный путь и сброс кэша.
          Раньше скрипт создавался через document.createElement (оверинжиниринг,
          который ломался). Теперь используется простой и надежный <script src>. 
-         Изменяйте ?v=16 на следующее число при выкатке новых версий app.js! -->
-    <script src="/app.js?v=16"></script>
+         Изменяйте ?v=17 на следующее число при выкатке новых версий app.js! -->
+    <script type="module" src="/app.js?v=17"></script>
   </body>
 </html>

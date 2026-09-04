@@ -1,3 +1,13 @@
+import {
+  getStoredValue as safeGetStorage,
+  readStoredJson as readJsonStorage,
+  removeStoredValue as safeRemoveStorage,
+  setStoredValue as safeSetStorage,
+  writeStoredJson as writeJsonStorage,
+} from "./src/storage.js";
+import { initializeTelegramWebApp, triggerTelegramHaptic } from "./src/telegram.js";
+import { setStaleNotice, showToast } from "./src/feedback.js";
+
 // ╔═══════════════════════════════════════════════════════════════════╗
 // ║                    ВСЕ НАСТРОЙКИ САЙТА — ЗДЕСЬ                     ║
 // ╚═══════════════════════════════════════════════════════════════════╝
@@ -9,6 +19,8 @@
 const API_BASE_URL = "https://famcsschedulebot.yarashsei.workers.dev";
 const SCHEDULE_ENDPOINT = "/api/schedule";
 const GROUPS_ENDPOINT = "/api/groups";
+const CACHE_SCHEMA_VERSION = 1;
+const INACTIVITY_REFRESH_MS = 15 * 60 * 1000;
 
 // --- НАСТРОЙКА: текст информационной плашки, которая появляется ПОСЛЕ
 // Субботы (под всеми днями недели), без названия дня — просто текст.
@@ -53,20 +65,21 @@ const HAPTIC_SCROLL_TOP = 1;
 function triggerHaptic(level) {
   if (!level) return;
   const style = HAPTIC_LEVELS[level];
-  if (!style) return;
-  try {
-    const tg = window.Telegram && window.Telegram.WebApp;
-    if (tg && tg.HapticFeedback && tg.HapticFeedback.impactOccurred) {
-      tg.HapticFeedback.impactOccurred(style);
-    }
-  } catch (e) {}
+  triggerTelegramHaptic(style);
 }
 
 const appState = {
   currentCourse: null,
   currentGroup: null,
   scheduleData: null,
+  currentCourseVersion: null,
+  groupVersions: {},
+  displayedCourse: null,
+  displayedGroup: null,
   isLoading: false,
+  isBackgroundRefreshing: false,
+  isUsingCachedGroups: false,
+  lastActivityAt: Date.now(),
 };
 
 function initApp() {
@@ -78,54 +91,26 @@ function initApp() {
   setupDayNavigation();
   setupStickyDayNav();
   setupScrollTopButton();
+  setupInactivityRefresh();
   console.log("Приложение инициализировано");
 }
 
-function initializeTelegramWebApp() {
-  if (typeof window.Telegram !== "undefined" && window.Telegram.WebApp) {
-    const tg = window.Telegram.WebApp;
-    try {
-      tg.expand();
-      if (tg.disableClosingConfirmation) tg.disableClosingConfirmation();
-      const headerColor = "#0f0f11";
-      const bgColor = "#0f0f11";
-      if (tg.setHeaderColor) tg.setHeaderColor(headerColor);
-      if (tg.setBackgroundColor) tg.setBackgroundColor(bgColor);
-      if (tg.setBottomBarColor) tg.setBottomBarColor(bgColor);
-    } catch (e) {
-      console.warn("Ошибка настройки UI Telegram:", e);
-    }
-    tg.ready();
-  }
-}
-
-function safeGetStorage(key) {
-  try {
-    return localStorage.getItem(key);
-  } catch (e) {
-    return null;
-  }
-}
-function safeSetStorage(key, value) {
-  try {
-    localStorage.setItem(key, value);
-  } catch (e) {}
-}
-function safeRemoveStorage(key) {
-  try {
-    localStorage.removeItem(key);
-  } catch (e) {}
-}
+const courseCacheKey = (course) => `scheduleCache:v${CACHE_SCHEMA_VERSION}:course:${course}`;
+const groupCacheKey = (course, group) =>
+  `scheduleCache:v${CACHE_SCHEMA_VERSION}:course:${course}:group:${encodeURIComponent(group)}`;
 
 function setupEventListeners() {
   const courseSelect = document.getElementById("course-select");
   const groupSelect = document.getElementById("group-select");
   const loadButton = document.getElementById("load-button");
+  const refreshButton = document.getElementById("refresh-schedule-button");
 
   courseSelect.addEventListener("change", async (e) => {
     const course = e.target.value;
     appState.currentCourse = course;
     appState.currentGroup = null;
+    appState.currentCourseVersion = null;
+    appState.groupVersions = {};
     if (course) {
       safeSetStorage("selectedCourse", course);
       safeRemoveStorage("selectedGroup");
@@ -156,6 +141,8 @@ function setupEventListeners() {
     }
     loadSchedule(appState.currentCourse, appState.currentGroup);
   });
+
+  refreshButton?.addEventListener("click", refreshScheduleManually);
 }
 
 const PICKER_SELECT_TRIGGERS = {
@@ -180,7 +167,9 @@ function syncSelectTrigger(selectEl) {
   if (!trigger || !textEl) return;
 
   const selectedOption = selectEl.options[selectEl.selectedIndex];
-  textEl.textContent = selectedOption ? selectedOption.textContent : "";
+  textEl.textContent = selectEl.id === "course-select" && selectEl.value
+    ? selectEl.value
+    : selectedOption?.textContent || "";
   trigger.classList.toggle("placeholder", !selectEl.value);
   trigger.disabled = selectEl.disabled;
 }
@@ -375,6 +364,7 @@ const WEEKDAY_NAMES_RU = [
   "Пятница",
   "Суббота",
 ];
+const SCHEDULE_DAY_NAMES = WEEKDAY_NAMES_RU.slice(1);
 
 function scrollToCurrentDay() {
   const todayIndex = new Date().getDay();
@@ -461,6 +451,10 @@ function handleGlobalScroll() {
 function positionScrollTopButton() {}
 
 function animateScrollTo(el, targetTop, duration) {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    el.scrollTop = targetTop;
+    return;
+  }
   const startTop = el.scrollTop;
   const distance = targetTop - startTop;
   if (Math.abs(distance) < 1) return;
@@ -520,6 +514,38 @@ async function restoreSavedState() {
     const courseSelect = document.getElementById("course-select");
     courseSelect.value = savedCourse;
     syncSelectTrigger(courseSelect);
+
+    // Показываем сохранённое расписание сразу, пока в фоне проверяется версия курса.
+    const cachedCourse = readJsonStorage(courseCacheKey(savedCourse));
+    const cachedSchedule = savedGroup
+      ? readJsonStorage(groupCacheKey(savedCourse, savedGroup))
+      : null;
+    const cachedGroup = cachedCourse?.groups?.find((group) => group.groupName === savedGroup);
+    if (cachedCourse?.groups?.length && cachedSchedule?.data && cachedGroup &&
+        cachedSchedule.version === (cachedGroup.version || cachedCourse.version)) {
+      const groupSelect = document.getElementById("group-select");
+      groupSelect.innerHTML = '<option value="">Выберите группу</option>';
+      cachedCourse.groups.forEach((group) => {
+        const option = document.createElement("option");
+        option.value = group.groupName;
+        option.textContent = group.groupName;
+        groupSelect.appendChild(option);
+      });
+      if (Array.from(groupSelect.options).some((option) => option.value === savedGroup)) {
+        appState.currentCourseVersion = cachedCourse.version || null;
+        appState.groupVersions = Object.fromEntries(
+          cachedCourse.groups.map((group) => [group.groupName, group.version || cachedCourse.version || null]),
+        );
+        appState.currentGroup = savedGroup;
+        groupSelect.value = savedGroup;
+        groupSelect.disabled = false;
+        syncSelectTrigger(groupSelect);
+        appState.scheduleData = cachedSchedule.data;
+        displaySchedule(cachedSchedule.data);
+        requestAnimationFrame(scrollToCurrentDay);
+      }
+    }
+
     const groupsLoaded = await loadGroups(savedCourse);
     if (groupsLoaded && savedGroup) {
       const groupSelect = document.getElementById("group-select");
@@ -531,30 +557,66 @@ async function restoreSavedState() {
         syncSelectTrigger(groupSelect);
         await loadSchedule(savedCourse, savedGroup);
         requestAnimationFrame(scrollToCurrentDay);
+      } else if (appState.currentGroup === savedGroup) {
+        appState.currentGroup = null;
+        appState.scheduleData = null;
+        safeRemoveStorage("selectedGroup");
+        document.getElementById("schedule-container")?.classList.add("hidden");
+        document.getElementById("day-navigation")?.classList.add("hidden");
+        document.getElementById("welcome-section")?.classList.remove("hidden");
       }
     }
   }
 }
 
-async function loadGroups(course) {
+async function loadGroups(course, options = {}) {
+  const { forceRefresh = false, silent = false } = options;
   const groupSelect = document.getElementById("group-select");
-  groupSelect.innerHTML = '<option value="">Загрузка...</option>';
-  groupSelect.disabled = true;
+  const initialCache = readJsonStorage(courseCacheKey(course));
+  if (initialCache?.groups?.length) {
+    appState.currentCourseVersion = initialCache.version || null;
+    appState.groupVersions = Object.fromEntries(
+      initialCache.groups.map((group) => [group.groupName, group.version || initialCache.version || null]),
+    );
+    groupSelect.innerHTML = '<option value="">Выберите группу</option>';
+    initialCache.groups.forEach((group) => {
+      const option = document.createElement("option");
+      option.value = group.groupName;
+      option.textContent = group.groupName;
+      groupSelect.appendChild(option);
+    });
+    groupSelect.disabled = false;
+  } else {
+    groupSelect.innerHTML = '<option value="">Загрузка...</option>';
+    groupSelect.disabled = true;
+  }
   syncSelectTrigger(groupSelect);
-  hideError();
+  if (!silent) hideError();
   try {
     const url = new URL(API_BASE_URL + GROUPS_ENDPOINT);
     url.searchParams.append("course", course);
-    const response = await fetch(url);
+    const response = await fetch(url, forceRefresh ? { cache: "no-store" } : undefined);
     if (!response.ok) throw new Error("Ошибка при загрузке групп");
     const result = await response.json();
 
     if (result.success && result.data.groups) {
+      if (appState.currentCourse !== String(course)) return false;
+      appState.isUsingCachedGroups = false;
       groupSelect.innerHTML = '<option value="">Выберите группу</option>';
 
-      const sortedGroups = result.data.groups.sort((a, b) =>
+      const sortedGroups = [...result.data.groups].sort((a, b) =>
         a.groupName.localeCompare(b.groupName, "ru", { numeric: true }),
       );
+
+      appState.currentCourseVersion = result.data.version || result.data.updatedAt || null;
+      appState.groupVersions = Object.fromEntries(
+        sortedGroups.map((group) => [group.groupName, group.version || appState.currentCourseVersion]),
+      );
+      writeJsonStorage(courseCacheKey(course), {
+        version: appState.currentCourseVersion,
+        updatedAt: result.data.updatedAt || null,
+        groups: sortedGroups,
+      });
 
       sortedGroups.forEach((group) => {
         const option = document.createElement("option");
@@ -570,26 +632,57 @@ async function loadGroups(course) {
     }
   } catch (error) {
     console.error(error);
+    const cached = readJsonStorage(courseCacheKey(course));
+    if (cached?.groups?.length && appState.currentCourse === String(course)) {
+      appState.isUsingCachedGroups = true;
+      appState.currentCourseVersion = cached.version || null;
+      appState.groupVersions = Object.fromEntries(
+        cached.groups.map((group) => [group.groupName, group.version || cached.version || null]),
+      );
+      groupSelect.innerHTML = '<option value="">Выберите группу</option>';
+      cached.groups.forEach((group) => {
+        const option = document.createElement("option");
+        option.value = group.groupName;
+        option.textContent = group.groupName;
+        groupSelect.appendChild(option);
+      });
+      groupSelect.disabled = false;
+      syncSelectTrigger(groupSelect);
+      return true;
+    }
     // ИСПРАВЛЕНО: Человечная ошибка сети, если fetch выкинул TypeError (нет интернета)
     const msg =
       error.name === "TypeError"
         ? "Проверьте подключение к интернету"
         : error.message;
-    showError(`Не удалось загрузить список групп: ${msg}`);
+    if (!silent) showError(`Не удалось загрузить список групп: ${msg}`);
     groupSelect.innerHTML = '<option value="">Ошибка загрузки</option>';
+    appState.isUsingCachedGroups = false;
     syncSelectTrigger(groupSelect);
     return false;
   }
 }
 
-async function loadSchedule(course, group) {
-  showLoading(true);
-  hideError();
+async function loadSchedule(course, group, options = {}) {
+  const { forceRefresh = false, silent = false } = options;
+  const groupVersion = appState.groupVersions[group] || appState.currentCourseVersion;
+  const cached = readJsonStorage(groupCacheKey(course, group));
+  if (!silent) {
+    showLoading(true);
+    hideError();
+  }
   try {
+    if (!forceRefresh && cached?.version && cached.version === groupVersion && cached.data) {
+      appState.scheduleData = cached.data;
+      displaySchedule(cached.data);
+      setStaleNotice(appState.isUsingCachedGroups);
+      return { ok: true, changed: false, fromCache: true };
+    }
+
     const url = new URL(API_BASE_URL + SCHEDULE_ENDPOINT);
     url.searchParams.append("course", course);
     url.searchParams.append("group", group);
-    const response = await fetch(url);
+    const response = await fetch(url, forceRefresh ? { cache: "no-store" } : undefined);
     if (!response.ok) throw new Error(`Ошибка сервера: ${response.status}`);
     const data = await response.json();
 
@@ -599,12 +692,21 @@ async function loadSchedule(course, group) {
       appState.currentCourse !== String(course) ||
       appState.currentGroup !== String(group)
     ) {
-      return;
+      return { ok: false, cancelled: true };
     }
 
     if (data.success) {
+      const scheduleChanged = JSON.stringify(appState.scheduleData) !== JSON.stringify(data.data);
       appState.scheduleData = data.data;
-      displaySchedule(data.data);
+      if (groupVersion) {
+        writeJsonStorage(groupCacheKey(course, group), {
+          version: groupVersion,
+          data: data.data,
+        });
+      }
+      if (scheduleChanged || !silent) displaySchedule(data.data);
+      setStaleNotice(false);
+      return { ok: true, changed: scheduleChanged, fromCache: false };
     } else {
       throw new Error(data.message || "Ошибка при получении данных");
     }
@@ -615,9 +717,103 @@ async function loadSchedule(course, group) {
       error.name === "TypeError"
         ? "Проверьте подключение к интернету"
         : error.message;
-    showError(`Ошибка загрузки: ${msg}`);
+    const hasVisibleFallback = Boolean(
+      cached?.data ||
+      (appState.scheduleData &&
+        appState.displayedCourse === String(course) &&
+        appState.displayedGroup === String(group)),
+    );
+    if (hasVisibleFallback) {
+      if (cached?.data && (
+        appState.displayedCourse !== String(course) ||
+        appState.displayedGroup !== String(group)
+      )) {
+        appState.scheduleData = cached.data;
+        displaySchedule(cached.data);
+      }
+      setStaleNotice(true);
+    } else if (!silent) {
+      showError(`Ошибка загрузки: ${msg}`);
+    }
+    return { ok: false, error: msg, fromCache: hasVisibleFallback };
   } finally {
-    showLoading(false);
+    if (!silent) showLoading(false);
+  }
+}
+
+async function refreshScheduleManually() {
+  const course = appState.currentCourse;
+  const group = appState.currentGroup;
+  if (!course || !group || appState.isBackgroundRefreshing) return;
+
+  const refreshButton = document.getElementById("refresh-schedule-button");
+  appState.isBackgroundRefreshing = true;
+  refreshButton?.classList.add("is-refreshing");
+  try {
+    const groupsLoaded = await loadGroups(course, { forceRefresh: true, silent: true });
+    const groupSelect = document.getElementById("group-select");
+    const groupStillExists = groupsLoaded && Array.from(groupSelect.options).some(
+      (option) => option.value === group,
+    );
+    if (!groupStillExists) {
+      showToast("Группа больше не найдена");
+      return;
+    }
+
+    groupSelect.value = group;
+    syncSelectTrigger(groupSelect);
+    const result = await loadSchedule(course, group, { forceRefresh: true, silent: true });
+    if (result?.ok) {
+      triggerHaptic(HAPTIC_PICKER_SELECT);
+      showToast(result.changed ? "Расписание обновлено" : "Изменений нет");
+    } else if (!result?.cancelled) {
+      showToast(`Не обновилось: ${result?.error || "нет связи"}`);
+    }
+  } finally {
+    appState.isBackgroundRefreshing = false;
+    refreshButton?.classList.remove("is-refreshing");
+  }
+}
+
+function setupInactivityRefresh() {
+  const markActivity = () => {
+    const now = Date.now();
+    const inactiveFor = now - appState.lastActivityAt;
+    appState.lastActivityAt = now;
+    if (inactiveFor >= INACTIVITY_REFRESH_MS) refreshCurrentSchedule();
+  };
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) return;
+    markActivity();
+  });
+  window.addEventListener("focus", markActivity);
+  window.addEventListener("pageshow", markActivity);
+  document.addEventListener("pointerdown", markActivity, { passive: true });
+  document.addEventListener("keydown", markActivity);
+}
+
+async function refreshCurrentSchedule() {
+  const course = appState.currentCourse;
+  const group = appState.currentGroup;
+  if (!course || !group || appState.isBackgroundRefreshing) return;
+
+  appState.isBackgroundRefreshing = true;
+  try {
+    const groupsLoaded = await loadGroups(course, { forceRefresh: true, silent: true });
+    if (!groupsLoaded || appState.currentCourse !== course || appState.currentGroup !== group) return;
+
+    const groupSelect = document.getElementById("group-select");
+    const groupStillExists = Array.from(groupSelect.options).some(
+      (option) => option.value === group,
+    );
+    if (!groupStillExists) return;
+
+    groupSelect.value = group;
+    syncSelectTrigger(groupSelect);
+    await loadSchedule(course, group, { forceRefresh: true, silent: true });
+  } finally {
+    appState.isBackgroundRefreshing = false;
   }
 }
 
@@ -651,6 +847,16 @@ function timeToMinutes(time) {
   return hours * 60 + minutes;
 }
 
+function pluralizeLessons(count) {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod10 === 1 && mod100 !== 11) return `${count} пара`;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+    return `${count} пары`;
+  }
+  return `${count} пар`;
+}
+
 function displaySchedule(scheduleData) {
   const scheduleContainer = document.getElementById("schedule-container");
   const welcomeSection = document.getElementById("welcome-section");
@@ -659,14 +865,18 @@ function displaySchedule(scheduleData) {
   const scheduleTitle = document.getElementById("schedule-title");
   const scheduleMetadata = document.getElementById("schedule-metadata");
   const dayNavigation = document.getElementById("day-navigation");
+  const dayNavigationContext = document.getElementById("day-navigation-context");
 
   welcomeSection.classList.add("hidden");
   scheduleContainer.classList.remove("hidden");
   dayNavigation.classList.remove("hidden");
+  appState.displayedCourse = String(appState.currentCourse);
+  appState.displayedGroup = String(appState.currentGroup);
   renderInfoPanel();
 
   const groupSelect = document.getElementById("group-select");
   const selectedGroupName = groupSelect.options[groupSelect.selectedIndex].text;
+  dayNavigationContext.textContent = `${appState.currentCourse} курс · группа ${selectedGroupName}`;
   scheduleTitle.textContent = `Расписание: ${selectedGroupName}`;
   const updatedAt = scheduleData.updatedAt ? new Date(scheduleData.updatedAt) : null;
   const updatedText = updatedAt && !Number.isNaN(updatedAt.getTime())
@@ -699,18 +909,32 @@ function displaySchedule(scheduleData) {
     });
   });
 
-  groupedByDay.forEach((dayClasses, day) => {
+  SCHEDULE_DAY_NAMES.forEach((day) => {
+    const dayClasses = groupedByDay.get(day) || [];
     const dayBlock = document.createElement("div");
-    dayBlock.className = "day-block";
+    const isToday = WEEKDAY_NAMES_RU[new Date().getDay()] === day;
+    dayBlock.className = `day-block${isToday ? " is-today" : ""}`;
     dayBlock.id = `day-${day}`;
 
     const dayHeader = document.createElement("div");
     dayHeader.className = "day-header";
-    dayHeader.innerHTML = `<span class="day-name">${escapeHtml(day)}</span>`;
+    const dayMeta = isToday
+      ? '<span class="today-label" aria-label="Сегодня"></span>'
+      : dayClasses.length
+        ? `<span class="day-meta">${pluralizeLessons(dayClasses.length)}</span>`
+        : "";
+    dayHeader.innerHTML = `<span class="day-name">${escapeHtml(day)}</span>${dayMeta}`;
     dayBlock.appendChild(dayHeader);
 
     const classesContainer = document.createElement("div");
     classesContainer.className = "classes-container";
+
+    if (!dayClasses.length) {
+      const emptyDay = document.createElement("p");
+      emptyDay.className = "day-empty";
+      emptyDay.textContent = "Занятий нет";
+      classesContainer.appendChild(emptyDay);
+    }
 
     dayClasses.forEach((cls) => {
       const slotDiv = document.createElement("div");

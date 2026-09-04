@@ -1,7 +1,7 @@
 import type { Hono } from "hono";
 import { TIME_SLOTS } from "../constants";
 import { extractLastName, getDayOfWeekName } from "../formatters";
-import { finalizeCourse, publishCourse, readAllCourses, readGroup, readGroupDocument, readGroups, readManifest, readManifestFresh, uploadGroup } from "../schedule/repository";
+import { finalizeCourse, publishCourse, readAllCourses, readGroupSchedule, readGroupsIndex, readManifestFresh, uploadGroup } from "../schedule/repository";
 import { toScheduleClass } from "../schedule/records";
 import type { AppEnvironment, GroupManifestEntry, ScheduleRecord } from "../types";
 
@@ -16,12 +16,17 @@ export function registerScheduleRoutes(app: Hono<AppEnvironment>) {
     const group = c.req.query("group");
     if (!course || !group) return c.json({ success: false, error: "Missing or invalid required parameters" }, 400);
     try {
-      const document = await readGroupDocument(c.env.SCHEDULE_KV, course, group);
-      const records = document?.records || await readGroup(c.env.SCHEDULE_KV, course, group);
-      if (!records?.length) return c.json({ success: true, data: { course, group, classes: [], message: "Расписание не найдено" } });
+      const schedule = await readGroupSchedule(c.env.SCHEDULE_KV, course, group);
+      const records = schedule?.records;
+      if (!records?.length) return c.json({ success: true, data: {
+        course,
+        group,
+        classes: [],
+        updatedAt: schedule?.updatedAt || null,
+        message: "Расписание не найдено",
+      } });
       const classes = records.map(toScheduleClass);
-      const manifest = document ? null : await readManifest(c.env.SCHEDULE_KV, course);
-      return c.json({ success: true, data: { course, group, totalClasses: classes.length, classes, updatedAt: document?.updatedAt || manifest?.updatedAt || null } });
+      return c.json({ success: true, data: { course, group, totalClasses: classes.length, classes, updatedAt: schedule.updatedAt } });
     } catch (error) {
       console.error("KV schedule read failed", error);
       return c.json({ success: false, error: "Internal server error" }, 500);
@@ -32,8 +37,16 @@ export function registerScheduleRoutes(app: Hono<AppEnvironment>) {
     const course = validCourse(c.req.query("course"));
     if (!course) return c.json({ success: false, error: "Missing or invalid parameter: course" }, 400);
     try {
-      const groups = await readGroups(c.env.SCHEDULE_KV, course);
-      return c.json({ success: true, data: { course, groups: (groups || []).map((groupName) => ({ groupName })) } });
+      const index = await readGroupsIndex(c.env.SCHEDULE_KV, course);
+      return c.json({ success: true, data: {
+        course,
+        groups: (index?.groups || []).map((groupName) => ({
+          groupName,
+          version: index?.manifest.groups?.[groupName]?.version || index?.manifest.current || null,
+        })),
+        version: index?.manifest.current || null,
+        updatedAt: index?.manifest.updatedAt || null,
+      } });
     } catch (error) {
       console.error("KV groups read failed", error);
       return c.json({ success: false, error: "Internal server error" }, 500);

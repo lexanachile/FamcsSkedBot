@@ -7,7 +7,11 @@ import type { AppEnvironment } from "./types";
 const app = new Hono<AppEnvironment>();
 
 app.use("*", cors({
-  origin: ["https://famcs.online"],
+  origin: [
+    "https://famcs.online",
+    "http://localhost:8788",
+    "http://127.0.0.1:8788",
+  ],
   allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowHeaders: ["Content-Type", "Authorization"],
   maxAge: 600,
