@@ -1452,8 +1452,19 @@ body {
   padding-top: 5px;
 }
 
+/* В подгруппах аудитории занимают одинаковую нижнюю строку, даже если
+   имена преподавателей имеют разную длину. */
+.class-room-row {
+  display: flex;
+  justify-content: flex-start;
+  width: 100%;
+  margin-top: auto;
+  padding-top: 5px;
+}
+
 .class-teacher-line {
   display: inline-flex;
+  flex: 0 1 auto;
   align-items: baseline;
   gap: 6px;
   max-width: 100%;

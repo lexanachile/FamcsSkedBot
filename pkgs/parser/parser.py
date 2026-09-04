@@ -1039,6 +1039,16 @@ def send_to_backend(parsed: List[Dict], course: int, allow_removals: bool = True
         for group_name in removed_groups:
             next_groups[group_name] = old_groups[group_name]
         removed_groups = []
+    else:
+        for group_name in removed_groups:
+            previous_result = _post_import(url, headers, {
+                "mode": "group-state", "course": course, "group": group_name
+            })
+            previous_records = previous_result.get("data", {}).get("records", [])
+            if previous_records:
+                message = _format_group_diff(group_name, previous_records, [])
+                if message:
+                    notifications[group_name] = message
     if not changed_groups and not removed_groups:
         print(f"✅ Курс {course}: изменений нет, KV не обновлялся.")
         return

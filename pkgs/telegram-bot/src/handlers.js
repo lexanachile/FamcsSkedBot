@@ -108,7 +108,7 @@ export async function handleCallbackQuery(query, env) {
       const groups = await loadGroups(env, course);
       if (!groups.includes(group)) throw new Error("Selected group is no longer available");
       await setGroup(env.DB, query.from.id, course, group);
-      await telegramRequest(env.TELEGRAM_BOT_TOKEN, "sendMessage", { chat_id: chatId, text: `Группа ${group} сохранена. Тестовые уведомления включены.` });
+      await telegramRequest(env.TELEGRAM_BOT_TOKEN, "sendMessage", { chat_id: chatId, text: `Группа ${group} сохранена. Уведомления включены.` });
     } else if (query.data === "skip_group") {
       await skipGroup(env.DB, query.from.id);
       await telegramRequest(env.TELEGRAM_BOT_TOKEN, "sendMessage", { chat_id: chatId, text: "Группа удалена. Вы сможете настроить её позже через /settings." });

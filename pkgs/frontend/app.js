@@ -1275,12 +1275,14 @@ function buildClassInfoHTML(subgroup, isLecture = false, isSplit = false) {
   const roomHTML = subgroup.classroom
     ? `<span class="class-room">${escapeHtml(subgroup.classroom)}</span>`
     : "";
-  const teacherHTML = lectureHTML || professorHTML || (roomHTML && !subgroup.comments)
-    ? `<span class="class-teacher-line">${lectureHTML}${professorHTML}${!subgroup.comments ? roomHTML : ""}</span>`
+  const teacherHTML = lectureHTML || professorHTML
+    ? `<span class="class-teacher-line">${lectureHTML}${professorHTML}</span>`
     : "";
-  const primaryMetaHTML = teacherHTML
+  const roomSharesTeacherRow = roomHTML && !subgroup.comments && !isSplit;
+  const primaryMetaHTML = teacherHTML || roomSharesTeacherRow
     ? `<div class="class-primary-meta">
         ${teacherHTML}
+        ${roomSharesTeacherRow ? roomHTML : ""}
       </div>`
     : "";
   const secondaryMetaHTML = subgroup.comments
@@ -1289,12 +1291,16 @@ function buildClassInfoHTML(subgroup, isLecture = false, isSplit = false) {
         ${roomHTML}
       </div>`
     : "";
+  const splitRoomHTML = isSplit && roomHTML && !subgroup.comments
+    ? `<div class="class-room-row">${roomHTML}</div>`
+    : "";
   return `
         <div class="class-detail">
             <span class="class-title">${escapeHtml(subgroup.classTitle || "")}</span>
         </div>
         ${primaryMetaHTML}
-        ${secondaryMetaHTML}`;
+        ${secondaryMetaHTML}
+        ${splitRoomHTML}`;
 }
 
 function showLoading(show) {

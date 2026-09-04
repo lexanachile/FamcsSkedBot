@@ -168,14 +168,13 @@ export function registerScheduleRoutes(app: Hono<AppEnvironment>) {
           typeof entry.fingerprint === "string" && typeof entry.recordCount === "number");
         if (!validEntries) return c.json({ success: false, error: "Invalid group manifest" }, 400);
         const manifest = await finalizeCourse(c.env.SCHEDULE_KV, course, body.importId, groups);
-        const testUserId = c.env.TEST_TELEGRAM_USER_ID?.trim();
-        if (testUserId && body.notifications && typeof body.notifications === "object" && !Array.isArray(body.notifications)) {
+        if (body.notifications && typeof body.notifications === "object" && !Array.isArray(body.notifications)) {
           try {
             for (const [groupName, text] of Object.entries(body.notifications as Record<string, unknown>)) {
               if (typeof text !== "string" || !text.trim()) continue;
               const users = await c.env.DB.prepare(
-                "SELECT telegram_id, chat_id FROM bot_users WHERE course = ? AND group_name = ? AND notifications_enabled = 1 AND telegram_id = ?",
-              ).bind(course, groupName, testUserId).all<{ telegram_id: string; chat_id: string }>();
+                "SELECT telegram_id, chat_id FROM bot_users WHERE course = ? AND group_name = ? AND notifications_enabled = 1",
+              ).bind(course, groupName).all<{ telegram_id: string; chat_id: string }>();
               for (const user of users.results) {
                 await c.env.NOTIFICATIONS_QUEUE.send({ chat_id: user.chat_id, text });
               }
@@ -183,7 +182,7 @@ export function registerScheduleRoutes(app: Hono<AppEnvironment>) {
           } catch (error) {
             // A notification failure must not make the parser retry an already
             // published manifest. Queue errors are visible in Worker logs.
-            console.error("Failed to enqueue test notifications", error);
+            console.error("Failed to enqueue schedule notifications", error);
           }
         }
         return c.json({ success: true, imported: manifest.recordCount, version: manifest.current, groups: manifest.groupCount, message: `Расписание для курса ${course} обновлено` });

@@ -3,7 +3,6 @@ export type Bindings = {
   SCHEDULE_KV: KVNamespace;
   NOTIFICATIONS_QUEUE: Queue;
   AUTH_TOKEN: string;
-  TEST_TELEGRAM_USER_ID?: string;
 };
 
 export type AppEnvironment = { Bindings: Bindings };
