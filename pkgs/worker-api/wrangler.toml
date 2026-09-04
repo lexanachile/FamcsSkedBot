@@ -8,7 +8,7 @@ binding = "DB"
 database_name = "schedule_db"
 database_id = "f3602b67-4b28-49f5-90a9-88745a580fd1"
 
-# Create this namespace in Cloudflare, then replace the placeholder with its ID.
+# Create this namespace in Cloudflare, then  replace the placeholder with its ID.
 # D1 stays bound for future Telegram users/subscriptions, but schedule routes use KV only.
 [[kv_namespaces]]
 binding = "SCHEDULE_KV"
