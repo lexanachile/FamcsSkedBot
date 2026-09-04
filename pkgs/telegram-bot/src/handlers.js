@@ -1,4 +1,4 @@
-import { buildKeyboard, courseKeyboard, helpText, onboardingKeyboard, settingsKeyboard } from "./content.js";
+import { buildKeyboard, courseKeyboard, groupsKeyboard, helpText, onboardingKeyboard, settingsKeyboard } from "./content.js";
 import { telegramRequest } from "./telegram.js";
 import { getUser, setGroup, skipGroup, toggleNotifications, upsertUser } from "./users.js";
 
@@ -26,6 +26,7 @@ export async function handleMessage(message, env) {
       if (!user?.group_name) await telegramRequest(env.TELEGRAM_BOT_TOKEN, "sendMessage", { chat_id: chatId, text: "Хотите получать уведомления об изменениях расписания? Выберите свою группу или пропустите этот шаг.", reply_markup: onboardingKeyboard });
     }
     else if (text.startsWith("/help")) await telegramRequest(env.TELEGRAM_BOT_TOKEN, "sendMessage", { chat_id: chatId, text: helpText(botName), parse_mode: "Markdown" });
+    else if (text.startsWith("/id")) await telegramRequest(env.TELEGRAM_BOT_TOKEN, "sendMessage", { chat_id: chatId, text: `Ваш Telegram ID: ${message.from.id}` });
     else if (text.startsWith("/settings")) await showSettings(chatId, user, env);
     else await telegramRequest(env.TELEGRAM_BOT_TOKEN, "sendMessage", { chat_id: chatId, text: "Неизвестная команда\n\nНажмите на кнопку ниже, чтобы открыть расписание, или используйте /help для справки", reply_markup: buildKeyboard(miniAppUrl, user) });
   } catch (error) { console.error("Error handling message:", error); throw error; }
@@ -99,8 +100,7 @@ export async function handleCallbackQuery(query, env) {
     } else if (query.data?.startsWith("course:")) {
       const course = Number(query.data.split(":")[1]);
       const groups = await loadGroups(env, course);
-      const keyboard = groups.map((group) => [{ text: group, callback_data: `group:${course}:${group}` }]);
-      await telegramRequest(env.TELEGRAM_BOT_TOKEN, "sendMessage", { chat_id: chatId, text: groups.length ? "Выберите группу:" : "Для этого курса группы пока не найдены.", reply_markup: groups.length ? { inline_keyboard: keyboard } : undefined });
+      await telegramRequest(env.TELEGRAM_BOT_TOKEN, "sendMessage", { chat_id: chatId, text: groups.length ? "Выберите группу:" : "Для этого курса группы пока не найдены.", reply_markup: groups.length ? groupsKeyboard(groups, course) : undefined });
     } else if (query.data?.startsWith("group:")) {
       const [, courseText, ...parts] = query.data.split(":");
       const course = Number(courseText);

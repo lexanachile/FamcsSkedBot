@@ -4,6 +4,7 @@ export const helpText = (botName) => `*Справка по ${botName}*
 /start - Главное меню с кнопкой для открытия расписания
 /help - Справка
 /settings - Настройка группы и уведомлений
+/id - Показать ваш Telegram ID для тестирования уведомлений
 
 Как использовать:
 1. Нажмите кнопку "Открыть расписание"
@@ -26,10 +27,19 @@ export const onboardingKeyboard = { inline_keyboard: [
 ] };
 
 export const courseKeyboard = { inline_keyboard: [
-  [1, 2].map((course) => ({ text: `${course} курс`, callback_data: `course:${course}` })),
-  [3, 4].map((course) => ({ text: `${course} курс`, callback_data: `course:${course}` })),
+  [1, 2, 3, 4].map((course) => ({ text: `${course} курс`, callback_data: `course:${course}` })),
   [{ text: "Отмена", callback_data: "settings" }],
 ] };
+
+export const groupsKeyboard = (groups, course) => ({
+  inline_keyboard: Array.from(
+    { length: Math.ceil(groups.length / 4) },
+    (_, row) => groups.slice(row * 4, row * 4 + 4).map((group) => ({
+      text: group,
+      callback_data: `group:${course}:${group}`,
+    })),
+  ),
+});
 
 export const settingsKeyboard = (user) => ({ inline_keyboard: [
   [{ text: "Изменить группу", callback_data: "choose_course" }],
