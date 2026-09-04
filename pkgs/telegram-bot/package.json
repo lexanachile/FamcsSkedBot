@@ -6,7 +6,7 @@
   "main": "worker.js",
   "type": "module",
   "scripts": {
-    "build": "node --check worker.js && node --check src/routes.js && node --check src/handlers.js && node --check src/content.js && node --check src/telegram.js",
+    "build": "node --check worker.js && node --check src/routes.js && node --check src/handlers.js && node --check src/content.js && node --check src/telegram.js && node --check src/users.js",
     "start": "wrangler dev",
     "dev": "wrangler dev"
   },
