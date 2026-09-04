@@ -104,7 +104,34 @@ function initApp() {
 }
 
 function normalizeLessonTitle(title) {
-  return String(title || "").trim().replace(/\s+/g, " ").toLocaleLowerCase("ru-RU");
+  const normalizedTitle = String(title || "").trim().replace(/\s+/g, " ").toLocaleLowerCase("ru-RU");
+  return normalizedTitle.includes("физическая культура")
+    ? "физическая культура"
+    : normalizedTitle;
+}
+
+function getPhysicalCultureTime(classItem) {
+  const titles = [classItem?.subgroupA?.classTitle, classItem?.subgroupB?.classTitle];
+
+  for (const title of titles) {
+    if (!normalizeLessonTitle(title).includes("физическая культура")) continue;
+    const match = String(title).match(/\(\s*(\d{1,2}[.:]\d{2})\s*[-–—]\s*(\d{1,2}[.:]\d{2})\s*\)/u);
+    if (match) return { start: match[1], end: match[2] };
+  }
+
+  return null;
+}
+
+function getDisplayedClassTime(classItem) {
+  const physicalCultureTime = getPhysicalCultureTime(classItem);
+  return {
+    start: physicalCultureTime?.start || classItem?.startTime,
+    end: physicalCultureTime?.end || classItem?.endTime,
+  };
+}
+
+function formatBreakDuration(minutes) {
+  return `${minutes} мин`;
 }
 
 function lessonColorKey(title, scope) {
@@ -1110,9 +1137,11 @@ function displaySchedule(scheduleData) {
 
   groupedByDay.forEach((dayClasses) => {
     dayClasses.sort((a, b) => {
-      const diff = timeToMinutes(a.startTime) - timeToMinutes(b.startTime);
+      const aTime = getDisplayedClassTime(a);
+      const bTime = getDisplayedClassTime(b);
+      const diff = timeToMinutes(aTime.start) - timeToMinutes(bTime.start);
       if (diff !== 0) return diff;
-      return timeToMinutes(a.endTime) - timeToMinutes(b.endTime);
+      return timeToMinutes(aTime.end) - timeToMinutes(bTime.end);
     });
   });
 
@@ -1144,7 +1173,7 @@ function displaySchedule(scheduleData) {
       classesContainer.appendChild(emptyDay);
     }
 
-    dayClasses.forEach((cls) => {
+    dayClasses.forEach((cls, classIndex) => {
       const slotDiv = document.createElement("div");
       slotDiv.className = "class-slot" + (cls.isLecture ? " is-lecture" : "");
 
@@ -1156,12 +1185,13 @@ function displaySchedule(scheduleData) {
       const timeStart = document.createElement("span");
       timeStart.className = "time-start";
 
-      timeStart.textContent = formatTime(cls.startTime);
+      const displayedTime = getDisplayedClassTime(cls);
+      timeStart.textContent = formatTime(displayedTime.start);
 
       const timeEnd = document.createElement("span");
       timeEnd.className = "time-end";
 
-      timeEnd.textContent = formatTime(cls.endTime);
+      timeEnd.textContent = formatTime(displayedTime.end);
 
       timeDiv.appendChild(timeStart);
       timeDiv.appendChild(timeEnd);
@@ -1192,6 +1222,31 @@ function displaySchedule(scheduleData) {
       }
       slotDiv.appendChild(infoDiv);
       classesContainer.appendChild(slotDiv);
+
+      const nextClass = dayClasses[classIndex + 1];
+      if (nextClass) {
+        const nextTime = getDisplayedClassTime(nextClass);
+        const breakMinutes = timeToMinutes(nextTime.start) - timeToMinutes(displayedTime.end);
+        if (Number.isFinite(breakMinutes) && breakMinutes > 35) {
+          const windowSlot = document.createElement("div");
+          windowSlot.className = "class-slot class-window-break";
+
+          const duration = document.createElement("div");
+          duration.className = "class-time class-window-duration";
+          duration.textContent = formatBreakDuration(breakMinutes);
+
+          const windowInfo = document.createElement("div");
+          windowInfo.className = "class-info";
+          windowInfo.innerHTML = `
+            <div class="class-common class-window-card">
+              <span class="class-title">Форточка</span>
+            </div>`;
+
+          windowSlot.appendChild(duration);
+          windowSlot.appendChild(windowInfo);
+          classesContainer.appendChild(windowSlot);
+        }
+      }
     });
 
     dayBlock.appendChild(classesContainer);
@@ -1220,14 +1275,12 @@ function buildClassInfoHTML(subgroup, isLecture = false, isSplit = false) {
   const roomHTML = subgroup.classroom
     ? `<span class="class-room">${escapeHtml(subgroup.classroom)}</span>`
     : "";
-  const teacherHTML = lectureHTML || professorHTML
-    ? `<span class="class-teacher-line">${lectureHTML}${professorHTML}</span>`
+  const teacherHTML = lectureHTML || professorHTML || (roomHTML && !subgroup.comments)
+    ? `<span class="class-teacher-line">${lectureHTML}${professorHTML}${!subgroup.comments ? roomHTML : ""}</span>`
     : "";
-  const roomSharesTeacherRow = roomHTML && !subgroup.comments && !isSplit;
-  const primaryMetaHTML = teacherHTML || roomSharesTeacherRow
+  const primaryMetaHTML = teacherHTML
     ? `<div class="class-primary-meta">
         ${teacherHTML}
-        ${roomSharesTeacherRow ? roomHTML : ""}
       </div>`
     : "";
   const secondaryMetaHTML = subgroup.comments
@@ -1236,17 +1289,12 @@ function buildClassInfoHTML(subgroup, isLecture = false, isSplit = false) {
         ${roomHTML}
       </div>`
     : "";
-  const splitRoomHTML = isSplit && roomHTML && !subgroup.comments
-    ? `<div class="class-room-row">${roomHTML}</div>`
-    : "";
-
   return `
         <div class="class-detail">
             <span class="class-title">${escapeHtml(subgroup.classTitle || "")}</span>
         </div>
         ${primaryMetaHTML}
-        ${secondaryMetaHTML}
-        ${splitRoomHTML}`;
+        ${secondaryMetaHTML}`;
 }
 
 function showLoading(show) {

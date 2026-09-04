@@ -895,7 +895,7 @@ def _group_fingerprint(records: List[Dict]) -> str:
 
 
 def _format_group_diff(group_name: str, previous: List[Dict], current: List[Dict]) -> str:
-    """Build a compact Telegram-ready diff. Runs in GitHub Actions, not Workers."""
+    """Build one Telegram message containing every changed slot for the group."""
     def key(item):
         return (item.get("dayOfWeek"), item.get("startTime"), item.get("endTime"))
 
@@ -905,32 +905,52 @@ def _format_group_diff(group_name: str, previous: List[Dict], current: List[Dict
     previous_by_key = {key(item): item for item in previous}
     current_by_key = {key(item): item for item in current}
     days = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"]
-    lines = [f"Изменения расписания группы {group_name}:"]
-    fields = (
-        ("classTitleA", "предмет"), ("professorNameA", "преподаватель"),
-        ("classroomA", "аудитория"), ("classTitleB", "предмет подгруппы Б"),
-        ("professorNameB", "преподаватель подгруппы Б"),
-        ("classroomB", "аудитория подгруппы Б"),
-    )
+    changes_by_day = {}
+
+    def combined(item, field_a, field_b):
+        first, second = clean(item.get(field_a)), clean(item.get(field_b))
+        if second == "—" or second == first:
+            return first
+        if first == "—":
+            return f"Б — {second}"
+        return f"А — {first}; Б — {second}"
+
+    def lesson_block(item, symbol):
+        return [
+            f"{symbol} {clean(item.get('startTime'))}–{clean(item.get('endTime'))}",
+            f"Предмет: {combined(item, 'classTitleA', 'classTitleB')}",
+            f"Преподаватель: {combined(item, 'professorNameA', 'professorNameB')}",
+            f"Аудитория: {combined(item, 'classroomA', 'classroomB')}",
+        ]
+
     for slot in sorted(set(previous_by_key) | set(current_by_key)):
         before, after = previous_by_key.get(slot), current_by_key.get(slot)
         day = days[slot[0] - 1] if isinstance(slot[0], int) and 1 <= slot[0] <= 6 else f"День {slot[0]}"
-        heading = f"{day}, {slot[1]}–{slot[2]}"
+        blocks = changes_by_day.setdefault(day, [])
         if before is None:
-            lines.append(f"➕ {heading}: {clean(after.get('classTitleA'))}")
+            blocks.append(lesson_block(after, "➕"))
             continue
         if after is None:
-            lines.append(f"➖ {heading}: {clean(before.get('classTitleA'))}")
+            blocks.append(lesson_block(before, "➖"))
             continue
-        changes = []
-        for field, label in fields:
-            old, new = clean(before.get(field)), clean(after.get(field))
-            if old != new:
-                changes.append(f"  {label}: {old} → {new}")
-        if changes:
-            lines.append(f"✏️ {heading}")
-            lines.extend(changes)
-    return "\n".join(lines) if len(lines) > 1 else ""
+        compared_fields = (
+            "classTitleA", "professorNameA", "classroomA",
+            "classTitleB", "professorNameB", "classroomB",
+        )
+        if any(clean(before.get(field)) != clean(after.get(field)) for field in compared_fields):
+            blocks.extend([lesson_block(before, "➖"), lesson_block(after, "➕")])
+
+    changes_by_day = {day: blocks for day, blocks in changes_by_day.items() if blocks}
+    if not changes_by_day:
+        return ""
+    lines = [f"Изменения расписания группы {group_name}:"]
+    for day, blocks in changes_by_day.items():
+        lines.extend(["", f"{day}:"])
+        for block in blocks:
+            lines.extend(block)
+            lines.append("")
+        lines.pop()
+    return "\n".join(lines)
 
 
 def _post_import(url: str, headers: Dict[str, str], payload: Dict) -> Dict:

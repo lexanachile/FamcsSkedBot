@@ -22,7 +22,7 @@ export async function handleMessage(message, env) {
   if (!miniAppUrl.startsWith("https://")) return configError(chatId, env, "URL должен начинаться с https://");
   try {
     if (text.startsWith("/start")) {
-      await telegramRequest(env.TELEGRAM_BOT_TOKEN, "sendMessage", { chat_id: chatId, text: `Вы попали в ${botName}!\n\nЖмите кнопку ниже для открытия расписания\nФидбеку буду рад в лс @lexanachile`, reply_markup: buildKeyboard(miniAppUrl, user) });
+      await telegramRequest(env.TELEGRAM_BOT_TOKEN, "sendMessage", { chat_id: chatId, text: `Вы попали в ${botName}!\n\nНажмите кнопку ниже для открытия расписания\nФидбеку буду рад в лс @lexanachile`, reply_markup: buildKeyboard(miniAppUrl, user) });
       if (!user?.group_name) await telegramRequest(env.TELEGRAM_BOT_TOKEN, "sendMessage", { chat_id: chatId, text: "Хотите получать уведомления об изменениях расписания? Выберите свою группу или пропустите этот шаг.", reply_markup: onboardingKeyboard });
     }
     else if (text.startsWith("/help")) await telegramRequest(env.TELEGRAM_BOT_TOKEN, "sendMessage", { chat_id: chatId, text: helpText(botName), parse_mode: "Markdown" });
@@ -34,7 +34,7 @@ export async function handleMessage(message, env) {
 
 async function showSettings(chatId, user, env) {
   const state = user?.group_name
-    ? `Текущая группа: ${user.group_name} (${user.course} курс)\nУведомления: ${user.notifications_enabled ? "включены" : "отключены"}`
+    ? `Выбран ${user.course} курс\n${user.group_name} группа\nУведомления ${user.notifications_enabled ? "включены" : "отключены"}`
     : "Группа пока не выбрана.";
   await telegramRequest(env.TELEGRAM_BOT_TOKEN, "sendMessage", { chat_id: chatId, text: state, reply_markup: settingsKeyboard(user) });
 }

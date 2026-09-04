@@ -215,9 +215,12 @@
   /* Расстояние между временем начала и временем конца пары. */
   --time-range-gap: 0px;
 
+  /* Цвет длительности и названия длинного перерыва («Форточка»). */
+  --window-break-color: #5f92da;
+
   /* --day-gap — зазор МЕЖДУ ДНЯМИ НЕДЕЛИ целиком (Понедельник, Вторник
        и т.д.). Отвечает за "сильное отделение" одного дня от другого. */
-  --day-gap: 100px;
+  --day-gap: 67px;
 
   /* ===================================================================
        5. СКРУГЛЕНИЯ УГЛОВ
@@ -1272,6 +1275,33 @@ body {
   color: var(--ink-professor);
 }
 
+/* Компактная дополнительная строка для длинного перерыва между парами. */
+.class-window-break {
+  min-height: 28px;
+}
+
+.class-window-duration {
+  justify-content: center;
+  align-items: center;
+  padding: 0;
+  color: var(--window-break-color);
+  font-size: var(--font-size-time);
+  font-weight: 500;
+  line-height: 1.05;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.class-common.class-window-card {
+  min-height: 28px;
+  padding: 3px var(--spacing-md);
+}
+
+.class-window-card .class-title {
+  color: var(--window-break-color);
+  font-weight: 500;
+}
+
 /* Обёртка вокруг одной или двух (подгруппы) карточек занятия */
 .class-info {
   display: flex;
@@ -1406,6 +1436,10 @@ body {
   margin-top: 5px;
 }
 
+.class-secondary-meta {
+  flex-wrap: nowrap;
+}
+
 .class-primary-meta {
   margin-top: 4px;
 }
@@ -1414,14 +1448,6 @@ body {
    нижняя строка с комментарием/аудиторией выравнивается по общему низу
    двух уже одинаковых по высоте карточек. */
 .class-split .class-secondary-meta:last-child {
-  margin-top: auto;
-  padding-top: 5px;
-}
-
-.class-room-row {
-  display: flex;
-  justify-content: flex-end;
-  width: 100%;
   margin-top: auto;
   padding-top: 5px;
 }
@@ -1539,7 +1565,6 @@ body {
   display: inline-flex;
   align-items: center;
   flex: 0 0 auto;
-  margin-left: auto;
   padding: 2px 8px;
   border-radius: var(--radius-pill);
   background-color: var(--line);
@@ -1558,9 +1583,9 @@ body {
   min-width: 0;
   padding: 2px 8px;
   border-radius: var(--radius-pill);
-  background-color: rgba(228, 140, 63, 0.12);
+  background-color: rgba(63, 132, 228, 0.12);
   font-size: var(--font-size-xs);
-  color: var(--ink-lecture);
+  color: #3f84e4;
   font-style: normal;
   line-height: 1.35;
   overflow-wrap: anywhere;

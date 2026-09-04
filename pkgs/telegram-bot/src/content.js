@@ -17,7 +17,7 @@ export const helpText = (botName) => `*Справка по ${botName}*
 
 export const buildKeyboard = (miniAppUrl, user) => ({ inline_keyboard: [
   [{ text: "Открыть расписание", web_app: { url: miniAppUrl } }],
-  [{ text: user?.group_name ? `⚙️ Моя группа: ${user.group_name}` : "⚙️ Настроить группу", callback_data: "settings" }],
+  [{ text: user?.group_name ? `Курс: ${user.course} Группа: ${user.group_name}` : "Настроить группу", callback_data: "settings" }],
   [{ text: "/help", callback_data: "help" }],
 ] });
 
@@ -43,6 +43,6 @@ export const groupsKeyboard = (groups, course) => ({
 
 export const settingsKeyboard = (user) => ({ inline_keyboard: [
   [{ text: "Изменить группу", callback_data: "choose_course" }],
-  ...(user?.group_name ? [[{ text: user.notifications_enabled ? "🔕 Отключить уведомления" : "🔔 Включить уведомления", callback_data: "toggle_notifications" }]] : []),
+  ...(user?.group_name ? [[{ text: user.notifications_enabled ? "Отключить уведомления" : "Включить уведомления", callback_data: "toggle_notifications" }]] : []),
   ...(user?.group_name ? [[{ text: "Удалить группу", callback_data: "skip_group" }]] : []),
 ] });
