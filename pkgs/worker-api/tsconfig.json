@@ -15,7 +15,7 @@
     "strictPropertyInitialization": true,
     "noImplicitThis": true,
 
-    /* Дополнительные проверки */
+    /* Дополнительные прdfsоверки */
     "alwaysStrict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
