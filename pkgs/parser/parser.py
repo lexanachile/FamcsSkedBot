@@ -9,7 +9,9 @@ import os
 import io
 import re
 import json
+import hashlib
 import time
+import uuid
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple, Any
 from itertools import groupby
@@ -860,38 +862,110 @@ def extract_class(
 # ============================================================
 
 
-def send_to_backend(parsed: List[Dict], course: int):
+def _group_fingerprint(records: List[Dict]) -> str:
+    """Стабильный отпечаток содержимого группы, не зависящий от порядка записей."""
+    canonical_records = sorted(
+        records,
+        key=lambda item: json.dumps(
+            item, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        ),
+    )
+    canonical_json = json.dumps(
+        canonical_records,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(canonical_json.encode("utf-8")).hexdigest()
+
+
+def _post_import(url: str, headers: Dict[str, str], payload: Dict) -> Dict:
+    last_error = None
+    for attempt in range(1, 4):
+        try:
+            response = requests.post(url, json=payload, headers=headers, timeout=120)
+            response.raise_for_status()
+            return response.json()
+        except (requests.exceptions.RequestException, ValueError) as error:
+            last_error = error
+            print(f"  ⚠️ Ошибка (попытка {attempt}/3): {error}")
+            if attempt < 3:
+                time.sleep(5)
+    raise RuntimeError(f"Backend не принял данные: {last_error}")
+
+
+def send_to_backend(parsed: List[Dict], course: int, allow_removals: bool = True):
     if not BACKEND_URL or not BACKEND_AUTH_TOKEN:
         return
 
     url = f"{BACKEND_URL.rstrip('/')}/api/schedule/import"
     headers = {"Authorization": f"Bearer {BACKEND_AUTH_TOKEN}"}
-    chunk_size = 100
-    total = len(parsed)
-    print(f"\nОтправка {total} записей курса {course} на backend: {url}")
+    by_group = {
+        group_name: list(group_records)
+        for group_name, group_records in groupby(
+            sorted(parsed, key=lambda item: item["groupName"]),
+            key=lambda item: item["groupName"],
+        )
+    }
+    print(f"\nПроверка {len(by_group)} групп курса {course} на backend: {url}")
 
-    for i in range(0, total, chunk_size):
-        chunk = parsed[i : i + chunk_size]
-        payload = {"course": course, "clear": (i == 0), "classes": chunk}
+    state_result = _post_import(
+        url, headers, {"mode": "state", "course": course}
+    )
+    old_groups = state_result.get("data", {}).get("groups", {})
+    next_groups = {}
+    changed_groups = []
 
-        success = False
-        for attempt in range(1, 4):
-            try:
-                response = requests.post(
-                    url, json=payload, headers=headers, timeout=120
-                )
-                response.raise_for_status()
-                print(f"  ✅ Порция {i // chunk_size + 1} успешно отправлена")
-                success = True
-                break
-            except requests.exceptions.RequestException as e:
-                print(f"  ⚠️ Ошибка: {e}")
-                if attempt < 3:
-                    time.sleep(5)
-        if not success:
-            print("Прерывание из-за ошибки отправки.")
-            return
-    print(f"✅ Все порции для курса {course} отправлены.")
+    # Одна группа — одна небольшая порция и одна неизменяемая запись KV.
+    # Сравнение выполняется здесь, чтобы не расходовать CPU Cloudflare Worker.
+    for group_name, records in by_group.items():
+        fingerprint = _group_fingerprint(records)
+        old_entry = old_groups.get(group_name)
+        if old_entry and old_entry.get("fingerprint") == fingerprint:
+            next_groups[group_name] = old_entry
+            continue
+
+        upload_result = _post_import(
+            url,
+            headers,
+            {
+                "mode": "group",
+                "course": course,
+                "group": group_name,
+                "fingerprint": fingerprint,
+                "previousVersion": old_entry.get("version") if old_entry else None,
+                "classes": records,
+            },
+        )
+        next_groups[group_name] = upload_result["data"]["entry"]
+        changed_groups.append(group_name)
+        print(f"  ✅ Обновлена группа {group_name}")
+
+    removed_groups = sorted(set(old_groups) - set(by_group))
+    if not allow_removals:
+        for group_name in removed_groups:
+            next_groups[group_name] = old_groups[group_name]
+        removed_groups = []
+    if not changed_groups and not removed_groups:
+        print(f"✅ Курс {course}: изменений нет, KV не обновлялся.")
+        return
+
+    result = _post_import(
+        url,
+        headers,
+        {
+            "mode": "finalize",
+            "course": course,
+            "importId": str(uuid.uuid4()),
+            "groups": next_groups,
+        },
+    )
+    if removed_groups:
+        print(f"  🗑️ Удалены отсутствующие группы: {', '.join(removed_groups)}")
+    print(
+        f"✅ Курс {course} опубликован: изменено групп {len(changed_groups)}, "
+        f"версия {result.get('version', 'unknown')}"
+    )
 
 
 # ============================================================
@@ -957,7 +1031,7 @@ def main():
         if BACKEND_URL and BACKEND_AUTH_TOKEN:
             sorted_data = sorted(all_parsed, key=lambda x: x["course"])
             for course, group in groupby(sorted_data, key=lambda x: x["course"]):
-                send_to_backend(list(group), course)
+                send_to_backend(list(group), course, allow_removals=not failed_files)
     print("\nПарсер завершил работу.")
 
 

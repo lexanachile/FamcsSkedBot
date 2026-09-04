@@ -16,6 +16,7 @@ pnpm-lock.yaml
 .wrangler/
 dist/
 build/
+AGENTS.md
 
 # IDE и редакторы
 .vscode/

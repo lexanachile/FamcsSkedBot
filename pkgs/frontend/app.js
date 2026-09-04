@@ -668,7 +668,11 @@ function displaySchedule(scheduleData) {
   const groupSelect = document.getElementById("group-select");
   const selectedGroupName = groupSelect.options[groupSelect.selectedIndex].text;
   scheduleTitle.textContent = `Расписание: ${selectedGroupName}`;
-  scheduleMetadata.textContent = `Курс: ${appState.currentCourse} | Обновлено: ${new Date().toLocaleString("ru-RU")}`;
+  const updatedAt = scheduleData.updatedAt ? new Date(scheduleData.updatedAt) : null;
+  const updatedText = updatedAt && !Number.isNaN(updatedAt.getTime())
+    ? updatedAt.toLocaleString("ru-RU")
+    : "неизвестно";
+  scheduleMetadata.textContent = `Курс: ${appState.currentCourse} | Обновлено: ${updatedText}`;
 
   scheduleDays.innerHTML = "";
   const classes = scheduleData.classes || [];
