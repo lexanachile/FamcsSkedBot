@@ -44,7 +44,7 @@ export function debugConfig(request, env) {
   if (!env.ADMIN_TOKEN || request.headers.get("Authorization") !== `Bearer ${env.ADMIN_TOKEN}`) return new Response("Unauthorized", { status: 401 });
   const miniAppUrl = env.MINI_APP_URL?.trim() || null;
   const botName = env.BOT_NAME?.trim() || null;
-  return json({ hasToken: !!env.TELEGRAM_BOT_TOKEN, hasWebhookSecret: !!env.WEBHOOK_SECRET, miniAppUrl, miniAppUrlValid: miniAppUrl ? miniAppUrl.startsWith("https://") : false, botName, miniAppUrlLength: miniAppUrl?.length || 0 });
+  return json({ hasToken: !!env.TELEGRAM_BOT_TOKEN, hasWebhookSecret: !!env.WEBHOOK_SECRET, hasScheduleApiBinding: !!env.SCHEDULE_API, apiBaseUrl: env.API_BASE_URL?.trim() || null, miniAppUrl, miniAppUrlValid: miniAppUrl ? miniAppUrl.startsWith("https://") : false, botName, miniAppUrlLength: miniAppUrl?.length || 0 });
 }
 
 export function health(request) {

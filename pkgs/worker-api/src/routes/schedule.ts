@@ -26,7 +26,7 @@ export function registerScheduleRoutes(app: Hono<AppEnvironment>) {
         message: "Расписание не найдено",
       } });
       const classes = records.map(toScheduleClass);
-      return c.json({ success: true, data: { course, group, totalClasses: classes.length, classes, updatedAt: schedule.updatedAt } });
+      return c.json({ success: true, data: { course, group, totalClasses: classes.length, classes, updatedAt: schedule?.updatedAt || null } });
     } catch (error) {
       console.error("KV schedule read failed", error);
       return c.json({ success: false, error: "Internal server error" }, 500);

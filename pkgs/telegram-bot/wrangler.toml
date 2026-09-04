@@ -5,6 +5,13 @@ compatibility_date = "2026-08-30"
 [vars]
 API_BASE_URL = "https://famcsschedulebot.yarashsei.workers.dev"
 
+# Use Cloudflare's internal Worker-to-Worker channel for schedule API calls.
+# API_BASE_URL remains as a fallback for local development and deployments
+# where the service binding is not available yet.
+[[services]]
+binding = "SCHEDULE_API"
+service = "famcsschedulebot"
+
 [[d1_databases]]
 binding = "DB"
 database_name = "schedule_db"

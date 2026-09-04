@@ -39,17 +39,44 @@ async function showSettings(chatId, user, env) {
 }
 
 async function loadGroups(env, course) {
+  if (!Number.isInteger(course) || course < 1 || course > 5) {
+    throw new Error(`Invalid course: ${course}`);
+  }
   const configuredUrl = env.API_BASE_URL?.trim();
-  if (!configuredUrl) throw new Error("API_BASE_URL is not configured");
-  const apiBaseUrl = configuredUrl.replace(/\/+$/, "").replace(/\/api$/, "");
+  if (!env.SCHEDULE_API && !configuredUrl) {
+    throw new Error("Neither SCHEDULE_API nor API_BASE_URL is configured");
+  }
+  // A service binding only uses the path/query from this URL. Keep a valid
+  // synthetic origin so the bot can work even without the public fallback.
+  const apiBaseUrl = configuredUrl
+    ? configuredUrl.replace(/\/+$/, "").replace(/\/api$/, "")
+    : "https://schedule-api";
   const groupsUrl = `${apiBaseUrl}/api/groups?course=${course}`;
-  const response = await fetch(groupsUrl);
+  const request = new Request(groupsUrl, {
+    headers: { Accept: "application/json" },
+  });
+  let response;
+  try {
+    response = env.SCHEDULE_API
+      ? await env.SCHEDULE_API.fetch(request)
+      : await fetch(request);
+  } catch (error) {
+    const transport = env.SCHEDULE_API ? "service binding" : "public URL";
+    throw new Error(`Groups API request failed via ${transport}: ${error.message}`, { cause: error });
+  }
   if (!response.ok) {
     const details = (await response.text()).slice(0, 300);
     throw new Error(`Groups API error ${response.status}: ${groupsUrl}; ${details}`);
   }
-  const payload = await response.json();
-  return payload?.data?.groups?.map((item) => item.groupName) || [];
+  const payload = await response.json().catch((error) => {
+    throw new Error(`Groups API returned invalid JSON: ${error.message}`);
+  });
+  if (!payload?.success || !Array.isArray(payload?.data?.groups)) {
+    throw new Error(`Groups API returned an invalid payload: ${JSON.stringify(payload).slice(0, 300)}`);
+  }
+  return payload.data.groups
+    .map((item) => item?.groupName)
+    .filter((groupName) => typeof groupName === "string" && groupName.length > 0);
 }
 
 export async function handleCallbackQuery(query, env) {
