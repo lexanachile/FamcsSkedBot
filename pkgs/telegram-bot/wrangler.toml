@@ -2,6 +2,9 @@ name = "famcsskedtgbot"
 main = "worker.js"
 compatibility_date = "2026-08-30"
 
+[vars]
+API_BASE_URL = "https://famcsschedulebot.yarashsei.workers.dev"
+
 [[d1_databases]]
 binding = "DB"
 database_name = "schedule_db"
