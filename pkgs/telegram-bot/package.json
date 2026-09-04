@@ -10,11 +10,7 @@
     "start": "wrangler dev",
     "dev": "wrangler dev"
   },
-  "dependencies": {
-    "axios": "^1.6.0",
-    "dotenv": "^16.0.0",
-    "node-telegram-bot-api": "^0.61.0"
-  },
+  "dependencies": {},
   "engines": {
     "node": ">=18.0.0"
   }

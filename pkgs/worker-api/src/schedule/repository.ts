@@ -113,6 +113,14 @@ export const readManifest = (kv: KVNamespace, course: number) =>
 export const readManifestFresh = (kv: KVNamespace, course: number) =>
   kv.get<CourseManifest>(manifestKey(course), { type: "json" });
 
+export async function readGroupScheduleFresh(kv: KVNamespace, course: number, group: string) {
+  const manifest = await readManifestFresh(kv, course);
+  const entry = manifest?.groups?.[group];
+  if (!entry) return [];
+  const document = await kv.get<GroupScheduleDocument>(groupKey(entry.version, course, group), { type: "json" });
+  return document?.records || [];
+}
+
 export async function uploadGroup(
   kv: KVNamespace,
   course: number,
@@ -145,7 +153,8 @@ export async function finalizeCourse(
     current,
     previous: oldManifest?.current || null,
     course,
-    updatedAt: entries.reduce((latest, entry) => entry.updatedAt > latest ? entry.updatedAt : latest, ""),
+    // Publication time for the course. Unchanged groups keep their own timestamps.
+    updatedAt: new Date().toISOString(),
     recordCount: entries.reduce((total, entry) => total + entry.recordCount, 0),
     groupCount: entries.length,
     groups,

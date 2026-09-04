@@ -2,6 +2,17 @@ name = "famcsskedtgbot"
 main = "worker.js"
 compatibility_date = "2026-08-30"
 
+[[d1_databases]]
+binding = "DB"
+database_name = "schedule_db"
+database_id = "f3602b67-4b28-49f5-90a9-88745a580fd1"
+
+[[queues.consumers]]
+queue = "schedule-notifications"
+max_batch_size = 5
+max_batch_timeout = 5
+max_retries = 5
+
 
 [observability]
 enabled = true

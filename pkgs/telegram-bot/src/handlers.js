@@ -1,5 +1,6 @@
-import { buildKeyboard, helpText } from "./content.js";
+import { buildKeyboard, courseKeyboard, helpText, onboardingKeyboard, settingsKeyboard } from "./content.js";
 import { telegramRequest } from "./telegram.js";
+import { getUser, setGroup, skipGroup, toggleNotifications, upsertUser } from "./users.js";
 
 const botNameFor = (env) => env.BOT_NAME?.trim() || "ScheduleBot";
 
@@ -13,24 +14,76 @@ export async function handleMessage(message, env) {
   const chatId = message.chat?.id;
   const text = (message.text || "").trim();
   if (!chatId) return console.error("No chatId in message", message);
+  await upsertUser(env.DB, message.from, chatId);
+  const user = await getUser(env.DB, message.from.id);
   const botName = botNameFor(env);
   const miniAppUrl = env.MINI_APP_URL?.trim();
   if (!miniAppUrl) return configError(chatId, env, "MINI_APP_URL не установлен в Cloudflare");
   if (!miniAppUrl.startsWith("https://")) return configError(chatId, env, "URL должен начинаться с https://");
   try {
-    if (text.startsWith("/start")) await telegramRequest(env.TELEGRAM_BOT_TOKEN, "sendMessage", { chat_id: chatId, text: `Вы попали в ${botName}!\n\nЖмите кнопку ниже для открытия расписания\nФидбеку буду рад в лс @lexanachile`, reply_markup: buildKeyboard(miniAppUrl) });
+    if (text.startsWith("/start")) {
+      await telegramRequest(env.TELEGRAM_BOT_TOKEN, "sendMessage", { chat_id: chatId, text: `Вы попали в ${botName}!\n\nЖмите кнопку ниже для открытия расписания\nФидбеку буду рад в лс @lexanachile`, reply_markup: buildKeyboard(miniAppUrl, user) });
+      if (!user?.group_name) await telegramRequest(env.TELEGRAM_BOT_TOKEN, "sendMessage", { chat_id: chatId, text: "Хотите получать уведомления об изменениях расписания? Выберите свою группу или пропустите этот шаг.", reply_markup: onboardingKeyboard });
+    }
     else if (text.startsWith("/help")) await telegramRequest(env.TELEGRAM_BOT_TOKEN, "sendMessage", { chat_id: chatId, text: helpText(botName), parse_mode: "Markdown" });
-    else await telegramRequest(env.TELEGRAM_BOT_TOKEN, "sendMessage", { chat_id: chatId, text: "Неизвестная команда\n\nНажмите на кнопку ниже, чтобы открыть расписание, или используйте /help для справки", reply_markup: buildKeyboard(miniAppUrl) });
-  } catch (error) { console.error("Error handling message:", error); }
+    else if (text.startsWith("/settings")) await showSettings(chatId, user, env);
+    else await telegramRequest(env.TELEGRAM_BOT_TOKEN, "sendMessage", { chat_id: chatId, text: "Неизвестная команда\n\nНажмите на кнопку ниже, чтобы открыть расписание, или используйте /help для справки", reply_markup: buildKeyboard(miniAppUrl, user) });
+  } catch (error) { console.error("Error handling message:", error); throw error; }
+}
+
+async function showSettings(chatId, user, env) {
+  const state = user?.group_name
+    ? `Текущая группа: ${user.group_name} (${user.course} курс)\nУведомления: ${user.notifications_enabled ? "включены" : "отключены"}`
+    : "Группа пока не выбрана.";
+  await telegramRequest(env.TELEGRAM_BOT_TOKEN, "sendMessage", { chat_id: chatId, text: state, reply_markup: settingsKeyboard(user) });
+}
+
+async function loadGroups(env, course) {
+  const response = await fetch(`${env.API_BASE_URL.replace(/\/$/, "")}/api/groups?course=${course}`);
+  if (!response.ok) throw new Error(`Groups API error ${response.status}`);
+  const payload = await response.json();
+  return payload?.data?.groups?.map((item) => item.groupName) || [];
 }
 
 export async function handleCallbackQuery(query, env) {
   const chatId = query.message?.chat?.id || query.from?.id;
   if (!chatId || !query.id) return console.error("No chatId or query.id in callback", query);
   try {
+    await upsertUser(env.DB, query.from, chatId);
+    let answer = "Готово";
     if (query.data === "help") {
       await telegramRequest(env.TELEGRAM_BOT_TOKEN, "sendMessage", { chat_id: chatId, text: helpText(botNameFor(env)), parse_mode: "Markdown" });
-      await telegramRequest(env.TELEGRAM_BOT_TOKEN, "answerCallbackQuery", { callback_query_id: query.id, text: "Справка открыта", show_alert: false });
+      answer = "Справка открыта";
+    } else if (query.data === "settings") {
+      await showSettings(chatId, await getUser(env.DB, query.from.id), env);
+    } else if (query.data === "choose_course") {
+      await telegramRequest(env.TELEGRAM_BOT_TOKEN, "sendMessage", { chat_id: chatId, text: "Выберите курс:", reply_markup: courseKeyboard });
+    } else if (query.data?.startsWith("course:")) {
+      const course = Number(query.data.split(":")[1]);
+      const groups = await loadGroups(env, course);
+      const keyboard = groups.map((group) => [{ text: group, callback_data: `group:${course}:${group}` }]);
+      await telegramRequest(env.TELEGRAM_BOT_TOKEN, "sendMessage", { chat_id: chatId, text: groups.length ? "Выберите группу:" : "Для этого курса группы пока не найдены.", reply_markup: groups.length ? { inline_keyboard: keyboard } : undefined });
+    } else if (query.data?.startsWith("group:")) {
+      const [, courseText, ...parts] = query.data.split(":");
+      const course = Number(courseText);
+      const group = parts.join(":");
+      const groups = await loadGroups(env, course);
+      if (!groups.includes(group)) throw new Error("Selected group is no longer available");
+      await setGroup(env.DB, query.from.id, course, group);
+      await telegramRequest(env.TELEGRAM_BOT_TOKEN, "sendMessage", { chat_id: chatId, text: `Группа ${group} сохранена. Тестовые уведомления включены.` });
+    } else if (query.data === "skip_group") {
+      await skipGroup(env.DB, query.from.id);
+      await telegramRequest(env.TELEGRAM_BOT_TOKEN, "sendMessage", { chat_id: chatId, text: "Группа удалена. Вы сможете настроить её позже через /settings." });
+    } else if (query.data === "toggle_notifications") {
+      const user = await toggleNotifications(env.DB, query.from.id);
+      await telegramRequest(env.TELEGRAM_BOT_TOKEN, "sendMessage", { chat_id: chatId, text: `Уведомления ${user?.notifications_enabled ? "включены" : "отключены"}.` });
+    } else {
+      answer = "Кнопка устарела";
     }
-  } catch (error) { console.error("Error handling callback query:", error); }
+    await telegramRequest(env.TELEGRAM_BOT_TOKEN, "answerCallbackQuery", { callback_query_id: query.id, text: answer, show_alert: false });
+  } catch (error) {
+    console.error("Error handling callback query:", error);
+    await telegramRequest(env.TELEGRAM_BOT_TOKEN, "answerCallbackQuery", { callback_query_id: query.id, text: "Не удалось выполнить действие", show_alert: true }).catch(() => {});
+    throw error;
+  }
 }

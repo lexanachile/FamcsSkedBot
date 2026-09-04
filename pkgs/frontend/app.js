@@ -157,17 +157,36 @@ function setupLessonColorPicker() {
   const scheduleDays = document.getElementById("schedule-days");
   if (!scheduleDays) return;
 
-  scheduleDays.addEventListener("click", (event) => {
-    const timeButton = event.target.closest(".class-time");
-    const openPicker = scheduleDays.querySelector(".lesson-color-picker");
+  const resetScrollTopButtonOffset = () => {
+    const wrapper = document.getElementById("scroll-top-btn-position");
+    if (!wrapper) return;
+    wrapper.style.bottom = `calc(${SCROLL_TOP_BTN_OFFSET_BOTTOM}px + env(safe-area-inset-bottom, 0px))`;
+  };
 
+  const placeScrollTopButtonAbove = (picker) => {
+    const wrapper = document.getElementById("scroll-top-btn-position");
+    if (!wrapper || !picker?.isConnected) return;
+    const pickerTop = picker.getBoundingClientRect().top;
+    const bottom = Math.max(
+      SCROLL_TOP_BTN_OFFSET_BOTTOM,
+      window.innerHeight - pickerTop + 12,
+    );
+    wrapper.style.bottom = `${bottom}px`;
+  };
+
+  const closePicker = () => {
+    scheduleDays.querySelector(".lesson-color-picker")?.remove();
+    scheduleDays.querySelectorAll('.class-time[aria-expanded="true"]').forEach((time) =>
+      time.setAttribute("aria-expanded", "false"),
+    );
+    resetScrollTopButtonOffset();
+  };
+
+  scheduleDays.addEventListener("click", (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    const timeButton = target?.closest(".class-time");
     if (!timeButton) {
-      if (!event.target.closest(".lesson-color-picker")) {
-        openPicker?.remove();
-        scheduleDays.querySelectorAll('.class-time[aria-expanded="true"]').forEach((time) =>
-          time.setAttribute("aria-expanded", "false"),
-        );
-      }
+      if (!target?.closest(".lesson-color-picker")) closePicker();
       return;
     }
 
@@ -175,10 +194,7 @@ function setupLessonColorPicker() {
     const slot = timeButton.closest(".class-slot");
     if (!slot) return;
     const wasOpen = Boolean(slot.querySelector(".lesson-color-picker"));
-    openPicker?.remove();
-    scheduleDays.querySelectorAll('.class-time[aria-expanded="true"]').forEach((time) =>
-      time.setAttribute("aria-expanded", "false"),
-    );
+    closePicker();
     if (wasOpen) return;
 
     const picker = document.createElement("div");
@@ -197,7 +213,19 @@ function setupLessonColorPicker() {
     if (!picker.childElementCount) return;
     slot.appendChild(picker);
     timeButton.setAttribute("aria-expanded", "true");
+    requestAnimationFrame(() => placeScrollTopButtonAbove(picker));
   });
+
+  window.addEventListener("resize", () => {
+    const picker = scheduleDays.querySelector(".lesson-color-picker");
+    if (picker) placeScrollTopButtonAbove(picker);
+  });
+
+  new MutationObserver(() => {
+    if (!scheduleDays.querySelector(".lesson-color-picker")) {
+      resetScrollTopButtonOffset();
+    }
+  }).observe(scheduleDays, { childList: true, subtree: true });
 }
 
 function buildLessonColorRow(title, scope) {
@@ -252,13 +280,15 @@ function buildLessonColorRow(title, scope) {
   customInput.type = "color";
   customInput.setAttribute("aria-label", `Выбрать свой цвет для предмета ${title}`);
   customInput.value = savedColor && savedColor.startsWith("#") ? savedColor : "#6b5cff";
-  customInput.addEventListener("input", (event) => {
+  const applyCustomColor = (event) => {
     event.stopPropagation();
     saveLessonColor(title, scope, customInput.value);
     updateLessonCards(title, scope);
     row.querySelectorAll(".lesson-color-choice").forEach((choice) => choice.classList.remove("is-selected"));
     customLabel.classList.add("is-selected");
-  });
+  };
+  customInput.addEventListener("input", applyCustomColor);
+  customInput.addEventListener("change", applyCustomColor);
   customLabel.appendChild(customInput);
   choices.appendChild(customLabel);
   row.appendChild(choices);

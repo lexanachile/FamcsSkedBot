@@ -1,7 +1,7 @@
 import type { Hono } from "hono";
 import { TIME_SLOTS } from "../constants";
 import { extractLastName, getDayOfWeekName } from "../formatters";
-import { finalizeCourse, publishCourse, readAllCourses, readGroupSchedule, readGroupsIndex, readManifestFresh, uploadGroup } from "../schedule/repository";
+import { finalizeCourse, readAllCourses, readGroupSchedule, readGroupScheduleFresh, readGroupsIndex, readManifestFresh, uploadGroup } from "../schedule/repository";
 import { toScheduleClass } from "../schedule/records";
 import type { AppEnvironment, GroupManifestEntry, ScheduleRecord } from "../types";
 
@@ -126,6 +126,7 @@ export function registerScheduleRoutes(app: Hono<AppEnvironment>) {
         previousVersion?: unknown;
         importId?: unknown;
         groups?: unknown;
+        notifications?: unknown;
       }>();
       const course = validCourse(String(body.course ?? ""));
       if (!course) return c.json({ success: false, error: "Invalid payload" }, 400);
@@ -133,6 +134,14 @@ export function registerScheduleRoutes(app: Hono<AppEnvironment>) {
       if (body.mode === "state") {
         const manifest = await readManifestFresh(c.env.SCHEDULE_KV, course);
         return c.json({ success: true, data: { course, groups: manifest?.groups || {} } });
+      }
+
+      if (body.mode === "group-state") {
+        if (typeof body.group !== "string" || !body.group.trim()) {
+          return c.json({ success: false, error: "Invalid group payload" }, 400);
+        }
+        const records = await readGroupScheduleFresh(c.env.SCHEDULE_KV, course, body.group);
+        return c.json({ success: true, data: { records } });
       }
 
       if (body.mode === "group") {
@@ -159,16 +168,28 @@ export function registerScheduleRoutes(app: Hono<AppEnvironment>) {
           typeof entry.fingerprint === "string" && typeof entry.recordCount === "number");
         if (!validEntries) return c.json({ success: false, error: "Invalid group manifest" }, 400);
         const manifest = await finalizeCourse(c.env.SCHEDULE_KV, course, body.importId, groups);
+        const testUserId = c.env.TEST_TELEGRAM_USER_ID?.trim();
+        if (testUserId && body.notifications && typeof body.notifications === "object" && !Array.isArray(body.notifications)) {
+          try {
+            for (const [groupName, text] of Object.entries(body.notifications as Record<string, unknown>)) {
+              if (typeof text !== "string" || !text.trim()) continue;
+              const users = await c.env.DB.prepare(
+                "SELECT telegram_id, chat_id FROM bot_users WHERE course = ? AND group_name = ? AND notifications_enabled = 1 AND telegram_id = ?",
+              ).bind(course, groupName, testUserId).all<{ telegram_id: string; chat_id: string }>();
+              for (const user of users.results) {
+                await c.env.NOTIFICATIONS_QUEUE.send({ chat_id: user.chat_id, text });
+              }
+            }
+          } catch (error) {
+            // A notification failure must not make the parser retry an already
+            // published manifest. Queue errors are visible in Worker logs.
+            console.error("Failed to enqueue test notifications", error);
+          }
+        }
         return c.json({ success: true, imported: manifest.recordCount, version: manifest.current, groups: manifest.groupCount, message: `Расписание для курса ${course} обновлено` });
       }
 
-      if (!Array.isArray(body.classes)) return c.json({ success: false, error: "Invalid payload" }, 400);
-      const classes = body.classes as ScheduleRecord[];
-      if (classes.some((item) => !item || item.course !== course || typeof item.groupName !== "string" || !item.groupName.trim())) {
-        return c.json({ success: false, error: "Invalid schedule record" }, 400);
-      }
-      const manifest = await publishCourse(c.env.SCHEDULE_KV, course, classes);
-      return c.json({ success: true, imported: classes.length, version: manifest.current, groups: manifest.groupCount, message: `Расписание для курса ${course} обновлено` });
+      return c.json({ success: false, error: "Legacy import mode is no longer supported" }, 410);
     } catch (error) {
       console.error("KV schedule import failed", error);
       return c.json({ success: false, error: "Internal server error" }, 500);

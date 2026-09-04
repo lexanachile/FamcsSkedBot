@@ -1245,6 +1245,7 @@ body {
   font: inherit;
   text-align: inherit;
   cursor: pointer;
+  touch-action: manipulation;
   width: 42px;
   flex: 0 0 42px;
   display: flex;
@@ -1493,6 +1494,7 @@ body {
   border-radius: 50%;
   background: var(--choice-color);
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .lesson-color-choice:first-child {

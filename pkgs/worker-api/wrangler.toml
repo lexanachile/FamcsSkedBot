@@ -14,6 +14,10 @@ database_id = "f3602b67-4b28-49f5-90a9-88745a580fd1"
 binding = "SCHEDULE_KV"
 id = "7d5aa985c9414f42ae35be831ecce220"
 
+[[queues.producers]]
+binding = "NOTIFICATIONS_QUEUE"
+queue = "schedule-notifications"
+
 
 [observability]
 enabled = true

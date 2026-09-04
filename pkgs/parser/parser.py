@@ -76,13 +76,20 @@ def get_drive_service():
 
 
 def list_files_in_folder(service, folder_id: str) -> List[Dict]:
-    query = f"'{folder_id}' in parents and mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'"
-    results = (
-        service.files()
-        .list(q=query, fields="files(id, name, mimeType)", pageSize=50)
-        .execute()
-    )
-    return results.get("files", [])
+    query = f"'{folder_id}' in parents and trashed=false and mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'"
+    files = []
+    page_token = None
+    while True:
+        results = service.files().list(
+            q=query,
+            fields="nextPageToken, files(id, name, mimeType, modifiedTime)",
+            pageSize=100,
+            pageToken=page_token,
+        ).execute()
+        files.extend(results.get("files", []))
+        page_token = results.get("nextPageToken")
+        if not page_token:
+            return files
 
 
 def extract_course_number(filename: str) -> Optional[int]:
@@ -113,10 +120,18 @@ def read_file_as_bytes(service, file_id: str) -> bytes:
 
 
 def get_merged_range_for_cell(ws: Worksheet, row: int, col: int):
-    for merged_range in ws.merged_cells.ranges:
+    # Index merges by row once. The old implementation scanned every merge for
+    # every cell and dominated parsing time on large sheets.
+    index = getattr(ws, "_schedule_merge_index", None)
+    if index is None:
+        index = {}
+        for merged_range in ws.merged_cells.ranges:
+            for indexed_row in range(merged_range.min_row, merged_range.max_row + 1):
+                index.setdefault(indexed_row, []).append(merged_range)
+        setattr(ws, "_schedule_merge_index", index)
+    for merged_range in index.get(row, []):
         if (
-            merged_range.min_row <= row <= merged_range.max_row
-            and merged_range.min_col <= col <= merged_range.max_col
+            merged_range.min_col <= col <= merged_range.max_col
         ):
             return merged_range
     return None
@@ -879,6 +894,45 @@ def _group_fingerprint(records: List[Dict]) -> str:
     return hashlib.sha256(canonical_json.encode("utf-8")).hexdigest()
 
 
+def _format_group_diff(group_name: str, previous: List[Dict], current: List[Dict]) -> str:
+    """Build a compact Telegram-ready diff. Runs in GitHub Actions, not Workers."""
+    def key(item):
+        return (item.get("dayOfWeek"), item.get("startTime"), item.get("endTime"))
+
+    def clean(value):
+        return re.sub(r"\s+", " ", str(value)).strip() if value not in (None, "") else "—"
+
+    previous_by_key = {key(item): item for item in previous}
+    current_by_key = {key(item): item for item in current}
+    days = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"]
+    lines = [f"Изменения расписания группы {group_name}:"]
+    fields = (
+        ("classTitleA", "предмет"), ("professorNameA", "преподаватель"),
+        ("classroomA", "аудитория"), ("classTitleB", "предмет подгруппы Б"),
+        ("professorNameB", "преподаватель подгруппы Б"),
+        ("classroomB", "аудитория подгруппы Б"),
+    )
+    for slot in sorted(set(previous_by_key) | set(current_by_key)):
+        before, after = previous_by_key.get(slot), current_by_key.get(slot)
+        day = days[slot[0] - 1] if isinstance(slot[0], int) and 1 <= slot[0] <= 6 else f"День {slot[0]}"
+        heading = f"{day}, {slot[1]}–{slot[2]}"
+        if before is None:
+            lines.append(f"➕ {heading}: {clean(after.get('classTitleA'))}")
+            continue
+        if after is None:
+            lines.append(f"➖ {heading}: {clean(before.get('classTitleA'))}")
+            continue
+        changes = []
+        for field, label in fields:
+            old, new = clean(before.get(field)), clean(after.get(field))
+            if old != new:
+                changes.append(f"  {label}: {old} → {new}")
+        if changes:
+            lines.append(f"✏️ {heading}")
+            lines.extend(changes)
+    return "\n".join(lines) if len(lines) > 1 else ""
+
+
 def _post_import(url: str, headers: Dict[str, str], payload: Dict) -> Dict:
     last_error = None
     for attempt in range(1, 4):
@@ -915,6 +969,7 @@ def send_to_backend(parsed: List[Dict], course: int, allow_removals: bool = True
     old_groups = state_result.get("data", {}).get("groups", {})
     next_groups = {}
     changed_groups = []
+    notifications = {}
 
     # Одна группа — одна небольшая порция и одна неизменяемая запись KV.
     # Сравнение выполняется здесь, чтобы не расходовать CPU Cloudflare Worker.
@@ -924,6 +979,13 @@ def send_to_backend(parsed: List[Dict], course: int, allow_removals: bool = True
         if old_entry and old_entry.get("fingerprint") == fingerprint:
             next_groups[group_name] = old_entry
             continue
+
+        previous_records = []
+        if old_entry:
+            previous_result = _post_import(url, headers, {
+                "mode": "group-state", "course": course, "group": group_name
+            })
+            previous_records = previous_result.get("data", {}).get("records", [])
 
         upload_result = _post_import(
             url,
@@ -939,9 +1001,20 @@ def send_to_backend(parsed: List[Dict], course: int, allow_removals: bool = True
         )
         next_groups[group_name] = upload_result["data"]["entry"]
         changed_groups.append(group_name)
+        if previous_records:
+            message = _format_group_diff(group_name, previous_records, records)
+            if message:
+                notifications[group_name] = message
         print(f"  ✅ Обновлена группа {group_name}")
 
     removed_groups = sorted(set(old_groups) - set(by_group))
+    removal_limit = max(2, len(old_groups) // 4)
+    if allow_removals and len(removed_groups) > removal_limit:
+        print(
+            f"  ⚠️ Защита от массового удаления: отсутствуют {len(removed_groups)} "
+            f"групп из {len(old_groups)}; старые группы сохранены"
+        )
+        allow_removals = False
     if not allow_removals:
         for group_name in removed_groups:
             next_groups[group_name] = old_groups[group_name]
@@ -958,6 +1031,7 @@ def send_to_backend(parsed: List[Dict], course: int, allow_removals: bool = True
             "course": course,
             "importId": str(uuid.uuid4()),
             "groups": next_groups,
+            "notifications": notifications,
         },
     )
     if removed_groups:
@@ -999,6 +1073,8 @@ def main():
 
     all_parsed = []
     failed_files = []
+    seen_courses = set()
+    duplicate_courses = set()
     for file_meta in files:
         file_id, file_name = file_meta["id"], file_meta["name"]
         print(f"\nФайл: {file_name}")
@@ -1007,15 +1083,26 @@ def main():
         if course_num is None:
             continue
 
+        if course_num in seen_courses:
+            print(f"  ❌ Найдено несколько таблиц для курса {course_num}; импорт курса пропущен")
+            failed_files.append(file_name)
+            duplicate_courses.add(course_num)
+            continue
+        seen_courses.add(course_num)
+
         try:
             file_bytes = read_file_as_bytes(service, file_id)
             parsed = parse_excel_file(file_bytes, course_num)
-            if parsed:
-                all_parsed.extend(parsed)
+            if not parsed:
+                raise ValueError("парсер не нашёл ни одной пары")
+            all_parsed.extend(parsed)
         except Exception as e:
             print(f"  ❌ Ошибка при обработке файла '{file_name}': {e}")
             failed_files.append(file_name)
             continue
+
+    if duplicate_courses:
+        all_parsed = [item for item in all_parsed if item["course"] not in duplicate_courses]
 
     if failed_files:
         print(
