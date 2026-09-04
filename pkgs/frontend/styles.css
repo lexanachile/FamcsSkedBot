@@ -40,14 +40,18 @@
        headerColor/bgColor) — там оно красит системную шапку и фон самого
        Telegram. Меняете --bg здесь → ОБЯЗАТЕЛЬНО поправьте то же значение
        в app.js, иначе шапка Telegram и фон сайта разъедутся по цвету. */
-  --bg: #0f0f11;
+  --bg: #0b0b0c;
 
   /* --surface — ГЛАВНЫЙ "серый" цвет интерфейса (Apple secondary system
        background в тёмной теме). Используется для: плашки с названием дня
        недели, фона каждой карточки-пары (.class-slot), заливки ячеек
        подгрупп, карточки приветствия и "занятий не найдено". Один hex-код
        здесь — и все серые "плашки" на сайте меняют оттенок разом. */
-  --surface: #1c1c1e;
+  --surface: #151515;
+
+  /* --lesson-inner-surface — заливка внутренней плашки занятия справа
+       от времени. Она находится внутри общей плашки таймслота. */
+  --lesson-inner-surface: #1c1c1d;
 
   /* --ink — ИСТИННЫЙ белый без оттенков. Используется для: названия дня
        недели, названия предмета, времени пары и номера аудитории. */
@@ -61,7 +65,7 @@
   /* Плашка текущего дня: здесь можно менять её заливку и подпись справа.
        Для светлой заливки также поменяйте --today-day-ink на тёмный цвет. */
   --today-day-surface: #303034;
-  --today-day-ink: #fcfaea;
+  --today-day-ink: #fcf3ea;
   --today-label-text: "сегодня";
 
   /* Более светлый второстепенный текст: преподаватель и время конца пары. */
@@ -101,32 +105,16 @@
   --info-panel-ink: #bab9b0;
 
   /* ===================================================================
-       2. ОБВОДКА КАРТОЧЕК ПАР
-       Каждая карточка занятия рисуется с тонкой обводкой внутри общей
-       серой карточки пары (.class-slot) — это касается КАК ячеек
-       подгрупп А/Б (когда пара разделена), ТАК И карточки общей пары
-       (когда isCommon = true, то есть пара одна на всю группу).
-       Ниже — три ручки: толщина обводки для обычных пар, толщина обводки
-       для лекций (можно включать/выключать независимо), и цвет обводки.
+       2. РАЗМЕР ВНУТРЕННИХ ПЛАШЕК
+       Видимой обводки больше нет. Эти значения компенсируют её прежнюю
+       толщину во внутренних отступах, поэтому размеры карточек визуально
+       остаются такими же. Цвет регулируется выше через
+       --lesson-inner-surface.
        =================================================================== */
-
-  /* --subgroup-outline-width-regular — толщина обводки у ОБЫЧНЫХ
-       (не лекционных) пар — и у ячеек подгрупп, и у карточек общих пар.
-       Поставьте 0px, чтобы полностью выключить обводку для обычных пар
-       (аналог "false"); любое значение больше нуля — обводка включена
-       (аналог "true"), число = толщина. */
-  --subgroup-outline-width-regular: 2px;
-
-  /* --subgroup-outline-width-lecture — то же самое, но для пар-ЛЕКЦИЙ
-       (и у подгрупп, и у общих пар с флагом isLecture). Регулируется
-       отдельно от обычных пар: например, можно оставить обводку только
-       у лекций (0px выше + значение здесь) или наоборот. */
-  --subgroup-outline-width-lecture: 2px;
-
-  /* --subgroup-outline-color — цвет обводки. Не привязан к --bg жёстко
-       (хотя по умолчанию тоже чёрный) — можно поставить любой другой
-       цвет независимо от фона страницы. */
-  --subgroup-outline-color: #19191b;
+  --lesson-inner-size-compensation-regular: 2px;
+  --lesson-inner-size-compensation-lecture: 2px;
+  --lesson-inner-padding-top: 4px;
+  --lesson-inner-padding-bottom: 7px;
 
   /* ===================================================================
        3. ШРИФТЫ
@@ -1159,9 +1147,9 @@ body {
   justify-content: space-between;
   gap: var(--spacing-sm);
   background-color: var(--surface);
-  border-radius: var(--radius-sm);
+  border-radius: calc(var(--radius-sm) + 4px);
   padding: 10px var(--spacing-md);
-  margin-bottom: var(--spacing-sm);
+  margin-bottom: 0;
 }
 
 .day-block.is-today .day-header {
@@ -1182,7 +1170,7 @@ body {
   color: inherit;
   font-family: var(--font-sans);
   font-size: var(--font-size-xs);
-  font-weight: 400;
+  font-weight: 600;
   opacity: 0.68;
 }
 
@@ -1200,7 +1188,6 @@ body {
        на любой ширине экрана. */
   font-size: calc(var(--font-size-base) * 1.25);
   font-weight: 800;
-  text-transform: lowercase;
   color: var(--ink);
 }
 
@@ -1210,6 +1197,14 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--slot-gap);
+  padding-top: 0px;
+  overflow: hidden;
+  background-color: var(--surface);
+  border-radius: calc(var(--radius-sm) + 2px);
+}
+
+.day-block.is-today .classes-container {
+  padding-top: 6px;
 }
 
 .day-empty {
@@ -1224,30 +1219,49 @@ body {
    переменными: --slot-padding-y (сверху/снизу, сейчас уменьшен вдвое
    относительно прежнего) и --slot-padding-x (слева/справа) — см. :root. */
 .class-slot {
+  position: relative;
   display: flex;
   flex-direction: row;
-  align-items: flex-start;
+  align-items: stretch;
   gap: var(--spacing-md);
   background-color: var(--surface);
   border-radius: var(--radius-sm);
-  padding: var(--slot-padding-y) var(--slot-padding-x);
+  padding:
+    0
+    0
+    0
+    var(--slot-padding-x);
 }
 
 /* Колонка времени слева: сверху начало пары, снизу — конец, без тире
    между ними. Истинный белый, без оттенков. */
 .class-time {
-  flex-shrink: 0;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  margin: 0;
+  padding: 2px 0 0;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  cursor: pointer;
+  width: 42px;
+  flex: 0 0 42px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: var(--time-range-gap);
-  padding-top: 2px; /* чуть выравнивает время по первой строке названия предмета */
+}
+.class-time:focus-visible {
+  outline: 2px solid var(--ink-soft);
+  outline-offset: 4px;
+  border-radius: 4px;
 }
 .class-time .time-start,
 .class-time .time-end {
   font-family: var(--font-sans);
   font-variant-numeric: tabular-nums;
-  font-weight: 600;
+  font-weight: 500;
   font-size: var(--font-size-time);
   letter-spacing: 0.02em;
   color: var(--ink);
@@ -1282,18 +1296,15 @@ body {
 .class-split {
   display: flex;
   flex-direction: row;
-  gap: var(--spacing-sm);
+  gap: var(--slot-padding-y);
   width: 100%;
 }
 
 /* Ячейка одной подгруппы. У самой карточки пары (.class-slot) и у ячейки
    подгруппы ОДИНАКОВЫЙ серый фон (--surface) — границу между ними рисует
-   не цвет заливки, а обводка (--subgroup-outline-color). Толщина обводки
-   для обычных пар и для лекций регулируется НЕЗАВИСИМО — см. переменные
-   --subgroup-outline-width-regular / --subgroup-outline-width-lecture
-   в секции 2 блока :root; правило ниже само подставляет нужную толщину
-   в зависимости от класса .is-lecture на родительской карточке (его
-   добавляет app.js для лекционных пар).
+   Вложенная плашка отличается от внешней карточки цветом заливки
+   --lesson-inner-surface, а её прежний размер сохраняется компенсацией
+   из секции 2 блока :root.
    justify-content: flex-start (а не center) — чтобы название предмета
    и преподаватель у обеих подгрупп начинались строго СВЕРХУ и не
    "прыгали" по вертикали, если у одной подгруппы текста больше, чем
@@ -1301,20 +1312,32 @@ body {
 
    ВАЖНО: те же самые правила обводки (фон, цвет, толщина) применяются
    и к .class-common — карточке ОБЩЕЙ пары (когда isCommon = true и
-   деления на подгруппы А/Б нет). Раньше у .class-common обводки не
-   было вообще; теперь она рисуется тем же набором переменных, поэтому
-   если поставить --subgroup-outline-width-regular/-lecture в 0px,
-   обводка выключится сразу и у подгрупп, и у общих пар. */
+   деления на подгруппы А/Б нет). */
 .subgroup,
 .class-common {
-  background-color: var(--surface);
-  border-style: solid;
-  border-color: var(--subgroup-outline-color);
-  border-width: var(
-    --subgroup-outline-width-regular
-  ); /* обычная пара — толщина по умолчанию */
+  position: relative;
+  overflow: hidden;
+  background-color: var(--lesson-inner-surface);
+  border: 0;
   border-radius: var(--radius-sm);
-  padding: var(--spacing-sm) var(--spacing-md);
+  /* Добавляем бывшую толщину рамки к padding, чтобы после её удаления
+       внешний размер вложенной плашки и положение содержимого не изменились. */
+  padding:
+    var(--lesson-inner-padding-top)
+    calc(var(--spacing-md) + var(--lesson-inner-size-compensation-regular))
+    var(--lesson-inner-padding-bottom);
+}
+
+.subgroup.has-lesson-edge::after,
+.class-common.has-lesson-edge::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 8px;
+  background: var(--lesson-edge-color);
+  pointer-events: none;
 }
 .subgroup {
   flex: 1;
@@ -1325,17 +1348,30 @@ body {
   text-align: left;
   min-width: 0;
 }
-/* Если вся пара — лекция (.class-slot.is-lecture), у ячеек подгрупп И у
-   карточки общей пары применяется отдельная толщина обводки
-   --subgroup-outline-width-lecture. */
+
+.subgroup.is-title-only,
+.class-common.is-title-only {
+  justify-content: center;
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
+.subgroup.is-title-only .class-detail,
+.class-common.is-title-only .class-detail {
+  margin-bottom: 0;
+}
+/* Для лекционной карточки размер можно компенсировать отдельно. */
 .class-slot.is-lecture .subgroup,
 .class-slot.is-lecture .class-common {
-  border-width: var(--subgroup-outline-width-lecture);
+  padding:
+    var(--lesson-inner-padding-top)
+    calc(var(--spacing-md) + var(--lesson-inner-size-compensation-lecture))
+    var(--lesson-inner-padding-bottom);
 }
 
 /* Блок с названием предмета */
 .class-detail {
-  margin-bottom: 3px;
+  margin-bottom: 1px;
 }
 
 /* Название предмета — истинный белый, размер — отдельная переменная
@@ -1345,7 +1381,7 @@ body {
    ячейки (в том числе одним "непрерывным" словом без пробелов). */
 .class-title {
   font-family: var(--font-sans);
-  font-weight: 700;
+  font-weight: 500;
   /* Раньше --font-size-subject (18px), уменьшался до 16px только на
        узких экранах через баг-медиа-запрос (см. историю ниже). Теперь
        16px — обычный постоянный размер. */
@@ -1356,76 +1392,176 @@ body {
   hyphens: auto;
 }
 
-/* Имя преподавателя — отдельная строка под названием предмета,
-   светло-серая (второстепенный текст). Тот же перенос длинных слов,
-   что и у .class-title — длинные фамилии не вылезают за ширину ячейки. */
+/* Строка метаданных переносится целиком: пока преподаватель и аудитория
+   помещаются, они стоят рядом; если места не хватает, аудитория сама
+   переходит на следующую строку и остаётся прижатой вправо. */
+.class-primary-meta,
+.class-secondary-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px 8px;
+  width: 100%;
+  margin-top: 5px;
+}
+
+.class-primary-meta {
+  margin-top: 4px;
+}
+
+/* В разделённой паре преподаватель остаётся сразу под предметом, а только
+   нижняя строка с комментарием/аудиторией выравнивается по общему низу
+   двух уже одинаковых по высоте карточек. */
+.class-split .class-secondary-meta:last-child {
+  margin-top: auto;
+  padding-top: 5px;
+}
+
+.class-room-row {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  margin-top: auto;
+  padding-top: 5px;
+}
+
+.class-teacher-line {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  max-width: 100%;
+  min-width: 0;
+}
+
 .class-professor {
-  align-self: flex-start;
-  /* Раньше --font-size-professor (14px), уменьшался до 11px только на
-       узких экранах через баг-медиа-запрос (см. историю ниже). Теперь
-       11px — обычный постоянный размер. */
+  min-width: 0;
   font-size: calc(11px * var(--font-scale));
+  font-weight: 400;
   color: var(--ink-professor);
-  margin-top: 3px;
   overflow-wrap: break-word;
   word-break: break-word;
   hyphens: auto;
 }
 
-/* ------------------------------------------------------------
-   ПОСЛЕДНЯЯ СТРОКА КАРТОЧКИ: слева бейдж "Лекция" (если пара —
-   лекция), справа номер аудитории. margin-left:auto у .class-room —
-   это и есть механизм "прижать аудиторию к правому краю": работает
-   одинаково что с бейджем слева, что без него. width:100% растягивает
-   строку на всю ширину ЭТОЙ ЖЕ ячейки (.class-common ИЛИ .subgroup),
-   поэтому при разделении на подгруппы аудитория уезжает к правому
-   краю именно СВОЕЙ подгруппы, а не всей пары целиком.
-   ------------------------------------------------------------ */
-.class-footer {
+.lesson-color-picker {
+  position: fixed;
+  z-index: 30;
+  right: 12px;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  left: 12px;
+  width: auto;
+  max-width: 520px;
+  margin-inline: auto;
   display: flex;
-  align-items: flex-end;
-  width: 100%;
-  margin-top: 6px;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.42);
 }
 
-/* Бейдж "Лекция" — светло-серый, размер отдельной переменной
-   --font-size-lecture-badge (секция 3 блока :root), специально
-   уменьшен относительно прежнего значения. */
-.class-type {
-  display: inline-block;
-  font-family: var(--font-sans);
+.lesson-color-row {
+  padding: 9px 10px;
+  border-radius: calc(var(--radius-sm) - 2px);
+  background: var(--lesson-inner-surface);
+}
+
+.lesson-color-title {
+  margin-bottom: 9px;
+  color: var(--ink);
+  font-size: calc(14px * var(--font-scale));
   font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.lesson-color-choices {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.lesson-color-choice {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  background: var(--choice-color);
+  cursor: pointer;
+}
+
+.lesson-color-choice:first-child {
+  border-color: var(--line);
+}
+
+.lesson-color-choice.is-selected::after {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+}
+
+.lesson-color-custom {
+  overflow: hidden;
+  background: conic-gradient(#ff3b30, #ffcc00, #34c759, #0a84ff, #bf5af2, #ff3b30);
+}
+
+.lesson-color-custom input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* Бейдж типа пары стоит непосредственно перед преподавателем. */
+.class-type {
+  flex: 0 0 auto;
+  font-family: var(--font-sans);
+  font-weight: 500;
   font-size: var(--font-size-lecture-badge);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--ink-lecture);
 }
 
-/* Номер аудитории — ТОТ ЖЕ цвет, что у названия предмета (--ink,
-   истинный белый), и тот же шрифт/начертание (.class-title). Перенос
-   длинных значений — на случай длинного кода аудитории. */
+/* Номер аудитории — компактная пилюля, как отдельная метка. */
 .class-room {
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
   margin-left: auto;
-  text-align: right;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background-color: var(--line);
   font-family: var(--font-sans);
-  font-weight: 700;
-  /* Раньше --font-size-sm (14px, тот же, что у времени пары), уменьшался
-       до 11px только на узких экранах через баг-медиа-запрос (см. историю
-       ниже). Теперь 11px — обычный постоянный размер, всегда меньше
-       времени пары, независимо от ширины экрана. */
+  font-weight: 500;
   font-size: calc(11px * var(--font-scale));
   color: var(--ink);
-  overflow-wrap: break-word;
-  word-break: break-word;
+  line-height: 1.25;
+  white-space: nowrap;
 }
 
-/* Комментарий к паре (если есть) */
+/* Дополнительная информация — отдельная оранжевая пилюля. Если рядом
+   есть аудитория, она остаётся справа в этой же строке. */
 .class-comments {
+  display: inline-block;
+  min-width: 0;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background-color: rgba(228, 140, 63, 0.12);
   font-size: var(--font-size-xs);
-  color: var(--ink-faint);
-  margin-top: 4px;
-  font-style: italic;
+  color: var(--ink-lecture);
+  font-style: normal;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 /* ============================================================

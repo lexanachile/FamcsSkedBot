@@ -21,6 +21,13 @@ const SCHEDULE_ENDPOINT = "/api/schedule";
 const GROUPS_ENDPOINT = "/api/groups";
 const CACHE_SCHEMA_VERSION = 1;
 const INACTIVITY_REFRESH_MS = 15 * 60 * 1000;
+const LESSON_COLORS_STORAGE_KEY = "lessonColors:v1";
+const LESSON_COLOR_OPTIONS = [
+  { id: "default", label: "Обычный цвет", color: "var(--lesson-inner-surface)" },
+  { id: "red", label: "Красный", color: "#FF5F56" },
+  { id: "yellow", label: "Жёлтый", color: "#fcdb47" },
+  { id: "green", label: "Зелёный", color: "#4afa93" },
+];
 
 // --- НАСТРОЙКА: текст информационной плашки, которая появляется ПОСЛЕ
 // Субботы (под всеми днями недели), без названия дня — просто текст.
@@ -92,7 +99,177 @@ function initApp() {
   setupStickyDayNav();
   setupScrollTopButton();
   setupInactivityRefresh();
+  setupLessonColorPicker();
   console.log("Приложение инициализировано");
+}
+
+function normalizeLessonTitle(title) {
+  return String(title || "").trim().replace(/\s+/g, " ").toLocaleLowerCase("ru-RU");
+}
+
+function lessonColorKey(title, scope) {
+  return `${normalizeLessonTitle(title)}::${scope}`;
+}
+
+function getLessonColors() {
+  const stored = readJsonStorage(LESSON_COLORS_STORAGE_KEY);
+  return stored && typeof stored === "object" && !Array.isArray(stored) ? stored : {};
+}
+
+function getLessonColor(title, scope) {
+  const colors = getLessonColors();
+  return colors[lessonColorKey(title, scope)] ||
+    (scope === "common" ? colors[normalizeLessonTitle(title)] : null) ||
+    null;
+}
+
+function saveLessonColor(title, scope, color) {
+  const key = lessonColorKey(title, scope);
+  if (!key) return;
+  const colors = getLessonColors();
+  if (color) colors[key] = color;
+  else delete colors[key];
+  if (scope === "common") delete colors[normalizeLessonTitle(title)];
+  writeJsonStorage(LESSON_COLORS_STORAGE_KEY, colors);
+}
+
+function prepareLessonColor(card, title, scope) {
+  card.dataset.lessonTitle = title || "";
+  card.dataset.lessonColorScope = scope;
+  card.dataset.lessonColorKey = lessonColorKey(title, scope);
+  card.classList.toggle(
+    "is-title-only",
+    card.children.length === 1 && card.firstElementChild?.classList.contains("class-detail"),
+  );
+}
+
+function applyLessonEdge(card) {
+  const color = getLessonColor(
+    card.dataset.lessonTitle,
+    card.dataset.lessonColorScope,
+  );
+  card.style.removeProperty("--lesson-edge-color");
+  card.classList.toggle("has-lesson-edge", Boolean(color));
+  if (color) card.style.setProperty("--lesson-edge-color", color);
+}
+
+function setupLessonColorPicker() {
+  const scheduleDays = document.getElementById("schedule-days");
+  if (!scheduleDays) return;
+
+  scheduleDays.addEventListener("click", (event) => {
+    const timeButton = event.target.closest(".class-time");
+    const openPicker = scheduleDays.querySelector(".lesson-color-picker");
+
+    if (!timeButton) {
+      if (!event.target.closest(".lesson-color-picker")) {
+        openPicker?.remove();
+        scheduleDays.querySelectorAll('.class-time[aria-expanded="true"]').forEach((time) =>
+          time.setAttribute("aria-expanded", "false"),
+        );
+      }
+      return;
+    }
+
+    event.stopPropagation();
+    const slot = timeButton.closest(".class-slot");
+    if (!slot) return;
+    const wasOpen = Boolean(slot.querySelector(".lesson-color-picker"));
+    openPicker?.remove();
+    scheduleDays.querySelectorAll('.class-time[aria-expanded="true"]').forEach((time) =>
+      time.setAttribute("aria-expanded", "false"),
+    );
+    if (wasOpen) return;
+
+    const picker = document.createElement("div");
+    picker.className = "lesson-color-picker";
+    picker.setAttribute("role", "group");
+    picker.setAttribute("aria-label", "Цвет предмета");
+    const lessons = Array.from(slot.querySelectorAll(".class-common, .subgroup"))
+      .map((card) => ({
+        title: card.dataset.lessonTitle,
+        scope: card.dataset.lessonColorScope,
+      }))
+      .filter(({ title }) => title);
+    lessons.forEach(({ title, scope }) =>
+      picker.appendChild(buildLessonColorRow(title, scope)),
+    );
+    if (!picker.childElementCount) return;
+    slot.appendChild(picker);
+    timeButton.setAttribute("aria-expanded", "true");
+  });
+}
+
+function buildLessonColorRow(title, scope) {
+  const row = document.createElement("div");
+  row.className = "lesson-color-row";
+
+  const heading = document.createElement("div");
+  heading.className = "lesson-color-title";
+  const subgroupLabel = scope === "subgroup-a"
+    ? " · подгруппа А"
+    : scope === "subgroup-b"
+      ? " · подгруппа Б"
+      : "";
+  heading.textContent = title + subgroupLabel;
+  row.appendChild(heading);
+
+  const choices = document.createElement("div");
+  choices.className = "lesson-color-choices";
+  const savedColor = getLessonColor(title, scope);
+
+  LESSON_COLOR_OPTIONS.forEach((option) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "lesson-color-choice";
+    button.style.setProperty("--choice-color", option.color);
+    button.setAttribute("aria-label", `${option.label}: ${title}`);
+    button.classList.toggle(
+      "is-selected",
+      option.id === "default" ? !savedColor : savedColor === option.color,
+    );
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const color = option.id === "default" ? null : option.color;
+      saveLessonColor(title, scope, color);
+      updateLessonCards(title, scope);
+      row.querySelectorAll(".lesson-color-choice").forEach((choice) =>
+        choice.classList.toggle("is-selected", choice === button),
+      );
+    });
+    choices.appendChild(button);
+  });
+
+  const customLabel = document.createElement("label");
+  customLabel.className = "lesson-color-choice lesson-color-custom";
+  customLabel.classList.toggle(
+    "is-selected",
+    Boolean(savedColor) && !LESSON_COLOR_OPTIONS.some((option) => option.color === savedColor),
+  );
+  customLabel.setAttribute("aria-label", `Свой цвет: ${title}`);
+  customLabel.title = "Выбрать свой цвет";
+  const customInput = document.createElement("input");
+  customInput.type = "color";
+  customInput.setAttribute("aria-label", `Выбрать свой цвет для предмета ${title}`);
+  customInput.value = savedColor && savedColor.startsWith("#") ? savedColor : "#6b5cff";
+  customInput.addEventListener("input", (event) => {
+    event.stopPropagation();
+    saveLessonColor(title, scope, customInput.value);
+    updateLessonCards(title, scope);
+    row.querySelectorAll(".lesson-color-choice").forEach((choice) => choice.classList.remove("is-selected"));
+    customLabel.classList.add("is-selected");
+  });
+  customLabel.appendChild(customInput);
+  choices.appendChild(customLabel);
+  row.appendChild(choices);
+  return row;
+}
+
+function updateLessonCards(title, scope) {
+  const key = lessonColorKey(title, scope);
+  document.querySelectorAll(".class-common, .subgroup").forEach((card) => {
+    if (card.dataset.lessonColorKey === key) applyLessonEdge(card);
+  });
 }
 
 const courseCacheKey = (course) => `scheduleCache:v${CACHE_SCHEMA_VERSION}:course:${course}`;
@@ -923,7 +1100,8 @@ function displaySchedule(scheduleData) {
       : dayClasses.length
         ? `<span class="day-meta">${pluralizeLessons(dayClasses.length)}</span>`
         : "";
-    dayHeader.innerHTML = `<span class="day-name">${escapeHtml(day)}</span>${dayMeta}`;
+    const displayedDay = day ? day.charAt(0).toLocaleUpperCase("ru-RU") + day.slice(1) : "";
+    dayHeader.innerHTML = `<span class="day-name">${escapeHtml(displayedDay)}</span>${dayMeta}`;
     dayBlock.appendChild(dayHeader);
 
     const classesContainer = document.createElement("div");
@@ -940,8 +1118,11 @@ function displaySchedule(scheduleData) {
       const slotDiv = document.createElement("div");
       slotDiv.className = "class-slot" + (cls.isLecture ? " is-lecture" : "");
 
-      const timeDiv = document.createElement("div");
+      const timeDiv = document.createElement("button");
+      timeDiv.type = "button";
       timeDiv.className = "class-time";
+      timeDiv.setAttribute("aria-label", `Выбрать цвет для пары ${formatTime(cls.startTime)}–${formatTime(cls.endTime)}`);
+      timeDiv.setAttribute("aria-expanded", "false");
       const timeStart = document.createElement("span");
       timeStart.className = "time-start";
 
@@ -962,14 +1143,20 @@ function displaySchedule(scheduleData) {
       if (cls.isCommon) {
         infoDiv.classList.add("class-common");
         infoDiv.innerHTML = buildClassInfoHTML(cls.subgroupA, cls.isLecture);
+        prepareLessonColor(infoDiv, cls.subgroupA?.classTitle, "common");
+        applyLessonEdge(infoDiv);
       } else {
         infoDiv.classList.add("class-split");
         const left = document.createElement("div");
         left.className = "subgroup subgroup-a";
-        left.innerHTML = buildClassInfoHTML(cls.subgroupA, cls.isLecture);
+        left.innerHTML = buildClassInfoHTML(cls.subgroupA, cls.isLecture, true);
+        prepareLessonColor(left, cls.subgroupA?.classTitle, "subgroup-a");
+        applyLessonEdge(left);
         const right = document.createElement("div");
         right.className = "subgroup subgroup-b";
-        right.innerHTML = buildClassInfoHTML(cls.subgroupB, cls.isLecture);
+        right.innerHTML = buildClassInfoHTML(cls.subgroupB, cls.isLecture, true);
+        prepareLessonColor(right, cls.subgroupB?.classTitle, "subgroup-b");
+        applyLessonEdge(right);
         infoDiv.appendChild(left);
         infoDiv.appendChild(right);
       }
@@ -985,39 +1172,51 @@ function displaySchedule(scheduleData) {
   requestAnimationFrame(handleGlobalScroll);
 }
 
-function buildClassInfoHTML(subgroup, isLecture = false) {
+function buildClassInfoHTML(subgroup, isLecture = false, isSplit = false) {
   if (
     !subgroup ||
-    (!subgroup.classTitle && !subgroup.professorName && !subgroup.classroom)
+    (!subgroup.classTitle &&
+      !subgroup.professorName &&
+      !subgroup.classroom &&
+      !subgroup.comments)
   ) {
     return '<div style="color: var(--ink-faint); font-size: 16px; margin: auto;">—</div>';
   }
 
+  const lectureHTML = isLecture ? '<span class="class-type">Лекция</span>' : "";
   const professorHTML = subgroup.professorName
-    ? `<div class="class-professor">${escapeHtml(subgroup.professorName)}</div>`
+    ? `<span class="class-professor">${escapeHtml(subgroup.professorName)}</span>`
+    : "";
+  const roomHTML = subgroup.classroom
+    ? `<span class="class-room">${escapeHtml(subgroup.classroom)}</span>`
+    : "";
+  const teacherHTML = lectureHTML || professorHTML
+    ? `<span class="class-teacher-line">${lectureHTML}${professorHTML}</span>`
+    : "";
+  const roomSharesTeacherRow = roomHTML && !subgroup.comments && !isSplit;
+  const primaryMetaHTML = teacherHTML || roomSharesTeacherRow
+    ? `<div class="class-primary-meta">
+        ${teacherHTML}
+        ${roomSharesTeacherRow ? roomHTML : ""}
+      </div>`
+    : "";
+  const secondaryMetaHTML = subgroup.comments
+    ? `<div class="class-secondary-meta">
+        <span class="class-comments">${escapeHtml(subgroup.comments)}</span>
+        ${roomHTML}
+      </div>`
+    : "";
+  const splitRoomHTML = isSplit && roomHTML && !subgroup.comments
+    ? `<div class="class-room-row">${roomHTML}</div>`
     : "";
 
-  const footerHTML =
-    isLecture || subgroup.classroom
-      ? `<div class="class-footer">
-            ${isLecture ? '<span class="class-type">Лекция</span>' : ""}
-            ${subgroup.classroom ? `<span class="class-room">${escapeHtml(subgroup.classroom)}</span>` : ""}
-        </div>`
-      : "";
-
-  let html = `
+  return `
         <div class="class-detail">
             <span class="class-title">${escapeHtml(subgroup.classTitle || "")}</span>
         </div>
-        ${professorHTML}
-        ${footerHTML}`;
-
-  if (subgroup.comments) {
-    html += `
-        <div class="class-comments">${escapeHtml(subgroup.comments)}</div>`;
-  }
-
-  return html;
+        ${primaryMetaHTML}
+        ${secondaryMetaHTML}
+        ${splitRoomHTML}`;
 }
 
 function showLoading(show) {
