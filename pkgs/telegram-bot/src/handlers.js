@@ -39,8 +39,15 @@ async function showSettings(chatId, user, env) {
 }
 
 async function loadGroups(env, course) {
-  const response = await fetch(`${env.API_BASE_URL.replace(/\/$/, "")}/api/groups?course=${course}`);
-  if (!response.ok) throw new Error(`Groups API error ${response.status}`);
+  const configuredUrl = env.API_BASE_URL?.trim();
+  if (!configuredUrl) throw new Error("API_BASE_URL is not configured");
+  const apiBaseUrl = configuredUrl.replace(/\/+$/, "").replace(/\/api$/, "");
+  const groupsUrl = `${apiBaseUrl}/api/groups?course=${course}`;
+  const response = await fetch(groupsUrl);
+  if (!response.ok) {
+    const details = (await response.text()).slice(0, 300);
+    throw new Error(`Groups API error ${response.status}: ${groupsUrl}; ${details}`);
+  }
   const payload = await response.json();
   return payload?.data?.groups?.map((item) => item.groupName) || [];
 }
@@ -48,12 +55,16 @@ async function loadGroups(env, course) {
 export async function handleCallbackQuery(query, env) {
   const chatId = query.message?.chat?.id || query.from?.id;
   if (!chatId || !query.id) return console.error("No chatId or query.id in callback", query);
+  // Stop Telegram's loading spinner immediately. D1/API work and sending the
+  // resulting message may take noticeably longer on a cold Worker instance.
+  await telegramRequest(env.TELEGRAM_BOT_TOKEN, "answerCallbackQuery", {
+    callback_query_id: query.id,
+    show_alert: false,
+  }).catch((error) => console.warn("Callback acknowledgement skipped", error));
   try {
     await upsertUser(env.DB, query.from, chatId);
-    let answer = "Готово";
     if (query.data === "help") {
       await telegramRequest(env.TELEGRAM_BOT_TOKEN, "sendMessage", { chat_id: chatId, text: helpText(botNameFor(env)), parse_mode: "Markdown" });
-      answer = "Справка открыта";
     } else if (query.data === "settings") {
       await showSettings(chatId, await getUser(env.DB, query.from.id), env);
     } else if (query.data === "choose_course") {
@@ -78,12 +89,10 @@ export async function handleCallbackQuery(query, env) {
       const user = await toggleNotifications(env.DB, query.from.id);
       await telegramRequest(env.TELEGRAM_BOT_TOKEN, "sendMessage", { chat_id: chatId, text: `Уведомления ${user?.notifications_enabled ? "включены" : "отключены"}.` });
     } else {
-      answer = "Кнопка устарела";
+      await telegramRequest(env.TELEGRAM_BOT_TOKEN, "sendMessage", { chat_id: chatId, text: "Эта кнопка устарела. Откройте /settings ещё раз." });
     }
-    await telegramRequest(env.TELEGRAM_BOT_TOKEN, "answerCallbackQuery", { callback_query_id: query.id, text: answer, show_alert: false });
   } catch (error) {
     console.error("Error handling callback query:", error);
-    await telegramRequest(env.TELEGRAM_BOT_TOKEN, "answerCallbackQuery", { callback_query_id: query.id, text: "Не удалось выполнить действие", show_alert: true }).catch(() => {});
-    throw error;
+    await telegramRequest(env.TELEGRAM_BOT_TOKEN, "sendMessage", { chat_id: chatId, text: "Не удалось выполнить действие. Попробуйте ещё раз." }).catch(() => {});
   }
 }
