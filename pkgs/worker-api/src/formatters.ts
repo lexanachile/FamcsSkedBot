@@ -8,11 +8,13 @@ export function getDayOfWeekName(day: number): string {
 
 export function extractLastName(fullName: string): string {
   if (!fullName) return "";
-  const trimmed = fullName.trim();
-  const match = trimmed.match(/\s+([А-ЯЁA-Z])\.\s*([А-ЯЁA-Z])\./u);
-  if (match?.index !== undefined) {
-    const words = trimmed.substring(0, match.index).split(/\s+/).filter(Boolean);
-    if (words.length) return words[words.length - 1];
-  }
-  return trimmed;
+  const trimmed = fullName.normalize("NFC").trim()
+    .replace(/^(?:(?:проф|доц|ст\.?\s*преп|преп|ассист)\.?\s+)+/iu, "")
+    .replace(/^(?:[А-ЯЁA-Z]\.\s*){1,2}/u, "");
+  // Initials may be glued to the surname; dates and notes are not names.
+  return trimmed.match(/^[А-ЯЁA-Z][а-яёa-z]+(?:-[А-ЯЁA-Z][а-яёa-z]+)*/u)?.[0] || "";
+}
+
+export function extractTeacherNames(value: string): string[] {
+  return value.split(/[,;\/\n]+/u).map(extractLastName).filter(Boolean);
 }

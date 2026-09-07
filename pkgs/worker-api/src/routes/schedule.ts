@@ -1,6 +1,8 @@
+import { configuredRooms, findRooms } from "../schedule/rooms";
+import { enqueueChanges } from "../schedule/notifications";
 import type { Hono } from "hono";
 import { TIME_SLOTS } from "../constants";
-import { extractLastName, getDayOfWeekName } from "../formatters";
+import { extractTeacherNames, getDayOfWeekName } from "../formatters";
 import { finalizeCourse, readAllCourses, readGroupSchedule, readGroupScheduleFresh, readGroupsIndex, readManifestFresh, uploadGroup } from "../schedule/repository";
 import { toScheduleClass } from "../schedule/records";
 import type { AppEnvironment, GroupManifestEntry, ScheduleRecord } from "../types";
@@ -59,8 +61,7 @@ export function registerScheduleRoutes(app: Hono<AppEnvironment>) {
       const teachers = new Set<string>();
       for (const record of records) {
         for (const name of [record.professorNameA, record.professorNameB]) {
-          const lastName = extractLastName(name || "");
-          if (lastName) teachers.add(lastName);
+          for (const lastName of extractTeacherNames(name || "")) teachers.add(lastName);
         }
       }
       return c.json({ success: true, data: { teachers: [...teachers].sort((a, b) => a.localeCompare(b, "ru")) } });
@@ -74,9 +75,9 @@ export function registerScheduleRoutes(app: Hono<AppEnvironment>) {
     const name = c.req.query("name")?.trim();
     if (!name) return c.json({ success: false, error: "Missing parameter: name" }, 400);
     try {
-      const query = name.toLocaleLowerCase("ru");
+      const query = extractTeacherNames(name)[0]?.toLocaleLowerCase("ru");
       const records = (await readAllCourses(c.env.SCHEDULE_KV)).filter((record) =>
-        [record.professorNameA, record.professorNameB].some((value) => value?.toLocaleLowerCase("ru").includes(query)),
+        [record.professorNameA, record.professorNameB].some((value) => extractTeacherNames(value || "").some(teacher => teacher.toLocaleLowerCase("ru") === query)),
       );
       const classes = records.map((record) => ({
         ...record,
@@ -92,22 +93,16 @@ export function registerScheduleRoutes(app: Hono<AppEnvironment>) {
   });
 
   app.get("/api/rooms/free", async (c) => {
-    const day = Number.parseInt(c.req.query("dayOfWeek") || "", 10);
-    const pair = Number.parseInt(c.req.query("pairNumber") || "", 10);
+    const day = Number(c.req.query("dayOfWeek"));
+    const pair = Number(c.req.query("pairNumber"));
     const slot = TIME_SLOTS[pair - 1];
-    if (!Number.isInteger(day) || day < 1 || day > 6 || !slot) return c.json({ success: false, error: "Missing or invalid required parameters" }, 400);
+    if (!Number.isInteger(day) || day < 1 || day > 6 || !Number.isInteger(pair) || !slot) return c.json({ success: false, error: "Missing or invalid required parameters" }, 400);
     try {
       const records = await readAllCourses(c.env.SCHEDULE_KV);
-      const allRooms = new Set<string>();
-      const busy = new Set<string>();
-      for (const record of records) {
-        const rooms = [record.classroomA, record.classroomB].filter((room): room is string => Boolean(room?.trim()));
-        rooms.forEach((room) => allRooms.add(room));
-        if (record.dayOfWeek === day && record.startTime === slot.start && record.endTime === slot.end) rooms.forEach((room) => busy.add(room));
-      }
-      const busyRooms = [...busy].sort((a, b) => a.localeCompare(b, "ru", { numeric: true }));
-      const freeRooms = [...allRooms].filter((room) => !busy.has(room)).sort((a, b) => a.localeCompare(b, "ru", { numeric: true }));
-      return c.json({ success: true, data: { dayOfWeek: day, pairNumber: pair, startTime: slot.start, endTime: slot.end, freeRooms, busyRooms, totalRooms: allRooms.size } });
+      let rooms: string[];
+      try { rooms = configuredRooms(c.env.AVAILABLE_ROOMS); }
+      catch { return c.json({ success: false, error: "Room inventory is not configured correctly" }, 503); }
+      return c.json({ success: true, data: { dayOfWeek: day, pairNumber: pair, startTime: slot.start, endTime: slot.end, ...findRooms(rooms, records, day, slot.start, slot.end) } });
     } catch (error) {
       console.error("KV rooms read failed", error);
       return c.json({ success: false, error: "Internal server error" }, 500);
@@ -169,21 +164,7 @@ export function registerScheduleRoutes(app: Hono<AppEnvironment>) {
         if (!validEntries) return c.json({ success: false, error: "Invalid group manifest" }, 400);
         const manifest = await finalizeCourse(c.env.SCHEDULE_KV, course, body.importId, groups);
         if (body.notifications && typeof body.notifications === "object" && !Array.isArray(body.notifications)) {
-          try {
-            for (const [groupName, text] of Object.entries(body.notifications as Record<string, unknown>)) {
-              if (typeof text !== "string" || !text.trim()) continue;
-              const users = await c.env.DB.prepare(
-                "SELECT telegram_id, chat_id FROM bot_users WHERE course = ? AND group_name = ? AND notifications_enabled = 1",
-              ).bind(course, groupName).all<{ telegram_id: string; chat_id: string }>();
-              for (const user of users.results) {
-                await c.env.NOTIFICATIONS_QUEUE.send({ chat_id: user.chat_id, text });
-              }
-            }
-          } catch (error) {
-            // A notification failure must not make the parser retry an already
-            // published manifest. Queue errors are visible in Worker logs.
-            console.error("Failed to enqueue schedule notifications", error);
-          }
+          await enqueueChanges(c.env, course, body.notifications as Record<string, unknown>);
         }
         return c.json({ success: true, imported: manifest.recordCount, version: manifest.current, groups: manifest.groupCount, message: `Расписание для курса ${course} обновлено` });
       }

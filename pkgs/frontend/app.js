@@ -1114,9 +1114,9 @@ function displaySchedule(scheduleData) {
   scheduleTitle.textContent = `Расписание: ${selectedGroupName}`;
   const updatedAt = scheduleData.updatedAt ? new Date(scheduleData.updatedAt) : null;
   const updatedText = updatedAt && !Number.isNaN(updatedAt.getTime())
-    ? updatedAt.toLocaleString("ru-RU")
+    ? updatedAt.toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Minsk" })
     : "неизвестно";
-  scheduleMetadata.textContent = `Курс: ${appState.currentCourse} | Обновлено: ${updatedText}`;
+  scheduleMetadata.textContent = `Курс: ${appState.currentCourse} | Последнее обновление расписания: ${updatedText}`;
 
   scheduleDays.innerHTML = "";
   const classes = scheduleData.classes || [];

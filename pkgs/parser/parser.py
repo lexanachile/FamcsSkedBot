@@ -937,7 +937,38 @@ def _format_group_diff(group_name: str, previous: List[Dict], current: List[Dict
             "classTitleA", "professorNameA", "classroomA",
             "classTitleB", "professorNameB", "classroomB",
         )
-        if any(clean(before.get(field)) != clean(after.get(field)) for field in compared_fields):
+        changed_fields = {
+            field for field in compared_fields
+            if clean(before.get(field)) != clean(after.get(field))
+        }
+        if changed_fields and changed_fields <= {"classroomA", "classroomB"}:
+            block = [
+                f"{clean(after.get('startTime'))}–{clean(after.get('endTime'))}",
+                f"Предмет: {combined(after, 'classTitleA', 'classTitleB')}",
+                f"Преподаватель: {combined(after, 'professorNameA', 'professorNameB')}",
+            ]
+            if (clean(before.get("classroomA")) == clean(before.get("classroomB"))
+                    and clean(after.get("classroomA")) == clean(after.get("classroomB"))):
+                block.extend([
+                    f"➖ Аудитория: {clean(before.get('classroomA'))}",
+                    f"➕ Аудитория: {clean(after.get('classroomA'))}",
+                ])
+            else:
+                has_subgroups = any(after.get(field) or before.get(field) for field in (
+                    "classTitleB", "professorNameB", "classroomB",
+                ))
+                for suffix, label in (("A", "А"), ("B", "Б")):
+                    field = f"classroom{suffix}"
+                    if field not in changed_fields:
+                        continue
+                    title = f"Аудитория (подгруппа {label})" if has_subgroups else "Аудитория"
+                    block.extend([
+                        f"➖ {title}: {clean(before.get(field))}",
+                        f"➕ {title}: {clean(after.get(field))}",
+                    ])
+            blocks.append(block)
+            continue
+        if changed_fields:
             blocks.extend([lesson_block(before, "➖"), lesson_block(after, "➕")])
 
     changes_by_day = {day: blocks for day, blocks in changes_by_day.items() if blocks}
