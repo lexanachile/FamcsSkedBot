@@ -4,10 +4,10 @@ import {
   removeStoredValue as safeRemoveStorage,
   setStoredValue as safeSetStorage,
   writeStoredJson as writeJsonStorage,
-} from "./src/storage.js?v=23";
-import { initializeTelegramWebApp, triggerTelegramHaptic } from "./src/telegram.js?v=23";
-import { setStaleNotice, showToast } from "./src/feedback.js?v=23";
-import { setupScheduleModes, filterSubgroup, teacherSchedule } from "./src/schedule-modes.js?v=24";
+} from "./src/storage.js?v=24";
+import { initializeTelegramWebApp, triggerTelegramHaptic } from "./src/telegram.js?v=24";
+import { setStaleNotice, showToast } from "./src/feedback.js?v=24";
+import { setupScheduleModes, filterSubgroup, teacherSchedule } from "./src/schedule-modes.js?v=25";
 
 let scheduleMode = null;
 let teacherRequest = 0;
@@ -1354,21 +1354,25 @@ function buildClassInfoHTML(subgroup, isLecture = false, isSplit = false) {
     return '<div style="color: var(--ink-faint); font-size: 16px; margin: auto;">—</div>';
   }
 
-  const lectureHTML = `<span class="class-type${isLecture ? "" : " practice"}">${isLecture ? "Лекция" : "Практика"}</span>`;
+  const isPhysicalCulture = normalizeLessonTitle(subgroup.classTitle).includes("физическая культура");
+  const lectureHTML = isPhysicalCulture
+    ? ""
+    : `<span class="class-type${isLecture ? "" : " practice"}">${isLecture ? "Лекция" : "ПЗ"}</span>`;
   const professorHTML = subgroup.professorName
     ? `<span class="class-professor">${escapeHtml(subgroup.professorName)}</span>`
     : "";
   const roomHTML = subgroup.classroom
     ? `<span class="class-room">${escapeHtml(subgroup.classroom)}</span>`
     : "";
-  const teacherHTML = lectureHTML || professorHTML
-    ? `<span class="class-teacher-line">${lectureHTML}${professorHTML}</span>`
+  const teacherHTML = professorHTML ? `<span class="class-teacher-line">${professorHTML}</span>` : "";
+  const roomSharesTeacherRow = roomHTML && !subgroup.comments;
+  const metaTailHTML = lectureHTML || roomSharesTeacherRow
+    ? `<span class="class-meta-tail">${lectureHTML}${roomSharesTeacherRow ? roomHTML : ""}</span>`
     : "";
-  const roomSharesTeacherRow = roomHTML && !subgroup.comments && !isSplit;
-  const primaryMetaHTML = teacherHTML || roomSharesTeacherRow
-    ? `<div class="class-primary-meta">
+  const primaryMetaHTML = teacherHTML || metaTailHTML
+    ? `<div class="class-primary-meta${isSplit ? " class-subgroup-meta" : ""}">
         ${teacherHTML}
-        ${roomSharesTeacherRow ? roomHTML : ""}
+        ${metaTailHTML}
       </div>`
     : "";
   const secondaryMetaHTML = subgroup.comments
@@ -1377,16 +1381,12 @@ function buildClassInfoHTML(subgroup, isLecture = false, isSplit = false) {
         ${roomHTML}
       </div>`
     : "";
-  const splitRoomHTML = isSplit && roomHTML && !subgroup.comments
-    ? `<div class="class-room-row">${roomHTML}</div>`
-    : "";
   return `
         <div class="class-detail">
             <span class="class-title">${escapeHtml(subgroup.classTitle || "")}</span>
         </div>
         ${primaryMetaHTML}
-        ${secondaryMetaHTML}
-        ${splitRoomHTML}`;
+        ${secondaryMetaHTML}`;
 }
 
 function showLoading(show) {

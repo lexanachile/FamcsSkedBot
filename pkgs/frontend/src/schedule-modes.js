@@ -1,4 +1,4 @@
-import { createTeacherDirectory, setupTeacherSuggestions } from './teacher-suggestions.js?v=23';
+import { createTeacherDirectory, setupTeacherSuggestions } from './teacher-suggestions.js?v=24';
 
 export function filterSubgroup(data, subgroup) {
   return { ...data, classes: (data.classes || []).flatMap(item => {
@@ -42,6 +42,10 @@ export function teacherSchedule(data, name) {
 }
 
 export function setupScheduleModes({ onChange, onTeacher, apiBase }) {
+  const modeStorageKey = 'schedule-mode:v1';
+  const savedMode = (() => {
+    try { return localStorage.getItem(modeStorageKey); } catch { return null; }
+  })();
   const subgroupStorageKey = 'schedule-subgroup:v1';
   const savedSubgroup = (() => {
     try {
@@ -54,13 +58,18 @@ export function setupScheduleModes({ onChange, onTeacher, apiBase }) {
     '<path d="m2 8 10-5 10 5-10 5L2 8Zm4 3v6c4 3 8 3 12 0v-6M22 8v9"/>',
     '<rect x="3" y="4" width="18" height="17" rx="4"/><path d="M8 2v4M16 2v4M3 10h18M12 13v5M9.5 15.5h5"/>',
   ];
-  const modes = [ ['subgroup', 'Моя подгруппа', 'Только ваши занятия'], ['group', 'Вся группа', 'Обе подгруппы вместе'], ['teacher', 'Преподаватель', 'Поиск по фамилии'], ['compare', 'Сравнить группы', 'В разработке'] ];
+  const modes = [
+    ['subgroup', 'Моя подгруппа', ''],
+    ['group', 'Обе подгруппы вместе', 'p.s. Нажмите на время пары, чтобы выбрать цвет для заметки.'],
+    ['teacher', 'Поиск по фамилии', ''],
+    ['compare', 'В разработке', ''],
+  ];
   const section = document.createElement('section');
   section.className = 'mode-section';
   section.setAttribute('aria-label', 'Режим расписания');
   section.innerHTML = `<div class="mode-grid">${modes.map(([id, title], i) => `<button type="button" class="mode-card" data-mode="${id}" aria-label="${title}" title="${title}" aria-pressed="false"><span class="mode-icon mode-icon-${id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[i]}</svg></span></button>`).join('')}</div><p id="mode-description" class="mode-description" aria-live="polite" hidden></p>
-    <form id="teacher-form" class="mode-panel" hidden><label for="teacher-name">Фамилия преподавателя</label><div class="teacher-input-row"><input id="teacher-name" name="teacher" placeholder="Например, Иванов" autocomplete="off" required maxlength="80"><button type="submit">Найти</button></div><p>Поиск по всем курсам</p></form>
-    <div id="compare-panel" class="mode-panel" role="status" hidden><strong>Сравнение групп — в разработке</strong><p>Здесь можно будет добавлять группы любых курсов и листать их расписания рядом.</p></div>`;
+    <form id="teacher-form" class="mode-panel" hidden><label for="teacher-name">Поиск по фамилии</label><div class="teacher-input-row"><input id="teacher-name" name="teacher" placeholder="Например, Орлович" autocomplete="off" required maxlength="80"><button type="submit">Найти</button></div></form>
+    <div id="compare-panel" class="mode-panel compare-panel" role="status" hidden><strong>В разработке</strong></div>`;
   document.querySelector('.header').after(section);
   const activateSuggestions = setupTeacherSuggestions({
     form: document.getElementById('teacher-form'),
@@ -86,10 +95,11 @@ export function setupScheduleModes({ onChange, onTeacher, apiBase }) {
   }));
   section.querySelectorAll('[data-mode]').forEach(button => button.addEventListener('click', () => {
     const mode = button.dataset.mode;
+    try { localStorage.setItem(modeStorageKey, mode); } catch { /* storage unavailable */ }
     const description = document.getElementById('mode-description');
     const selected = modes.find(item => item[0] === mode);
-    description.textContent = `${selected[1]} · ${selected[2]}`;
-    description.hidden = false;
+    description.textContent = mode === 'compare' ? '' : [selected[1], selected[2]].filter(Boolean).join('\n');
+    description.hidden = mode === 'compare';
     section.querySelectorAll('[data-mode]').forEach(card => card.setAttribute('aria-pressed', String(card === button)));
     controls.hidden = !['group', 'subgroup'].includes(mode);
     document.getElementById('refresh-schedule-button').hidden = controls.hidden;
@@ -105,4 +115,7 @@ export function setupScheduleModes({ onChange, onTeacher, apiBase }) {
     const name = document.getElementById('teacher-name').value.trim();
     if (name) onTeacher(name);
   });
+  if (modes.some(([id]) => id === savedMode)) {
+    section.querySelector(`[data-mode="${savedMode}"]`)?.click();
+  }
 }
