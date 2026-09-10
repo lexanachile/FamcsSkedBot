@@ -1,5 +1,5 @@
-import { COMPARISON_DAYS, comparisonDay, selectionKey, clockTime } from './comparison-model.js?v=28';
-import { readStoredJson, writeStoredJson } from './storage.js?v=24';
+import { COMPARISON_DAYS, comparisonDay, selectionKey, clockTime } from './comparison-model.js?v=30';
+import { readStoredJson, writeStoredJson } from './storage.js?v=30';
 
 async function requestData(url) {
   const controller = new AbortController();

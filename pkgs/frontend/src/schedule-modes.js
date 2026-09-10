@@ -1,5 +1,5 @@
-import { createTeacherDirectory, setupTeacherSuggestions } from './teacher-suggestions.js?v=24';
-import { setupComparison } from './comparison.js?v=29';
+import { createTeacherDirectory, setupTeacherSuggestions } from './teacher-suggestions.js?v=30';
+import { setupComparison } from './comparison.js?v=30';
 
 export function filterSubgroup(data, subgroup) {
   return { ...data, classes: (data.classes || []).flatMap(item => {
