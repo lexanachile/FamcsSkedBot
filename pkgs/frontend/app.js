@@ -4,9 +4,36 @@ import {
   removeStoredValue as safeRemoveStorage,
   setStoredValue as safeSetStorage,
   writeStoredJson as writeJsonStorage,
-} from "./src/storage.js";
-import { initializeTelegramWebApp, triggerTelegramHaptic } from "./src/telegram.js";
-import { setStaleNotice, showToast } from "./src/feedback.js";
+} from "./src/storage.js?v=21";
+import { initializeTelegramWebApp, triggerTelegramHaptic } from "./src/telegram.js?v=21";
+import { setStaleNotice, showToast } from "./src/feedback.js?v=21";
+import { setupScheduleModes, filterSubgroup, teacherSchedule } from "./src/schedule-modes.js?v=21";
+
+let scheduleMode = null;
+let teacherRequest = 0;
+let restoredSelection = false;
+
+async function loadTeacher(name) {
+  const request = ++teacherRequest;
+  showLoading(true);
+  hideError();
+  document.getElementById('schedule-container').classList.add('hidden');
+  document.getElementById('day-navigation').classList.add('hidden');
+  try {
+    const response = await fetch(`${TEACHER_API_BASE}/api/teacher?name=${encodeURIComponent(name)}`);
+    if (!response.ok) throw new Error('Не удалось загрузить расписание преподавателя');
+    const result = await response.json();
+    if (!result.success) throw new Error('Не удалось загрузить расписание преподавателя');
+    if (request === teacherRequest && scheduleMode === 'teacher') {
+      displaySchedule(teacherSchedule(result.data, name));
+      setStaleNotice(false);
+    }
+  } catch (error) {
+    if (request === teacherRequest && scheduleMode === 'teacher') showError(error.message);
+  } finally {
+    if (request === teacherRequest) showLoading(false);
+  }
+}
 
 // ╔═══════════════════════════════════════════════════════════════════╗
 // ║                    ВСЕ НАСТРОЙКИ САЙТА — ЗДЕСЬ                     ║
@@ -17,6 +44,7 @@ import { setStaleNotice, showToast } from "./src/feedback.js";
 
 // --- Адрес API, откуда сайт берёт список групп и расписание ---
 const API_BASE_URL = "https://famcsschedulebot.yarashsei.workers.dev";
+const TEACHER_API_BASE = ['localhost', '127.0.0.1'].includes(location.hostname) ? '' : API_BASE_URL;
 const SCHEDULE_ENDPOINT = "/api/schedule";
 const GROUPS_ENDPOINT = "/api/groups";
 const CACHE_SCHEMA_VERSION = 1;
@@ -94,7 +122,22 @@ function initApp() {
   initializeTelegramWebApp();
   setupEventListeners();
   setupCustomSelects();
-  restoreSavedState();
+  setupScheduleModes({ apiBase: TEACHER_API_BASE, onTeacher: loadTeacher, onChange(mode) {
+    scheduleMode = mode;
+    ++teacherRequest;
+    showLoading(false);
+    hideError();
+    document.getElementById('welcome-section').classList.add('hidden');
+    document.getElementById('schedule-container').classList.add('hidden');
+    document.getElementById('day-navigation').classList.add('hidden');
+    if (mode === 'group' || mode === 'subgroup') {
+      if (!restoredSelection) {
+        restoredSelection = true;
+        restoreSavedState();
+      } else if (appState.scheduleData) displaySchedule(appState.scheduleData);
+    }
+  } });
+  document.getElementById('welcome-section').classList.add('hidden');
   setupDayNavigation();
   setupStickyDayNav();
   setupScrollTopButton();
@@ -178,6 +221,7 @@ function applyLessonEdge(card) {
   card.style.removeProperty("--lesson-edge-color");
   card.classList.toggle("has-lesson-edge", Boolean(color));
   if (color) card.style.setProperty("--lesson-edge-color", color);
+  card.style.setProperty("--lesson-type-color", color || "#0a84ff");
 }
 
 function setupLessonColorPicker() {
@@ -336,13 +380,12 @@ const groupCacheKey = (course, group) =>
 function setupEventListeners() {
   const courseSelect = document.getElementById("course-select");
   const groupSelect = document.getElementById("group-select");
-  const loadButton = document.getElementById("load-button");
   const refreshButton = document.getElementById("refresh-schedule-button");
 
   courseSelect.addEventListener("change", async (e) => {
     const course = e.target.value;
     appState.currentCourse = course;
-    appState.currentGroup = null;
+    resetSelectedGroup();
     appState.currentCourseVersion = null;
     appState.groupVersions = {};
     if (course) {
@@ -359,21 +402,14 @@ function setupEventListeners() {
   });
 
   groupSelect.addEventListener("change", (e) => {
+    clearVisibleSchedule();
     appState.currentGroup = e.target.value;
     if (appState.currentGroup) {
       safeSetStorage("selectedGroup", appState.currentGroup);
+      loadSchedule(appState.currentCourse, appState.currentGroup);
     } else {
       safeRemoveStorage("selectedGroup");
     }
-  });
-
-  loadButton.addEventListener("click", () => {
-    triggerHaptic(HAPTIC_LOAD_BUTTON);
-    if (!appState.currentCourse || !appState.currentGroup) {
-      showError("Выберите курс и группу");
-      return;
-    }
-    loadSchedule(appState.currentCourse, appState.currentGroup);
   });
 
   refreshButton?.addEventListener("click", refreshScheduleManually);
@@ -401,9 +437,8 @@ function syncSelectTrigger(selectEl) {
   if (!trigger || !textEl) return;
 
   const selectedOption = selectEl.options[selectEl.selectedIndex];
-  textEl.textContent = selectEl.id === "course-select" && selectEl.value
-    ? selectEl.value
-    : selectedOption?.textContent || "";
+  textEl.textContent = selectEl.value || '—';
+  trigger.setAttribute('aria-label', `${map.title}: ${selectedOption?.textContent || 'Не выбрана'}`);
   trigger.classList.toggle("placeholder", !selectEl.value);
   trigger.disabled = selectEl.disabled;
 }
@@ -576,7 +611,9 @@ function scrollToDay(day, behavior = "smooth") {
     nav && !nav.classList.contains("hidden") ? nav.offsetHeight : 0;
 
   // Вычисляем дистанцию с учётом высоты шапки
-  const delta = targetRect.top - navHeight - DAY_SCROLL_OFFSET_PX;
+  const controls = document.querySelector('.controls-section');
+  const controlsHeight = controls && !controls.hidden ? controls.offsetHeight : 0;
+  const delta = targetRect.top - navHeight - controlsHeight - DAY_SCROLL_OFFSET_PX;
 
   if (Math.abs(delta) > 0.5) {
     if (behavior === "instant") {
@@ -624,9 +661,7 @@ function updateScrollTopVisibility() {
     return;
   }
 
-  // Если блок с выбором группы ушел выше экрана — показываем кнопку
-  const controlsRect = controlsSection.getBoundingClientRect();
-  const scrolledPastTop = controlsRect.bottom < 0;
+  const scrolledPastTop = getScrollingElement().scrollTop > 300;
   btn.classList.toggle("visible", scrolledPastTop);
 }
 
@@ -755,7 +790,7 @@ async function restoreSavedState() {
       ? readJsonStorage(groupCacheKey(savedCourse, savedGroup))
       : null;
     const cachedGroup = cachedCourse?.groups?.find((group) => group.groupName === savedGroup);
-    if (cachedCourse?.groups?.length && cachedSchedule?.data && cachedGroup &&
+    if (cachedCourse?.groups?.length && cachedSchedule?.data?.classes?.length && cachedGroup &&
         cachedSchedule.version === (cachedGroup.version || cachedCourse.version)) {
       const groupSelect = document.getElementById("group-select");
       groupSelect.innerHTML = '<option value="">Выберите группу</option>';
@@ -781,6 +816,7 @@ async function restoreSavedState() {
     }
 
     const groupsLoaded = await loadGroups(savedCourse);
+    if (appState.currentCourse !== savedCourse || (appState.currentGroup && appState.currentGroup !== savedGroup)) return;
     if (groupsLoaded && savedGroup) {
       const groupSelect = document.getElementById("group-select");
       if (
@@ -792,12 +828,7 @@ async function restoreSavedState() {
         await loadSchedule(savedCourse, savedGroup);
         requestAnimationFrame(scrollToCurrentDay);
       } else if (appState.currentGroup === savedGroup) {
-        appState.currentGroup = null;
-        appState.scheduleData = null;
-        safeRemoveStorage("selectedGroup");
-        document.getElementById("schedule-container")?.classList.add("hidden");
-        document.getElementById("day-navigation")?.classList.add("hidden");
-        document.getElementById("welcome-section")?.classList.remove("hidden");
+        resetSelectedGroup();
       }
     }
   }
@@ -824,6 +855,7 @@ async function loadGroups(course, options = {}) {
     groupSelect.innerHTML = '<option value="">Загрузка...</option>';
     groupSelect.disabled = true;
   }
+  groupSelect.value = appState.currentGroup || '';
   syncSelectTrigger(groupSelect);
   if (!silent) hideError();
   try {
@@ -859,12 +891,14 @@ async function loadGroups(course, options = {}) {
         groupSelect.appendChild(option);
       });
       groupSelect.disabled = false;
+      groupSelect.value = appState.currentGroup || '';
       syncSelectTrigger(groupSelect);
       return true;
     } else {
       throw new Error("Группы не найдены");
     }
   } catch (error) {
+    if (appState.currentCourse !== String(course)) return false;
     console.error(error);
     const cached = readJsonStorage(courseCacheKey(course));
     if (cached?.groups?.length && appState.currentCourse === String(course)) {
@@ -881,6 +915,7 @@ async function loadGroups(course, options = {}) {
         groupSelect.appendChild(option);
       });
       groupSelect.disabled = false;
+      groupSelect.value = appState.currentGroup || '';
       syncSelectTrigger(groupSelect);
       return true;
     }
@@ -945,6 +980,7 @@ async function loadSchedule(course, group, options = {}) {
       throw new Error(data.message || "Ошибка при получении данных");
     }
   } catch (error) {
+    if (appState.currentCourse !== String(course) || appState.currentGroup !== String(group)) return { ok: false, cancelled: true };
     console.error(error);
     // ИСПРАВЛЕНО: Человечная ошибка сети, если fetch выкинул TypeError (нет интернета)
     const msg =
@@ -971,11 +1007,12 @@ async function loadSchedule(course, group, options = {}) {
     }
     return { ok: false, error: msg, fromCache: hasVisibleFallback };
   } finally {
-    if (!silent) showLoading(false);
+    if (!silent && appState.currentCourse === String(course) && (!appState.currentGroup || appState.currentGroup === String(group))) showLoading(false);
   }
 }
 
 async function refreshScheduleManually() {
+  if (scheduleMode !== 'group' && scheduleMode !== 'subgroup') return;
   const course = appState.currentCourse;
   const group = appState.currentGroup;
   if (!course || !group || appState.isBackgroundRefreshing) return;
@@ -985,11 +1022,14 @@ async function refreshScheduleManually() {
   refreshButton?.classList.add("is-refreshing");
   try {
     const groupsLoaded = await loadGroups(course, { forceRefresh: true, silent: true });
+    if (appState.currentCourse !== course || appState.currentGroup !== group) return;
+    if (!groupsLoaded) { showToast('Не удалось проверить обновления'); return; }
     const groupSelect = document.getElementById("group-select");
     const groupStillExists = groupsLoaded && Array.from(groupSelect.options).some(
       (option) => option.value === group,
     );
     if (!groupStillExists) {
+      resetSelectedGroup();
       showToast("Группа больше не найдена");
       return;
     }
@@ -1028,6 +1068,7 @@ function setupInactivityRefresh() {
 }
 
 async function refreshCurrentSchedule() {
+  if (scheduleMode !== 'group' && scheduleMode !== 'subgroup') return;
   const course = appState.currentCourse;
   const group = appState.currentGroup;
   if (!course || !group || appState.isBackgroundRefreshing) return;
@@ -1041,7 +1082,7 @@ async function refreshCurrentSchedule() {
     const groupStillExists = Array.from(groupSelect.options).some(
       (option) => option.value === group,
     );
-    if (!groupStillExists) return;
+    if (!groupStillExists) { resetSelectedGroup(); return; }
 
     groupSelect.value = group;
     syncSelectTrigger(groupSelect);
@@ -1092,14 +1133,23 @@ function pluralizeLessons(count) {
 }
 
 function displaySchedule(scheduleData) {
+  if (!scheduleMode || scheduleMode === 'compare') return;
+  if ((scheduleMode === 'teacher') !== Boolean(scheduleData.teacher)) return;
+  if (!scheduleData.teacher && !scheduleData.classes?.length) {
+    resetSelectedGroup();
+    showToast('Расписания этой группы пока нет. Выберите другую группу');
+    return;
+  }
+  if (scheduleMode === 'subgroup') scheduleData = filterSubgroup(scheduleData, document.getElementById('subgroup-select').value);
   const scheduleContainer = document.getElementById("schedule-container");
   const welcomeSection = document.getElementById("welcome-section");
   const scheduleDays = document.getElementById("schedule-days");
   const emptyState = document.getElementById("empty-state");
   const scheduleTitle = document.getElementById("schedule-title");
   const scheduleMetadata = document.getElementById("schedule-metadata");
+  document.querySelector('.schedule-info').appendChild(scheduleMetadata);
+  document.querySelector('.schedule-info').hidden = scheduleMode !== 'teacher';
   const dayNavigation = document.getElementById("day-navigation");
-  const dayNavigationContext = document.getElementById("day-navigation-context");
 
   welcomeSection.classList.add("hidden");
   scheduleContainer.classList.remove("hidden");
@@ -1108,15 +1158,19 @@ function displaySchedule(scheduleData) {
   appState.displayedGroup = String(appState.currentGroup);
   renderInfoPanel();
 
-  const groupSelect = document.getElementById("group-select");
-  const selectedGroupName = groupSelect.options[groupSelect.selectedIndex].text;
-  dayNavigationContext.textContent = `${appState.currentCourse} курс · группа ${selectedGroupName}`;
-  scheduleTitle.textContent = `Расписание: ${selectedGroupName}`;
+  scheduleTitle.hidden = scheduleMode !== 'teacher';
   const updatedAt = scheduleData.updatedAt ? new Date(scheduleData.updatedAt) : null;
   const updatedText = updatedAt && !Number.isNaN(updatedAt.getTime())
-    ? updatedAt.toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Minsk" })
+    ? `${updatedAt.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", timeZone: "Europe/Minsk" })} в ${updatedAt.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Minsk" })}`
     : "неизвестно";
-  scheduleMetadata.textContent = `Курс: ${appState.currentCourse} | Последнее обновление расписания: ${updatedText}`;
+  scheduleMetadata.textContent = updatedText === 'неизвестно' ? 'Дата обновления неизвестна' : `Обновлено ${updatedText}`;
+  document.getElementById('refresh-schedule-button').hidden = scheduleMode === 'teacher';
+  document.querySelector('.empty-state-hint').textContent = scheduleMode === 'teacher' ? 'Проверьте фамилию преподавателя' : 'Попробуйте выбрать другую группу или подгруппу';
+  if (scheduleMode === 'teacher') {
+    scheduleTitle.textContent = `Преподаватель: ${scheduleData.teacher}`;
+    scheduleMetadata.textContent = 'Занятия по всем курсам';
+    document.getElementById('info-panel').classList.add('hidden');
+  }
 
   scheduleDays.innerHTML = "";
   const classes = scheduleData.classes || [];
@@ -1162,6 +1216,9 @@ function displaySchedule(scheduleData) {
     const displayedDay = day ? day.charAt(0).toLocaleUpperCase("ru-RU") + day.slice(1) : "";
     dayHeader.innerHTML = `<span class="day-name">${escapeHtml(displayedDay)}</span>${dayMeta}`;
     dayBlock.appendChild(dayHeader);
+    if (day === 'Понедельник' && scheduleMode !== 'teacher') {
+      dayBlock.appendChild(scheduleMetadata);
+    }
 
     const classesContainer = document.createElement("div");
     classesContainer.className = "classes-container";
@@ -1173,6 +1230,7 @@ function displaySchedule(scheduleData) {
       classesContainer.appendChild(emptyDay);
     }
 
+    let occupiedUntil = -Infinity;
     dayClasses.forEach((cls, classIndex) => {
       const slotDiv = document.createElement("div");
       slotDiv.className = "class-slot" + (cls.isLecture ? " is-lecture" : "");
@@ -1200,10 +1258,28 @@ function displaySchedule(scheduleData) {
       const infoDiv = document.createElement("div");
       infoDiv.className = "class-info";
 
-      if (cls.isCommon) {
+      if (cls.teacherLessons?.length > 1) {
+        infoDiv.classList.add('class-split', 'teacher-split');
+        for (const entry of cls.teacherLessons) {
+          const cell = document.createElement('div');
+          cell.className = 'subgroup';
+          cell.innerHTML = buildClassInfoHTML(entry.lesson, entry.isLecture, true);
+          prepareLessonColor(cell, entry.lesson.classTitle, entry.label === 'Б' ? 'subgroup-b' : entry.label === 'А' ? 'subgroup-a' : 'common');
+          applyLessonEdge(cell);
+          if (entry.label) {
+            const marker = document.createElement('span');
+            marker.className = 'subgroup-marker';
+            marker.textContent = entry.label;
+            marker.setAttribute('aria-hidden', 'true');
+            cell.setAttribute('aria-label', `Подгруппа ${entry.label}`);
+            cell.prepend(marker);
+          }
+          infoDiv.appendChild(cell);
+        }
+      } else if (cls.isCommon) {
         infoDiv.classList.add("class-common");
         infoDiv.innerHTML = buildClassInfoHTML(cls.subgroupA, cls.isLecture);
-        prepareLessonColor(infoDiv, cls.subgroupA?.classTitle, "common");
+        prepareLessonColor(infoDiv, cls.subgroupA?.classTitle, cls.colorScope || "common");
         applyLessonEdge(infoDiv);
       } else {
         infoDiv.classList.add("class-split");
@@ -1217,6 +1293,14 @@ function displaySchedule(scheduleData) {
         right.innerHTML = buildClassInfoHTML(cls.subgroupB, cls.isLecture, true);
         prepareLessonColor(right, cls.subgroupB?.classTitle, "subgroup-b");
         applyLessonEdge(right);
+        for (const [cell, label] of [[left, 'А'], [right, 'Б']]) {
+          const marker = document.createElement('span');
+          marker.className = 'subgroup-marker';
+          marker.textContent = label;
+          marker.setAttribute('aria-hidden', 'true');
+          cell.setAttribute('aria-label', `Подгруппа ${label}`);
+          cell.prepend(marker);
+        }
         infoDiv.appendChild(left);
         infoDiv.appendChild(right);
       }
@@ -1224,9 +1308,10 @@ function displaySchedule(scheduleData) {
       classesContainer.appendChild(slotDiv);
 
       const nextClass = dayClasses[classIndex + 1];
+      occupiedUntil = Math.max(occupiedUntil, timeToMinutes(displayedTime.end));
       if (nextClass) {
         const nextTime = getDisplayedClassTime(nextClass);
-        const breakMinutes = timeToMinutes(nextTime.start) - timeToMinutes(displayedTime.end);
+        const breakMinutes = timeToMinutes(nextTime.start) - occupiedUntil;
         if (Number.isFinite(breakMinutes) && breakMinutes > 35) {
           const windowSlot = document.createElement("div");
           windowSlot.className = "class-slot class-window-break";
@@ -1268,7 +1353,7 @@ function buildClassInfoHTML(subgroup, isLecture = false, isSplit = false) {
     return '<div style="color: var(--ink-faint); font-size: 16px; margin: auto;">—</div>';
   }
 
-  const lectureHTML = isLecture ? '<span class="class-type">Лекция</span>' : "";
+  const lectureHTML = `<span class="class-type${isLecture ? "" : " practice"}">${isLecture ? "Лекция" : "Практика"}</span>`;
   const professorHTML = subgroup.professorName
     ? `<span class="class-professor">${escapeHtml(subgroup.professorName)}</span>`
     : "";
@@ -1305,7 +1390,26 @@ function buildClassInfoHTML(subgroup, isLecture = false, isSplit = false) {
 
 function showLoading(show) {
   document.getElementById("loading-spinner").classList.toggle("hidden", !show);
-  document.getElementById("load-button").disabled = show;
+  document.getElementById("refresh-schedule-button").disabled = show;
+}
+
+function clearVisibleSchedule() {
+  appState.scheduleData = null;
+  document.getElementById('schedule-container').classList.add('hidden');
+  document.getElementById('day-navigation').classList.add('hidden');
+  hideError();
+  showLoading(false);
+}
+
+function resetSelectedGroup() {
+  appState.currentGroup = null;
+  safeRemoveStorage('selectedGroup');
+  const select = document.getElementById('group-select');
+  select.value = '';
+  if (select.options[0]) select.options[0].textContent = 'Не выбрана';
+  syncSelectTrigger(select);
+  clearVisibleSchedule();
+  showLoading(false);
 }
 
 function showError(msg) {

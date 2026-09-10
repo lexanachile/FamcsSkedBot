@@ -1,5 +1,3 @@
-const TELEGRAM_BACKGROUND = "#0f0f11";
-
 export function getTelegramWebApp() {
   const webApp = window.Telegram?.WebApp;
   return webApp?.platform && webApp.platform !== "unknown" ? webApp : null;
@@ -8,12 +6,13 @@ export function getTelegramWebApp() {
 export function initializeTelegramWebApp() {
   const webApp = getTelegramWebApp();
   if (!webApp) return;
+  const background = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() || '#0b0b0c';
   try {
     webApp.expand?.();
     webApp.disableClosingConfirmation?.();
-    webApp.setHeaderColor?.(TELEGRAM_BACKGROUND);
-    webApp.setBackgroundColor?.(TELEGRAM_BACKGROUND);
-    webApp.setBottomBarColor?.(TELEGRAM_BACKGROUND);
+    webApp.setHeaderColor?.(background);
+    webApp.setBackgroundColor?.(background);
+    webApp.setBottomBarColor?.(background);
     webApp.ready();
   } catch (error) {
     console.warn("Ошибка настройки UI Telegram:", error);

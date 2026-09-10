@@ -915,12 +915,23 @@ def _format_group_diff(group_name: str, previous: List[Dict], current: List[Dict
             return f"Б — {second}"
         return f"А — {first}; Б — {second}"
 
-    def lesson_block(item, symbol):
+    categories = (
+        ("classTitleA", "classTitleB"),
+        ("professorNameA", "professorNameB"),
+        ("classroomA", "classroomB"),
+    )
+    labels = ("Корректировка названия:", "Замена преподавателя:", "Смена аудитории:")
+
+    def lesson_block(item, changed_category=None, before=None):
+        values = [combined(item, a, b) for a, b in categories]
+        if changed_category is not None:
+            a, b = categories[changed_category]
+            values[changed_category] = f"{combined(before, a, b)} → {values[changed_category]}"
         return [
-            f"{symbol} {clean(item.get('startTime'))}–{clean(item.get('endTime'))}",
-            f"Предмет: {combined(item, 'classTitleA', 'classTitleB')}",
-            f"Преподаватель: {combined(item, 'professorNameA', 'professorNameB')}",
-            f"Аудитория: {combined(item, 'classroomA', 'classroomB')}",
+            f"{clean(item.get('startTime'))}–{clean(item.get('endTime'))}",
+            values[0],
+            values[1],
+            f"{values[2]} ауд.",
         ]
 
     for slot in sorted(set(previous_by_key) | set(current_by_key)):
@@ -928,59 +939,29 @@ def _format_group_diff(group_name: str, previous: List[Dict], current: List[Dict
         day = days[slot[0] - 1] if isinstance(slot[0], int) and 1 <= slot[0] <= 6 else f"День {slot[0]}"
         blocks = changes_by_day.setdefault(day, [])
         if before is None:
-            blocks.append(lesson_block(after, "➕"))
-            continue
-        if after is None:
-            blocks.append(lesson_block(before, "➖"))
-            continue
-        compared_fields = (
-            "classTitleA", "professorNameA", "classroomA",
-            "classTitleB", "professorNameB", "classroomB",
-        )
-        changed_fields = {
-            field for field in compared_fields
-            if clean(before.get(field)) != clean(after.get(field))
-        }
-        if changed_fields and changed_fields <= {"classroomA", "classroomB"}:
-            block = [
-                f"{clean(after.get('startTime'))}–{clean(after.get('endTime'))}",
-                f"Предмет: {combined(after, 'classTitleA', 'classTitleB')}",
-                f"Преподаватель: {combined(after, 'professorNameA', 'professorNameB')}",
-            ]
-            if (clean(before.get("classroomA")) == clean(before.get("classroomB"))
-                    and clean(after.get("classroomA")) == clean(after.get("classroomB"))):
-                block.extend([
-                    f"➖ Аудитория: {clean(before.get('classroomA'))}",
-                    f"➕ Аудитория: {clean(after.get('classroomA'))}",
+            blocks.append(["Добавление:", *lesson_block(after)])
+        elif after is None:
+            blocks.append(["Удаление:", *lesson_block(before)])
+        else:
+            changed = [i for i, fields in enumerate(categories)
+                       if any(clean(before.get(f)) != clean(after.get(f)) for f in fields)]
+            if len(changed) == 1:
+                blocks.append([labels[changed[0]], *lesson_block(after, changed[0], before)])
+            elif changed:
+                blocks.extend([
+                    ["Было:", *lesson_block(before)],
+                    ["Стало:", *lesson_block(after)],
                 ])
-            else:
-                has_subgroups = any(after.get(field) or before.get(field) for field in (
-                    "classTitleB", "professorNameB", "classroomB",
-                ))
-                for suffix, label in (("A", "А"), ("B", "Б")):
-                    field = f"classroom{suffix}"
-                    if field not in changed_fields:
-                        continue
-                    title = f"Аудитория (подгруппа {label})" if has_subgroups else "Аудитория"
-                    block.extend([
-                        f"➖ {title}: {clean(before.get(field))}",
-                        f"➕ {title}: {clean(after.get(field))}",
-                    ])
-            blocks.append(block)
-            continue
-        if changed_fields:
-            blocks.extend([lesson_block(before, "➖"), lesson_block(after, "➕")])
 
     changes_by_day = {day: blocks for day, blocks in changes_by_day.items() if blocks}
     if not changes_by_day:
         return ""
-    lines = [f"Изменения расписания группы {group_name}:"]
+    course = next((item.get("course") for item in current + previous if item.get("course") is not None), "—")
+    lines = [f"Изменения в расписании курса {course}, группы {group_name}:"]
     for day, blocks in changes_by_day.items():
-        lines.extend(["", f"{day}:"])
+        lines.extend(["", day])
         for block in blocks:
-            lines.extend(block)
-            lines.append("")
-        lines.pop()
+            lines.extend(["", *block])
     return "\n".join(lines)
 
 

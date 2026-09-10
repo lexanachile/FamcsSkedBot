@@ -4,7 +4,7 @@ export async function enqueueChanges(env: Bindings, course: number, notification
   const moderator = env.TEST_TELEGRAM_USER_ID?.trim();
   for (const [group, text] of Object.entries(notifications)) {
     if (typeof text !== "string" || !text.trim()) continue;
-    const message = `Курс ${course}\n${text}`;
+    const message = text.startsWith("Изменения в расписании курса ") ? text : `Курс ${course}\n${text}`;
     // Moderation does not depend on enrollment or the subscription switch.
     if (moderator) {
       try {

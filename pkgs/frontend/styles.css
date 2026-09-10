@@ -21,6 +21,40 @@
    нужно, если только вы не меняете сами файлы шрифтов.
    ===================================================================================== */
 
+[hidden] { display: none !important; }
+
+.mode-section { margin-bottom: 24px; }
+.mode-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.mode-card { display: grid; place-items: center; min-height: 64px; padding: 10px; border: 1px solid #303034; border-radius: 18px; background: #1c1c1e; color: #f5f5f7; cursor: pointer; transition: background .18s, border-color .18s; }
+.mode-card:hover { background: #262629; }
+.mode-card[aria-pressed="true"] { border-color: #76b4ff; background: #19283a; }
+.mode-card:focus-visible, .mode-panel :focus-visible, .subgroup-control select:focus-visible { outline: 3px solid #76b4ff; outline-offset: 3px; }
+.mode-icon { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 13px; background: #223b58; color: #83bdff; }
+.mode-icon svg { width: 25px; height: 25px; }
+.mode-icon-group { color: #a6a0ff; background: #302b4c; }
+.mode-icon-teacher { color: #ffca88; background: #463522; }
+.mode-icon-compare { color: #85dfc0; background: #203f37; }
+.mode-title { font-size: 16px; font-weight: 600; line-height: 1.3; }
+.mode-hint { font-size: 12px; line-height: 1.45; color: #aaaab2; }
+.mode-panel { margin-top: 20px; padding: 20px; border-radius: 20px; background: #1c1c1e; }
+.mode-panel label, .subgroup-control label { display: block; margin-bottom: 10px; font-size: 14px; }
+.mode-panel p { color: #aaaab2; font-size: 13px; line-height: 1.5; margin: 12px 0 0; }
+.teacher-input-row { display: flex; gap: 8px; }
+.teacher-input-row input, .subgroup-control select { min-width: 0; width: 100%; min-height: 48px; padding: 12px; border: 1px solid #48484a; border-radius: 12px; background: #111113; color: #f5f5f7; font: inherit; font-size: 16px; }
+.teacher-input-row button { min-height: 48px; padding: 0 16px; border: 0; border-radius: 12px; background: #aad0ff; color: #101b2a; font: inherit; cursor: pointer; }
+.mode-description { margin: 12px 0 0; color: var(--ink-soft); font-size: 13px; line-height: 1.5; }
+.teacher-suggestions { display: flex; flex-direction: column; gap: 4px; max-height: 240px; overflow-y: auto; margin-top: 8px; }
+.teacher-suggestions button { flex-shrink: 0; min-height: 44px; padding: 12px 16px; border: 0; border-radius: 10px; background: #262629; color: var(--ink); font: inherit; font-size: 14px; text-align: left; cursor: pointer; overflow-wrap: anywhere; }
+.teacher-suggestions button:hover { background: #303034; }
+.subgroup-control { margin: 0; }
+.subgroup-label { display: none; }
+.subgroup-buttons { display: flex; padding: 2px; border-radius: 10px; background: var(--surface); }
+.subgroup-buttons button { width: 28px; height: 28px; border: 0; border-radius: 8px; background: transparent; color: var(--ink-soft); font: inherit; cursor: pointer; }
+.subgroup-buttons button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.subgroup-buttons button:focus-visible { outline: 2px solid #76b4ff; }
+@media (prefers-reduced-motion: reduce) { .mode-card { transition: none; } }
+@media (max-width: 350px) { .mode-card { padding: 16px 12px; } .mode-title { font-size: 14px; } }
+
 :root {
   /* color-scheme: dark — подсказка браузеру, что сайт тёмный, чтобы
        нативные системные элементы (в частности — само окно выпадающего
@@ -51,7 +85,7 @@
 
   /* --lesson-inner-surface — заливка внутренней плашки занятия справа
        от времени. Она находится внутри общей плашки таймслота. */
-  --lesson-inner-surface: #1c1c1d;
+  --lesson-inner-surface: #151515;
 
   /* --ink — ИСТИННЫЙ белый без оттенков. Используется для: названия дня
        недели, названия предмета, времени пары и номера аудитории. */
@@ -60,7 +94,7 @@
   /* --ink-soft — светло-серый (Apple systemGray) для ВСЕГО остального
        текста: подзаголовок шапки, подписи КУРС/ГРУППА, имя преподавателя,
        метаданные расписания, бейдж "Лекция". */
-  --ink-soft: #8e8e93;
+  --ink-soft: #a1a1a8;
 
   /* Плашка текущего дня: здесь можно менять её заливку и подпись справа.
        Для светлой заливки также поменяйте --today-day-ink на тёмный цвет. */
@@ -75,7 +109,7 @@
 
   /* --ink-faint — более тусклый серый (Apple systemGray4) для самого
        второстепенного текста: плейсхолдер "—", комментарии к паре, футер. */
-  --ink-faint: #636366;
+  --ink-faint: #a1a1a8;
 
   /* --line — цвет тонких линий-разделителей в интерфейсе (НЕ у карточек
        пар — там теперь обводка, см. секцию 2 ниже). Используется у: рамки
@@ -157,17 +191,17 @@
        Отдельная переменная (не завязана на --font-size-base), чтобы можно
        было крутить размер названия предмета, не трогая размер шрифта
        у полей выбора курса/группы и прочего "базового" текста. */
-  --font-size-subject: calc(18px * var(--font-scale));
+  --font-size-subject: calc(16px * var(--font-scale));
 
   /* --font-size-lecture-badge — размер надписи "Лекция". Отдельная
        переменная, специально меньше --font-size-2xs по умолчанию. */
-  --font-size-lecture-badge: calc(9px * var(--font-scale));
+  --font-size-lecture-badge: calc(14px * var(--font-scale));
 
   /* --font-size-professor — размер имени ПРЕПОДАВАТЕЛЯ в карточке пары.
        Вынесена в отдельную переменную (раньше была завязана на общий
        --font-size-sm), чтобы крутить размер имени преподавателя отдельно
        от subtitle шапки, метаданных и номера аудитории. */
-  --font-size-professor: calc(18px * var(--font-scale));
+  --font-size-professor: calc(14px * var(--font-scale));
 
   /* --font-size-time — размер времени начала/окончания пары в колонке
        слева от карточки (.time-start / .time-end). Раньше было зашито
@@ -189,15 +223,15 @@
        карточка приветствия и т.д. */
   --spacing-xs: 4px;
   --spacing-sm: 8px;
-  --spacing-md: 14px;
-  --spacing-lg: 22px;
-  --spacing-xl: 34px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
 
   /* --screen-edge-x — боковой отступ ОТ КРАЯ ЭКРАНА для шапки и всего
        содержимого (.main-content). Именно эта переменная отвечает за
        "отступы по краям" — уменьшайте её, чтобы контент был шире и ближе
        к краям экрана. */
-  --screen-edge-x: 10px;
+  --screen-edge-x: 16px;
 
   /* --slot-padding-y / --slot-padding-x — внутренний отступ КАЖДОЙ
        карточки пары (.class-slot) от её рамки до содержимого (времени
@@ -210,17 +244,17 @@
   /* --slot-gap — зазор МЕЖДУ карточками пар внутри одного дня (лёгкий
        отступ сверху/снизу от других пар — про расстояние ВНУТРИ одной
        карточки см. --slot-padding-y выше, это разные вещи). */
-  --slot-gap: 10px;
+  --slot-gap: 12px;
 
   /* Расстояние между временем начала и временем конца пары. */
-  --time-range-gap: 0px;
+  --time-range-gap: 4px;
 
   /* Цвет длительности и названия длинного перерыва («Форточка»). */
-  --window-break-color: #5f92da;
+  --window-break-color: #8ebcff;
 
   /* --day-gap — зазор МЕЖДУ ДНЯМИ НЕДЕЛИ целиком (Понедельник, Вторник
        и т.д.). Отвечает за "сильное отделение" одного дня от другого. */
-  --day-gap: 67px;
+  --day-gap: 32px;
 
   /* ===================================================================
        5. СКРУГЛЕНИЯ УГЛОВ
@@ -442,24 +476,29 @@ body {
    ============================================================ */
 
 .controls-section {
-  padding-bottom: var(--spacing-md);
-  margin-bottom: var(--spacing-lg);
+  padding: 4px var(--screen-edge-x);
+  margin: 0 calc(var(--screen-edge-x) * -1);
+  position: sticky;
+  top: 0;
+  z-index: 101;
+  background: var(--bg);
 }
 
 .controls-select-row {
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: center;
-  gap: var(--spacing-md);
-  margin-bottom: var(--spacing-md);
+  justify-content: flex-start;
+  gap: 8px;
+  margin-bottom: 0;
 }
 
 .control-group {
   display: flex;
+  flex-direction: row;
   flex: 0 0 auto;
   align-items: center;
-  gap: var(--spacing-sm);
+  gap: 8px;
   min-width: 0;
 }
 
@@ -468,8 +507,8 @@ body {
   font-family: var(--font-condensed);
   font-weight: 700;
   font-size: var(--font-size-xs);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: normal;
+  text-transform: none;
   color: var(--ink-soft);
   margin-bottom: 0;
 }
@@ -493,8 +532,9 @@ body {
    старые телефоны/WebView. */
 .select-input,
 .select-trigger {
-  width: clamp(68px, 21vw, 84px);
-  padding: 6px 27px 6px 10px;
+  width: 46px;
+  height: 32px;
+  padding: 4px 16px 4px 6px;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   font-size: var(--font-size-sm);
@@ -506,8 +546,8 @@ body {
   appearance: none;
   background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238E8E93' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
   background-repeat: no-repeat;
-  background-position: right 10px center;
-  background-size: 14px;
+  background-position: right 4px center;
+  background-size: 10px;
 }
 
 .select-input:disabled {
@@ -763,14 +803,14 @@ body {
 
 .day-navigation {
   position: sticky;
-  top: -1px; /* небольшое смещение во избежание визуального субпиксельного зазора */
+  top: var(--controls-height, 0px);
   z-index: 100;
   background-color: var(--bg);
 
   /* Расширяем фон за пределы отступов .main-content, 
        чтобы текст расписания не проглядывал по краям при скролле */
-  padding: var(--spacing-md) var(--screen-edge-x);
-  margin: 0 calc(var(--screen-edge-x) * -1) var(--spacing-xl);
+  padding: var(--spacing-sm) var(--screen-edge-x);
+  margin: 0 calc(var(--screen-edge-x) * -1) var(--spacing-md);
 
   display: flex;
   flex-direction: column;
@@ -799,6 +839,7 @@ body {
 }
 
 .day-navigation-topline {
+  display: none !important;
   position: relative;
   z-index: 1;
   display: flex;
@@ -811,9 +852,10 @@ body {
 }
 
 .refresh-schedule-button {
-  flex: 0 0 22px;
-  width: 22px;
-  height: 22px;
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  margin-left: auto;
   display: grid;
   place-items: center;
   padding: 0;
@@ -825,8 +867,8 @@ body {
 }
 
 .refresh-schedule-button svg {
-  width: 15px;
-  height: 15px;
+  width: 20px;
+  height: 20px;
 }
 
 .refresh-schedule-button.is-refreshing svg {
@@ -834,6 +876,7 @@ body {
 }
 
 .day-navigation-days {
+  gap: 8px;
   position: relative;
   display: flex;
   justify-content: space-between;
@@ -859,7 +902,7 @@ body {
 }
 
 .day-navigation-days::before {
-  content: "";
+  content: none;
   position: absolute;
   top: 50%;
   /* Т.к. блок расширен за счет padding, линия должна начинаться
@@ -875,9 +918,11 @@ body {
 .day-nav-btn {
   position: relative;
   z-index: 1;
-  width: 36px;
+  flex: 1;
+  min-width: 0;
+  width: auto;
   height: 36px;
-  border-radius: 50%;
+  border-radius: 999px;
   background-color: var(--bg);
   /* ВАЖНО: раньше здесь была ОБВОДКА через border (1px solid var(--line)),
        а .active менял border-color на var(--accent). Именно это и было
@@ -891,7 +936,7 @@ body {
        Решение: убираем border вовсе и рисуем то же самое кольцо через
        box-shadow (inset) — box-shadow красится в одном проходе с фоном
        и таким багом не страдает. Внешне выглядит идентично border. */
-  box-shadow: inset 0 0 0 1px var(--line);
+  box-shadow: inset 0 0 0 1px #202023;
   border: none;
   font-family: var(--font-condensed);
   font-size: calc(12px * var(--font-scale));
@@ -1149,14 +1194,13 @@ body {
   align-items: baseline;
   justify-content: space-between;
   gap: var(--spacing-sm);
-  background-color: var(--surface);
-  border-radius: calc(var(--radius-sm) + 4px);
-  padding: 10px var(--spacing-md);
-  margin-bottom: 0;
+  background: transparent;
+  padding: 0;
+  margin-bottom: 16px;
 }
 
 .day-block.is-today .day-header {
-  background-color: var(--today-day-surface);
+  background: transparent;
   color: var(--today-day-ink);
 }
 
@@ -1174,7 +1218,7 @@ body {
   font-family: var(--font-sans);
   font-size: var(--font-size-xs);
   font-weight: 600;
-  opacity: 0.68;
+  opacity: 1;
 }
 
 .day-meta {
@@ -1189,8 +1233,8 @@ body {
   font-family: var(--font-sans);
   /* Название дня немного крупнее основного текста и одинаково выглядит
        на любой ширине экрана. */
-  font-size: calc(var(--font-size-base) * 1.25);
-  font-weight: 800;
+  font-size: 18px;
+  font-weight: 600;
   color: var(--ink);
 }
 
@@ -1202,17 +1246,16 @@ body {
   gap: var(--slot-gap);
   padding-top: 0px;
   overflow: hidden;
-  background-color: var(--surface);
-  border-radius: calc(var(--radius-sm) + 2px);
+  background: transparent;
 }
 
 .day-block.is-today .classes-container {
-  padding-top: 6px;
+  padding-top: 0;
 }
 
 .day-empty {
   margin: 0;
-  padding: 7px var(--spacing-md);
+  padding: 0;
   color: var(--ink-faint);
   font-size: var(--font-size-sm);
 }
@@ -1226,14 +1269,10 @@ body {
   display: flex;
   flex-direction: row;
   align-items: stretch;
-  gap: var(--spacing-md);
-  background-color: var(--surface);
+  gap: 12px;
+  background: transparent;
   border-radius: var(--radius-sm);
-  padding:
-    0
-    0
-    0
-    var(--slot-padding-x);
+  padding: 0;
 }
 
 /* Колонка времени слева: сверху начало пары, снизу — конец, без тире
@@ -1243,7 +1282,7 @@ body {
   border: 0;
   background: transparent;
   margin: 0;
-  padding: 2px 0 0;
+  padding: 16px 0 0;
   color: inherit;
   font: inherit;
   text-align: inherit;
@@ -1287,8 +1326,10 @@ body {
   color: var(--window-break-color);
   font-size: var(--font-size-time);
   font-weight: 500;
-  line-height: 1.05;
-  white-space: nowrap;
+  line-height: 1.3;
+  white-space: normal;
+  text-align: center;
+  overflow-wrap: normal;
   cursor: default;
 }
 
@@ -1327,9 +1368,11 @@ body {
 .class-split {
   display: flex;
   flex-direction: row;
-  gap: var(--slot-padding-y);
+  gap: 8px;
   width: 100%;
 }
+
+.teacher-split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
 /* Ячейка одной подгруппы. У самой карточки пары (.class-slot) и у ячейки
    подгруппы ОДИНАКОВЫЙ серый фон (--surface) — границу между ними рисует
@@ -1353,20 +1396,38 @@ body {
   border-radius: var(--radius-sm);
   /* Добавляем бывшую толщину рамки к padding, чтобы после её удаления
        внешний размер вложенной плашки и положение содержимого не изменились. */
-  padding:
-    var(--lesson-inner-padding-top)
-    calc(var(--spacing-md) + var(--lesson-inner-size-compensation-regular))
-    var(--lesson-inner-padding-bottom);
+  padding: 16px;
+  line-height: 1.4;
+}
+
+.subgroup-marker {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--ink-soft);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 12px;
+  pointer-events: none;
+}
+
+.day-block > #schedule-metadata {
+  margin: -8px 0 16px;
+  color: var(--ink-soft);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .subgroup.has-lesson-edge::after,
 .class-common.has-lesson-edge::after {
   content: "";
   position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 8px;
+  top: 12px;
+  left: 5px;
+  bottom: 12px;
+  width: 3px;
+  border-radius: 999px;
   background: var(--lesson-edge-color);
   pointer-events: none;
 }
@@ -1383,8 +1444,8 @@ body {
 .subgroup.is-title-only,
 .class-common.is-title-only {
   justify-content: center;
-  padding-top: 5px;
-  padding-bottom: 5px;
+  padding-top: 16px;
+  padding-bottom: 16px;
 }
 
 .subgroup.is-title-only .class-detail,
@@ -1394,15 +1455,12 @@ body {
 /* Для лекционной карточки размер можно компенсировать отдельно. */
 .class-slot.is-lecture .subgroup,
 .class-slot.is-lecture .class-common {
-  padding:
-    var(--lesson-inner-padding-top)
-    calc(var(--spacing-md) + var(--lesson-inner-size-compensation-lecture))
-    var(--lesson-inner-padding-bottom);
+  padding: 16px;
 }
 
 /* Блок с названием предмета */
 .class-detail {
-  margin-bottom: 1px;
+  margin-bottom: 0;
 }
 
 /* Название предмета — истинный белый, размер — отдельная переменная
@@ -1412,11 +1470,11 @@ body {
    ячейки (в том числе одним "непрерывным" словом без пробелов). */
 .class-title {
   font-family: var(--font-sans);
-  font-weight: 500;
+  font-weight: 600;
   /* Раньше --font-size-subject (18px), уменьшался до 16px только на
        узких экранах через баг-медиа-запрос (см. историю ниже). Теперь
        16px — обычный постоянный размер. */
-  font-size: calc(16px * var(--font-scale));
+  font-size: var(--font-size-subject);
   color: var(--ink);
   overflow-wrap: break-word;
   word-break: break-word;
@@ -1431,17 +1489,17 @@ body {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 5px 8px;
+  gap: 8px 12px;
   width: 100%;
-  margin-top: 5px;
+  margin-top: 12px;
 }
 
 .class-secondary-meta {
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
 }
 
 .class-primary-meta {
-  margin-top: 4px;
+  margin-top: 8px;
 }
 
 /* В разделённой паре преподаватель остаётся сразу под предметом, а только
@@ -1449,7 +1507,7 @@ body {
    двух уже одинаковых по высоте карточек. */
 .class-split .class-secondary-meta:last-child {
   margin-top: auto;
-  padding-top: 5px;
+  padding-top: 12px;
 }
 
 /* В подгруппах аудитории занимают одинаковую нижнюю строку, даже если
@@ -1459,21 +1517,22 @@ body {
   justify-content: flex-start;
   width: 100%;
   margin-top: auto;
-  padding-top: 5px;
+  padding-top: 12px;
 }
 
 .class-teacher-line {
   display: inline-flex;
+  flex-wrap: wrap;
   flex: 0 1 auto;
   align-items: baseline;
-  gap: 6px;
+  gap: 8px 12px;
   max-width: 100%;
   min-width: 0;
 }
 
 .class-professor {
   min-width: 0;
-  font-size: calc(11px * var(--font-scale));
+  font-size: var(--font-size-professor);
   font-weight: 400;
   color: var(--ink-professor);
   overflow-wrap: break-word;
@@ -1562,13 +1621,26 @@ body {
 
 /* Бейдж типа пары стоит непосредственно перед преподавателем. */
 .class-type {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
   flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--lesson-type-color, #0a84ff);
   font-family: var(--font-sans);
-  font-weight: 500;
+  font-weight: 600;
   font-size: var(--font-size-lecture-badge);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-lecture);
+  letter-spacing: normal;
+  text-transform: none;
+  color: #fff;
+  line-height: 1;
+}
+
+.class-type.practice {
+  background: var(--lesson-type-color, #0a84ff);
 }
 
 /* Номер аудитории — компактная пилюля, как отдельная метка. */
@@ -1596,7 +1668,7 @@ body {
   border-radius: var(--radius-pill);
   background-color: rgba(63, 132, 228, 0.12);
   font-size: var(--font-size-xs);
-  color: #3f84e4;
+  color: #8ebcff;
   font-style: normal;
   line-height: 1.35;
   overflow-wrap: anywhere;

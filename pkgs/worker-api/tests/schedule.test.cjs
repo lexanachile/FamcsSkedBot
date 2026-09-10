@@ -15,6 +15,8 @@ async function load(file) {
   }
   assert.deepEqual(extractTeacherNames('Абрамова Е И.; Козел Е.В; ШибалкоС.А.; Таран А.С'), ['Абрамова', 'Козел', 'Шибалко', 'Таран']);
   assert.deepEqual(extractTeacherNames('05,26.09'), []);
+  assert.deepEqual(extractTeacherNames('Доцент Цеховая Т.В.; Профессор Иванов И.И.; ст. пр. Полузеров Т.Д.'), ['Цеховая', 'Иванов', 'Полузеров']);
+  assert.deepEqual(extractTeacherNames('Старший преподаватель Урбанович Ю.В.'), ['Урбанович']);
 
   const { configuredRooms, findRooms } = await load('schedule/rooms');
   assert.throws(() => configuredRooms());
