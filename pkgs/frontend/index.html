@@ -61,7 +61,8 @@
          поэтому голый HTML физически не может промелькнуть в обычном
          режиме (FORCE_DISABLE_CACHE = false). Версия "?v=24" — меняйте
          вручную при каждом деплое, как и раньше. -->
-    <link rel="stylesheet" id="mainStyle" href="/styles.css?v=27" />
+    <link rel="stylesheet" id="mainStyle" href="/styles.css?v=33" />
+    <link rel="stylesheet" href="/src/comparison.css?v=31" />
 
     <!-- ПРЕДЗАГРУЗКА ШРИФТОВ, которые нужны для первого экрана (шапка,
          подписи, кнопка) — чтобы браузер начал их скачивать параллельно
@@ -122,25 +123,7 @@
                  вместе со всем остальным контентом. Прилипает (sticky)
                  по-прежнему только #day-navigation. -->
         <header class="header">
-          <div class="header-mark">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              class="lucide lucide-terminal-icon lucide-terminal"
-            >
-              <path d="M12 19h8" />
-              <path d="m4 17 6-6-6-6" />
-            </svg>
-            <span>Расписание ФПМИ</span>
-          </div>
-          <p class="subtitle">Какое расписание посмотрим?</p>
+          <h1 class="subtitle">Какое расписание посмотрим?</h1>
         </header>
 
         <section class="controls-section" hidden>
@@ -377,7 +360,7 @@
     <!-- ИСПРАВЛЕНО: Абсолютный путь и сброс кэша.
          Раньше скрипт создавался через document.createElement (оверинжиниринг,
          который ломался). Теперь используется простой и надежный <script src>. 
-         Изменяйте ?v=27 на следующее число при выкатке новых версий app.js! -->
-    <script type="module" src="/app.js?v=27"></script>
+         Изменяйте ?v=28 на следующее число при выкатке новых версий app.js! -->
+    <script type="module" src="/app.js?v=34"></script>
   </body>
 </html>

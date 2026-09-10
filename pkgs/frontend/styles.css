@@ -25,6 +25,8 @@
 
 .mode-section { margin-bottom: 24px; }
 .mode-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.mode-option { display: grid; gap: 7px; min-width: 0; }
+.mode-label { color: #c7c7cc; font-size: 10px; line-height: 1.3; text-align: center; }
 .mode-card { display: grid; place-items: center; min-height: 64px; padding: 10px; border: 1px solid #303034; border-radius: 18px; background: #1c1c1e; color: #f5f5f7; cursor: pointer; transition: background .18s, border-color .18s; }
 .mode-card:hover { background: #262629; }
 .mode-card[aria-pressed="true"] { border-color: #76b4ff; background: #19283a; }
@@ -37,7 +39,6 @@
 .mode-title { font-size: 16px; font-weight: 600; line-height: 1.3; }
 .mode-hint { font-size: 12px; line-height: 1.45; color: #aaaab2; }
 .mode-panel { margin-top: 20px; padding: 20px; border-radius: 20px; background: #1c1c1e; }
-.compare-panel { min-height: 150px; display: grid; place-items: center; font-size: 20px; }
 .mode-panel label, .subgroup-control label { display: block; margin-bottom: 10px; font-size: 14px; }
 .mode-panel p { color: #aaaab2; font-size: 13px; line-height: 1.5; margin: 12px 0 0; }
 .teacher-input-row { display: flex; gap: 8px; }
@@ -47,6 +48,14 @@
 .teacher-suggestions { display: flex; flex-direction: column; gap: 4px; max-height: 240px; overflow-y: auto; margin-top: 8px; }
 .teacher-suggestions button { flex-shrink: 0; min-height: 44px; padding: 12px 16px; border: 0; border-radius: 10px; background: #262629; color: var(--ink); font: inherit; font-size: 14px; text-align: left; cursor: pointer; overflow-wrap: anywhere; }
 .teacher-suggestions button:hover { background: #303034; }
+/* Поиск преподавателя использует ту же палитру, что и расписание. */
+#teacher-form { margin-top: 0; padding: 12px; border-radius: var(--radius-sm); background: var(--surface); }
+#teacher-form label { font-family: var(--font-condensed); font-size: var(--font-size-xs); font-weight: 700; color: var(--ink-soft); }
+#teacher-form p { color: var(--ink-soft); font-size: var(--font-size-xs); }
+#teacher-form .teacher-input-row input { min-height: 40px; padding: 8px 10px; border-color: #202023; border-radius: var(--radius-sm); background: var(--bg); color: var(--ink); }
+#teacher-form .teacher-input-row button { min-height: 40px; padding-inline: 14px; border-radius: var(--radius-sm); background: var(--accent); color: var(--accent-ink); font-size: var(--font-size-xs); font-weight: 600; }
+#teacher-form .teacher-suggestions button { padding: 10px 12px; border-radius: var(--radius-sm); background: var(--bg); color: var(--ink); }
+#teacher-form .teacher-suggestions button:hover { background: #202023; }
 .subgroup-control { margin: 0; }
 .subgroup-label { display: none; }
 .subgroup-buttons { display: flex; padding: 2px; border-radius: 10px; background: var(--surface); }
@@ -432,7 +441,7 @@ body {
 .header-mark {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 8px;
   font-family: var(--font-sans);
   font-size: var(--font-size-xl);
@@ -450,9 +459,10 @@ body {
 }
 
 .header .subtitle {
-  font-size: var(--font-size-sm);
-  color: var(--ink-soft);
-  margin-top: 6px;
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
 }
 
 .main-content {
@@ -491,7 +501,9 @@ body {
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  /* На 5px левее центра Пн: шесть равных кнопок и пять промежутков по 8px. */
+  padding-left: calc((100% - 40px) / 12 - 9px);
   gap: 8px;
   margin-bottom: 0;
 }
@@ -895,7 +907,7 @@ body {
    Тень снизу отделяет прилипшую плашку от расписания под ней. */
 .day-navigation.is-stuck {
   box-shadow:
-    0 1px 0 var(--line),
+    0 1px 0 #202023,
     0 8px 16px -12px rgba(0, 0, 0, 0.4);
 }
 
@@ -1469,6 +1481,12 @@ body {
   margin-bottom: 0;
 }
 
+/* Сдвигаем текст, сохраняя исходные отступы строк с капсулами. */
+.class-detail,
+.class-primary-meta {
+  padding-left: 6px;
+}
+
 /* Название предмета — истинный белый, размер — отдельная переменная
    --font-size-subject (секция 3 блока :root), чтобы крутить её отдельно
    от остального текста. overflow-wrap/word-break/hyphens ниже разрешают
@@ -1543,26 +1561,30 @@ body {
 .lesson-color-picker {
   position: fixed;
   z-index: 30;
-  right: 12px;
-  bottom: max(16px, env(safe-area-inset-bottom));
-  left: 12px;
+  right: 0;
+  bottom: 0;
+  left: 0;
   width: auto;
-  max-width: 520px;
+  max-width: none;
   margin-inline: auto;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 10px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
+  gap: 4px;
+  padding: 0 16px max(24px, env(safe-area-inset-bottom, 0px));
+  border: 1px solid #202023;
+  border-bottom: 0;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  background: var(--lesson-inner-surface);
+  max-height: 85dvh;
+  overflow-y: auto;
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.42);
 }
 
 .lesson-color-row {
-  padding: 9px 10px;
-  border-radius: calc(var(--radius-sm) - 2px);
-  background: var(--lesson-inner-surface);
+  padding: 3px 0 8px;
+  width: 100%;
+  max-width: 520px;
+  margin-inline: auto;
 }
 
 .lesson-color-title {
@@ -1571,44 +1593,77 @@ body {
   font-size: calc(14px * var(--font-scale));
   font-weight: 700;
   overflow-wrap: anywhere;
+  text-align: center;
 }
 
 .lesson-color-choices {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, 38px);
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  justify-content: center;
+  width: 100%;
+  max-width: 100%;
+  margin-inline: auto;
+  column-gap: 0;
+  box-sizing: border-box;
 }
 
 .lesson-color-choice {
   position: relative;
-  width: 34px;
-  height: 34px;
-  flex: 0 0 34px;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
   padding: 0;
   border: 2px solid transparent;
   border-radius: 50%;
   background: var(--choice-color);
   cursor: pointer;
   touch-action: manipulation;
+  justify-self: center;
 }
 
 .lesson-color-choice:first-child {
-  border-color: var(--line);
+  border-color: transparent;
+  background: var(--lesson-inner-surface);
 }
 
 .lesson-color-choice.is-selected::after {
   content: "";
   position: absolute;
-  inset: -5px;
-  border: 2px solid var(--ink);
+  inset: -3px;
+  border: 3px solid var(--ink);
   border-radius: 50%;
 }
 
 .lesson-color-custom {
-  overflow: hidden;
-  background: conic-gradient(#ff3b30, #ffcc00, #34c759, #0a84ff, #bf5af2, #ff3b30);
+  display: grid;
+  place-items: center;
+  background: var(--lesson-inner-surface);
+  border: 1px solid #8e8e93;
+  color: #dedee3;
+  font: 300 30px/1 var(--font-sans);
 }
+
+.lesson-color-custom svg { width: 20px; height: 20px; display: block; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; }
+.lesson-color-handle { display: grid; place-items: center; width: 64px; min-height: 12px; padding: 0; margin: 0 auto; border: 0; background: transparent; cursor: pointer; touch-action: none; }
+.lesson-color-handle::before { content: ''; width: 34px; height: 4px; border-radius: 4px; background: #66666b; }
+.lesson-custom-palette { margin: 16px auto 0; max-width: 400px; width: 100%; }
+.lesson-custom-palette[hidden] { display: none; }
+.lesson-palette-main { display: flex; gap: 14px; height: 160px; }
+.lesson-sv { position: relative; flex: 1; overflow: hidden; border-radius: 10px; background: #000; touch-action: none; }
+.lesson-sv::before { content: ''; position: absolute; z-index: 0; inset: -1px; border-radius: inherit; background: linear-gradient(to top, #000 0%, transparent 100%), linear-gradient(to right, #fff 0%, transparent 100%), var(--picker-hue-color, #6b5cff); background-repeat: no-repeat; background-size: 100% 100%; pointer-events: none; }
+.lesson-sv-cursor { position: absolute; z-index: 1; width: 16px; height: 16px; border: 2px solid white; border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 2px 1px #333; pointer-events: none; }
+.lesson-hue { appearance: none; -webkit-appearance: none; writing-mode: vertical-lr; direction: ltr; width: 24px; height: 160px; margin: 0 4px; border-radius: 12px; background: linear-gradient(to bottom, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); background-repeat: no-repeat; background-size: 100% 100%; touch-action: none; }
+.lesson-hue::-webkit-slider-thumb { appearance: none; -webkit-appearance: none; width: 30px; height: 12px; border: 2px solid white; border-radius: 6px; background: transparent; box-shadow: 0 0 2px #333; }
+.lesson-hue::-moz-range-thumb { width: 30px; height: 12px; border: 2px solid white; border-radius: 6px; background: transparent; }
+.lesson-color-tools { display: flex; align-items: center; gap: 12px; margin: 14px 0 0; }
+.lesson-hex-panel { display: flex; flex: 0 1 164px; width: 164px; min-width: 0; box-sizing: border-box; border: 1px solid #303034; border-radius: 10px; background: #151517; overflow: hidden; }
+.lesson-hex { min-width: 0; width: 82px; flex: 0 0 82px; box-sizing: border-box; padding: 8px 5px; border: 0; background: transparent; color: #eee; font: 14px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; text-align: center; }
+.lesson-hex[aria-invalid="true"] { outline: 1px solid #ff5f56; }
+.lesson-color-tools button { min-height: 40px; padding: 6px 8px; border: 0; border-radius: 10px; background: #202023; color: #ccc; font: 12px var(--font-sans); cursor: pointer; }
+.lesson-color-tools .lesson-copy { display: grid; place-items: center; flex: 0 0 40px; min-width: 40px; margin-left: auto; padding: 0; border: 0; border-radius: 0; background: transparent; }
+.lesson-color-tools .lesson-copy svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.lesson-color-tools .lesson-color-reset { min-width: 108px; margin-left: auto; padding: 8px 18px; border-radius: 999px; font-size: 14px; font-weight: 600; }
 
 .lesson-color-custom input {
   position: absolute;

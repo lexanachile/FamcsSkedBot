@@ -1,3 +1,4 @@
+import { createLessonColorRow } from "./src/lesson-color-picker.js?v=34";
 import {
   getStoredValue as safeGetStorage,
   readStoredJson as readJsonStorage,
@@ -7,7 +8,7 @@ import {
 } from "./src/storage.js?v=24";
 import { initializeTelegramWebApp, triggerTelegramHaptic } from "./src/telegram.js?v=24";
 import { setStaleNotice, showToast } from "./src/feedback.js?v=24";
-import { setupScheduleModes, filterSubgroup, teacherSchedule } from "./src/schedule-modes.js?v=25";
+import { setupScheduleModes, filterSubgroup, teacherSchedule } from "./src/schedule-modes.js?v=29";
 
 let scheduleMode = null;
 let teacherRequest = 0;
@@ -122,7 +123,17 @@ function initApp() {
   initializeTelegramWebApp();
   setupEventListeners();
   setupCustomSelects();
-  setupScheduleModes({ apiBase: TEACHER_API_BASE, onTeacher: loadTeacher, onChange(mode) {
+  setupScheduleModes({ apiBase: TEACHER_API_BASE, onTeacher: loadTeacher,
+    comparison: {
+      apiBase: API_BASE_URL,
+      buildLesson: buildClassInfoHTML,
+      displayedTime: getDisplayedClassTime,
+      decorateLesson(card, title, scope) {
+        prepareLessonColor(card, title, scope);
+        applyLessonEdge(card);
+      },
+    },
+    onChange(mode) {
     scheduleMode = mode;
     ++teacherRequest;
     showLoading(false);
@@ -153,12 +164,21 @@ function normalizeLessonTitle(title) {
     : normalizedTitle;
 }
 
+const PHYSICAL_CULTURE_TIME_PATTERN = /\(\s*(\d{1,2}[.:]\d{2})\s*[-–—]\s*(\d{1,2}[.:]\d{2})\s*\)/u;
+
+function getDisplayedLessonTitle(title) {
+  const text = String(title || "");
+  return normalizeLessonTitle(text) === "физическая культура"
+    ? text.replace(PHYSICAL_CULTURE_TIME_PATTERN, "").replace(/\s+/g, " ").trim()
+    : text;
+}
+
 function getPhysicalCultureTime(classItem) {
   const titles = [classItem?.subgroupA?.classTitle, classItem?.subgroupB?.classTitle];
 
   for (const title of titles) {
     if (!normalizeLessonTitle(title).includes("физическая культура")) continue;
-    const match = String(title).match(/\(\s*(\d{1,2}[.:]\d{2})\s*[-–—]\s*(\d{1,2}[.:]\d{2})\s*\)/u);
+    const match = String(title).match(PHYSICAL_CULTURE_TIME_PATTERN);
     if (match) return { start: match[1], end: match[2] };
   }
 
@@ -254,6 +274,10 @@ function setupLessonColorPicker() {
     resetScrollTopButtonOffset();
   };
 
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') closePicker();
+  });
+
   scheduleDays.addEventListener("click", (event) => {
     const target = event.target instanceof Element ? event.target : null;
     const timeButton = target?.closest(".class-time");
@@ -273,6 +297,15 @@ function setupLessonColorPicker() {
     picker.className = "lesson-color-picker";
     picker.setAttribute("role", "group");
     picker.setAttribute("aria-label", "Цвет предмета");
+    const handle = document.createElement("button");
+    handle.type = "button";
+    handle.className = "lesson-color-handle";
+    handle.setAttribute("aria-label", "Закрыть выбор цвета");
+    handle.addEventListener("click", closePicker);
+    let swipeStart = 0;
+    handle.addEventListener("pointerdown", event => { swipeStart = event.clientY; handle.setPointerCapture(event.pointerId); });
+    handle.addEventListener("pointerup", event => { if (event.clientY - swipeStart > 30) closePicker(); });
+    picker.append(handle);
     const lessons = Array.from(slot.querySelectorAll(".class-common, .subgroup"))
       .map((card) => ({
         title: card.dataset.lessonTitle,
@@ -282,8 +315,17 @@ function setupLessonColorPicker() {
     lessons.forEach(({ title, scope }) =>
       picker.appendChild(buildLessonColorRow(title, scope)),
     );
-    if (!picker.childElementCount) return;
+    if (!lessons.length) return;
+    picker.addEventListener('refresh-colors', () => {
+      picker.querySelectorAll('.lesson-color-row').forEach(row => row.dispatchEvent(new Event('refresh-colors')));
+    });
     slot.appendChild(picker);
+    const resizeObserver = new ResizeObserver(() => placeScrollTopButtonAbove(picker));
+    resizeObserver.observe(picker);
+    const removalObserver = new MutationObserver(() => {
+      if (!picker.isConnected) { resizeObserver.disconnect(); removalObserver.disconnect(); }
+    });
+    removalObserver.observe(scheduleDays, { childList: true, subtree: true });
     timeButton.setAttribute("aria-expanded", "true");
     requestAnimationFrame(() => placeScrollTopButtonAbove(picker));
   });
@@ -301,72 +343,15 @@ function setupLessonColorPicker() {
 }
 
 function buildLessonColorRow(title, scope) {
-  const row = document.createElement("div");
-  row.className = "lesson-color-row";
-
-  const heading = document.createElement("div");
-  heading.className = "lesson-color-title";
-  const subgroupLabel = scope === "subgroup-a"
-    ? " · подгруппа А"
-    : scope === "subgroup-b"
-      ? " · подгруппа Б"
-      : "";
-  heading.textContent = title + subgroupLabel;
-  row.appendChild(heading);
-
-  const choices = document.createElement("div");
-  choices.className = "lesson-color-choices";
-  const savedColor = getLessonColor(title, scope);
-
-  LESSON_COLOR_OPTIONS.forEach((option) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "lesson-color-choice";
-    button.style.setProperty("--choice-color", option.color);
-    button.setAttribute("aria-label", `${option.label}: ${title}`);
-    button.classList.toggle(
-      "is-selected",
-      option.id === "default" ? !savedColor : savedColor === option.color,
-    );
-    button.addEventListener("click", (event) => {
-      event.stopPropagation();
-      const color = option.id === "default" ? null : option.color;
+  return createLessonColorRow(title, scope, {
+    options: LESSON_COLOR_OPTIONS,
+    getColor: getLessonColor,
+    applyColor(title, scope, color) {
       saveLessonColor(title, scope, color);
       updateLessonCards(title, scope);
-      row.querySelectorAll(".lesson-color-choice").forEach((choice) =>
-        choice.classList.toggle("is-selected", choice === button),
-      );
-    });
-    choices.appendChild(button);
+    },
   });
-
-  const customLabel = document.createElement("label");
-  customLabel.className = "lesson-color-choice lesson-color-custom";
-  customLabel.classList.toggle(
-    "is-selected",
-    Boolean(savedColor) && !LESSON_COLOR_OPTIONS.some((option) => option.color === savedColor),
-  );
-  customLabel.setAttribute("aria-label", `Свой цвет: ${title}`);
-  customLabel.title = "Выбрать свой цвет";
-  const customInput = document.createElement("input");
-  customInput.type = "color";
-  customInput.setAttribute("aria-label", `Выбрать свой цвет для предмета ${title}`);
-  customInput.value = savedColor && savedColor.startsWith("#") ? savedColor : "#6b5cff";
-  const applyCustomColor = (event) => {
-    event.stopPropagation();
-    saveLessonColor(title, scope, customInput.value);
-    updateLessonCards(title, scope);
-    row.querySelectorAll(".lesson-color-choice").forEach((choice) => choice.classList.remove("is-selected"));
-    customLabel.classList.add("is-selected");
-  };
-  customInput.addEventListener("input", applyCustomColor);
-  customInput.addEventListener("change", applyCustomColor);
-  customLabel.appendChild(customInput);
-  choices.appendChild(customLabel);
-  row.appendChild(choices);
-  return row;
 }
-
 function updateLessonCards(title, scope) {
   const key = lessonColorKey(title, scope);
   document.querySelectorAll(".class-common, .subgroup").forEach((card) => {
@@ -1377,7 +1362,7 @@ function buildClassInfoHTML(subgroup, isLecture = false) {
     : "";
   return `
         <div class="class-detail">
-            <span class="class-title">${escapeHtml(subgroup.classTitle || "")}</span>
+            <span class="class-title">${escapeHtml(getDisplayedLessonTitle(subgroup.classTitle))}</span>
         </div>
         ${primaryMetaHTML}
         ${secondaryMetaHTML}

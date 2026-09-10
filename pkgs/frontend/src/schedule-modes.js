@@ -1,4 +1,5 @@
 import { createTeacherDirectory, setupTeacherSuggestions } from './teacher-suggestions.js?v=24';
+import { setupComparison } from './comparison.js?v=29';
 
 export function filterSubgroup(data, subgroup) {
   return { ...data, classes: (data.classes || []).flatMap(item => {
@@ -41,7 +42,7 @@ export function teacherSchedule(data, name) {
   }) };
 }
 
-export function setupScheduleModes({ onChange, onTeacher, apiBase }) {
+export function setupScheduleModes({ onChange, onTeacher, apiBase, comparison }) {
   const modeStorageKey = 'schedule-mode:v1';
   const savedMode = (() => {
     try { return localStorage.getItem(modeStorageKey); } catch { return null; }
@@ -59,18 +60,20 @@ export function setupScheduleModes({ onChange, onTeacher, apiBase }) {
     '<rect x="3" y="4" width="18" height="17" rx="4"/><path d="M8 2v4M16 2v4M3 10h18M12 13v5M9.5 15.5h5"/>',
   ];
   const modes = [
-    ['subgroup', 'Моя подгруппа', ''],
-    ['group', 'Обе подгруппы вместе', 'p.s. Нажмите на время пары, чтобы выбрать цвет для заметки.'],
+    ['subgroup', 'Моя подгруппа', 'p.s. Нажмите на время пары, чтобы выбрать цвет для заметки'],
+    ['group', 'Обе подгруппы вместе', 'p.s. Нажмите на время пары, чтобы выбрать цвет для заметки'],
     ['teacher', 'Поиск по фамилии', ''],
-    ['compare', 'В разработке', ''],
+    ['compare', 'Сравнение расписаний', ''],
   ];
   const section = document.createElement('section');
+  const modeLabels = ['Подгруппа', 'Группа', 'Преподаватели', 'Сравнение'];
   section.className = 'mode-section';
   section.setAttribute('aria-label', 'Режим расписания');
-  section.innerHTML = `<div class="mode-grid">${modes.map(([id, title], i) => `<button type="button" class="mode-card" data-mode="${id}" aria-label="${title}" title="${title}" aria-pressed="false"><span class="mode-icon mode-icon-${id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[i]}</svg></span></button>`).join('')}</div><p id="mode-description" class="mode-description" aria-live="polite" hidden></p>
+  section.innerHTML = `<div class="mode-grid">${modes.map(([id, title], i) => `<div class="mode-option"><span class="mode-label">${modeLabels[i]}</span><button type="button" class="mode-card" data-mode="${id}" aria-label="${title}" title="${title}" aria-pressed="false"><span class="mode-icon mode-icon-${id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[i]}</svg></span></button></div>`).join('')}</div><p id="mode-description" class="mode-description" aria-live="polite" hidden></p>
     <form id="teacher-form" class="mode-panel" hidden><label for="teacher-name">Поиск по фамилии</label><div class="teacher-input-row"><input id="teacher-name" name="teacher" placeholder="Например, Орлович" autocomplete="off" required maxlength="80"><button type="submit">Найти</button></div></form>
-    <div id="compare-panel" class="mode-panel compare-panel" role="status" hidden><strong>В разработке</strong></div>`;
+    <section id="compare-panel" class="compare-panel" aria-label="Сравнение расписаний" hidden></section>`;
   document.querySelector('.header').after(section);
+  const comparisonController = setupComparison({ panel: document.getElementById('compare-panel'), ...comparison });
   const activateSuggestions = setupTeacherSuggestions({
     form: document.getElementById('teacher-form'),
     loadNames: createTeacherDirectory(apiBase),
@@ -107,7 +110,7 @@ export function setupScheduleModes({ onChange, onTeacher, apiBase }) {
     updateControlsHeight();
     document.getElementById('teacher-form').hidden = mode !== 'teacher';
     activateSuggestions(mode === 'teacher');
-    document.getElementById('compare-panel').hidden = mode !== 'compare';
+    comparisonController.activate(mode === 'compare');
     onChange(mode, true);
   }));
   document.getElementById('teacher-form').addEventListener('submit', event => {
