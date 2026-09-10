@@ -1264,7 +1264,7 @@ function displaySchedule(scheduleData) {
         for (const entry of cls.teacherLessons) {
           const cell = document.createElement('div');
           cell.className = 'subgroup';
-          cell.innerHTML = buildClassInfoHTML(entry.lesson, entry.isLecture, true);
+          cell.innerHTML = buildClassInfoHTML(entry.lesson, entry.isLecture);
           prepareLessonColor(cell, entry.lesson.classTitle, entry.label === 'Б' ? 'subgroup-b' : entry.label === 'А' ? 'subgroup-a' : 'common');
           applyLessonEdge(cell);
           if (entry.label) {
@@ -1286,12 +1286,12 @@ function displaySchedule(scheduleData) {
         infoDiv.classList.add("class-split");
         const left = document.createElement("div");
         left.className = "subgroup subgroup-a";
-        left.innerHTML = buildClassInfoHTML(cls.subgroupA, cls.isLecture, true);
+        left.innerHTML = buildClassInfoHTML(cls.subgroupA, cls.isLecture);
         prepareLessonColor(left, cls.subgroupA?.classTitle, "subgroup-a");
         applyLessonEdge(left);
         const right = document.createElement("div");
         right.className = "subgroup subgroup-b";
-        right.innerHTML = buildClassInfoHTML(cls.subgroupB, cls.isLecture, true);
+        right.innerHTML = buildClassInfoHTML(cls.subgroupB, cls.isLecture);
         prepareLessonColor(right, cls.subgroupB?.classTitle, "subgroup-b");
         applyLessonEdge(right);
         for (const [cell, label] of [[left, 'А'], [right, 'Б']]) {
@@ -1343,7 +1343,7 @@ function displaySchedule(scheduleData) {
   requestAnimationFrame(handleGlobalScroll);
 }
 
-function buildClassInfoHTML(subgroup, isLecture = false, isSplit = false) {
+function buildClassInfoHTML(subgroup, isLecture = false) {
   if (
     !subgroup ||
     (!subgroup.classTitle &&
@@ -1364,29 +1364,24 @@ function buildClassInfoHTML(subgroup, isLecture = false, isSplit = false) {
   const roomHTML = subgroup.classroom
     ? `<span class="class-room">${escapeHtml(subgroup.classroom)}</span>`
     : "";
-  const teacherHTML = professorHTML ? `<span class="class-teacher-line">${professorHTML}</span>` : "";
-  const roomSharesTeacherRow = roomHTML && !subgroup.comments;
-  const metaTailHTML = lectureHTML || roomSharesTeacherRow
-    ? `<span class="class-meta-tail">${lectureHTML}${roomSharesTeacherRow ? roomHTML : ""}</span>`
-    : "";
-  const primaryMetaHTML = teacherHTML || metaTailHTML
-    ? `<div class="class-primary-meta${isSplit ? " class-subgroup-meta" : ""}">
-        ${teacherHTML}
-        ${metaTailHTML}
-      </div>`
+  const primaryMetaHTML = professorHTML
+    ? `<div class="class-primary-meta">${professorHTML}</div>`
     : "";
   const secondaryMetaHTML = subgroup.comments
     ? `<div class="class-secondary-meta">
         <span class="class-comments">${escapeHtml(subgroup.comments)}</span>
-        ${roomHTML}
       </div>`
+    : "";
+  const footerHTML = lectureHTML || roomHTML
+    ? `<div class="class-footer">${lectureHTML}${roomHTML}</div>`
     : "";
   return `
         <div class="class-detail">
             <span class="class-title">${escapeHtml(subgroup.classTitle || "")}</span>
         </div>
         ${primaryMetaHTML}
-        ${secondaryMetaHTML}`;
+        ${secondaryMetaHTML}
+        ${footerHTML}`;
 }
 
 function showLoading(show) {

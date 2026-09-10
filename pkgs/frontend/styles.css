@@ -1401,9 +1401,8 @@ body {
   background-color: var(--lesson-inner-surface);
   border: 0;
   border-radius: var(--radius-sm);
-  /* Добавляем бывшую толщину рамки к padding, чтобы после её удаления
-       внешний размер вложенной плашки и положение содержимого не изменились. */
-  padding: 10px 10px 10px 12px;
+  /* Общий отступ для всех строк карточки. */
+  padding: 10px;
   line-height: 1.4;
 }
 
@@ -1458,13 +1457,8 @@ body {
 .class-common.is-title-only .class-detail {
   margin-bottom: 0;
 }
-/* Для лекционной карточки размер можно компенсировать отдельно. */
-.class-slot.is-lecture .subgroup,
-.class-slot.is-lecture .class-common {
-  padding: 10px 10px 10px 12px;
-}
-
-/* Едва заметный запас между цветной полоской шпаргалки и содержимым. */
+/* Полоска: 5px от края + 3px ширины + 6px до содержимого.
+   Отступ применяется ко всем строкам, в том числе у лекций. */
 .subgroup.has-lesson-edge,
 .class-common.has-lesson-edge {
   padding-left: 14px;
@@ -1491,12 +1485,9 @@ body {
   overflow-wrap: break-word;
   word-break: break-word;
   hyphens: auto;
-  margin-left: 3px;
 }
 
-/* Строка метаданных переносится целиком: пока преподаватель и аудитория
-   помещаются, они стоят рядом; если места не хватает, аудитория сама
-   переходит на следующую строку и остаётся прижатой вправо. */
+/* Преподаватель и комментарии располагаются под названием. */
 .class-primary-meta,
 .class-secondary-meta {
   display: flex;
@@ -1515,44 +1506,28 @@ body {
   margin-top: 8px;
 }
 
-/* В разделённой паре преподаватель остаётся сразу под предметом, а только
-   нижняя строка с комментарием/аудиторией выравнивается по общему низу
-   двух уже одинаковых по высоте карточек. */
-.class-split .class-secondary-meta:last-child {
+/* Равная высота соседних карточек и свободное место над нижней строкой
+   выравнивают тип занятия и аудиторию при разной длине содержимого. */
+.class-footer {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 26px;
   margin-top: auto;
   padding-top: 12px;
+  box-sizing: content-box;
 }
 
-/* Нижние строки подгрупп опираются на общий низ карточек, даже когда
-   названия предметов и фамилии занимают разное число строк. */
-.class-subgroup-meta:last-child {
-  margin-top: auto;
-  padding-top: 8px;
-}
-
-/* ПЗ и аудитория переносятся вместе, если не помещаются после фамилии. */
-.class-subgroup-meta .class-meta-tail {
-  flex: 0 0 auto;
-}
-
-.class-teacher-line {
-  /* Дочерние элементы участвуют в общей flex-строке вместе с аудиторией.
-     Поэтому бейдж может перейти на следующую строку рядом с аудиторией. */
-  display: contents;
-  flex-wrap: wrap;
-  flex: 0 1 auto;
-  align-items: baseline;
-  gap: 8px 12px;
-}
-
-.class-meta-tail {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+.class-footer .class-room {
+  margin-left: auto;
   min-width: 0;
-  max-width: 100%;
   flex: 0 1 auto;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: right;
 }
 
 .class-professor {
@@ -1563,16 +1538,6 @@ body {
   overflow-wrap: break-word;
   word-break: break-word;
   hyphens: auto;
-  margin-left: 3px;
-}
-
-/* Цветная заметка и её бейдж добавляют визуальный акцент слева. Небольшой
-   одинаковый сдвиг выравнивает предмет и преподавателя с этим акцентом. */
-.subgroup.has-lesson-edge .class-title,
-.subgroup.has-lesson-edge .class-professor,
-.class-common.has-lesson-edge .class-title,
-.class-common.has-lesson-edge .class-professor {
-  margin-left: 3px;
 }
 
 .lesson-color-picker {
@@ -1654,7 +1619,7 @@ body {
   cursor: pointer;
 }
 
-/* Бейдж типа пары стоит непосредственно перед преподавателем. */
+/* Бейдж типа пары стоит слева в отдельной нижней строке. */
 .class-type {
   display: inline-flex;
   align-items: center;
