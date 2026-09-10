@@ -7,7 +7,9 @@ export function createTeacherDirectory(apiBase, request = fetch) {
     if (names !== null) return names;
     if (!pending) {
       pending = (async () => {
-        const response = await request(`${apiBase}/api/teachers`, { signal: AbortSignal.timeout(15000) });
+        // Не используем AbortSignal.timeout: старые Telegram WebView не
+        // реализуют этот метод и тогда подсказки ломаются ещё до fetch.
+        const response = await request(`${apiBase}/api/teachers`);
         if (!response.ok) throw new Error('Не удалось загрузить фамилии');
         const result = await response.json();
         if (!result.success || !Array.isArray(result.data?.teachers)) throw new Error('Некорректный список преподавателей');

@@ -1396,15 +1396,14 @@ body {
   border-radius: var(--radius-sm);
   /* Добавляем бывшую толщину рамки к padding, чтобы после её удаления
        внешний размер вложенной плашки и положение содержимого не изменились. */
-  padding: 16px;
+  padding: 10px 10px 10px 12px;
   line-height: 1.4;
 }
 
 .subgroup-marker {
   position: absolute;
   top: 4px;
-  left: 50%;
-  transform: translateX(-50%);
+  right: 8px;
   color: var(--ink-soft);
   font-size: 9px;
   font-weight: 600;
@@ -1444,8 +1443,8 @@ body {
 .subgroup.is-title-only,
 .class-common.is-title-only {
   justify-content: center;
-  padding-top: 16px;
-  padding-bottom: 16px;
+  padding-top: 10px;
+  padding-bottom: 10px;
 }
 
 .subgroup.is-title-only .class-detail,
@@ -1455,7 +1454,13 @@ body {
 /* Для лекционной карточки размер можно компенсировать отдельно. */
 .class-slot.is-lecture .subgroup,
 .class-slot.is-lecture .class-common {
-  padding: 16px;
+  padding: 10px 10px 10px 12px;
+}
+
+/* Едва заметный запас между цветной полоской шпаргалки и содержимым. */
+.subgroup.has-lesson-edge,
+.class-common.has-lesson-edge {
+  padding-left: 14px;
 }
 
 /* Блок с названием предмета */
@@ -1625,22 +1630,27 @@ body {
   align-items: center;
   justify-content: center;
   min-width: 28px;
-  height: 28px;
-  padding: 0 8px;
+  height: 26px;
+  padding: 0 7px;
   flex: 0 0 auto;
   border-radius: 999px;
-  background: var(--lesson-type-color, #0a84ff);
+  /* Запасной цвет нужен для старых WebView; современный браузер затемняет
+     любой цвет шпаргалки одинаково, в том числе пользовательский. */
+  background: #303034;
+  background: color-mix(in srgb, var(--lesson-type-color, var(--ink-lecture)) 12%, #111113 88%);
   font-family: var(--font-sans);
   font-weight: 600;
-  font-size: var(--font-size-lecture-badge);
+  font-size: calc(12px * var(--font-scale));
   letter-spacing: normal;
   text-transform: none;
-  color: #fff;
+  color: var(--lesson-type-color, var(--ink-lecture));
   line-height: 1;
 }
 
 .class-type.practice {
-  background: var(--lesson-type-color, #0a84ff);
+  background: #303034;
+  background: color-mix(in srgb, var(--lesson-type-color, #66b7ff) 12%, #111113 88%);
+  color: var(--lesson-type-color, #66b7ff);
 }
 
 /* Номер аудитории — компактная пилюля, как отдельная метка. */

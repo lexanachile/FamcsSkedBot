@@ -4,10 +4,10 @@ import {
   removeStoredValue as safeRemoveStorage,
   setStoredValue as safeSetStorage,
   writeStoredJson as writeJsonStorage,
-} from "./src/storage.js?v=21";
-import { initializeTelegramWebApp, triggerTelegramHaptic } from "./src/telegram.js?v=21";
-import { setStaleNotice, showToast } from "./src/feedback.js?v=21";
-import { setupScheduleModes, filterSubgroup, teacherSchedule } from "./src/schedule-modes.js?v=21";
+} from "./src/storage.js?v=23";
+import { initializeTelegramWebApp, triggerTelegramHaptic } from "./src/telegram.js?v=23";
+import { setStaleNotice, showToast } from "./src/feedback.js?v=23";
+import { setupScheduleModes, filterSubgroup, teacherSchedule } from "./src/schedule-modes.js?v=24";
 
 let scheduleMode = null;
 let teacherRequest = 0;
@@ -221,7 +221,8 @@ function applyLessonEdge(card) {
   card.style.removeProperty("--lesson-edge-color");
   card.classList.toggle("has-lesson-edge", Boolean(color));
   if (color) card.style.setProperty("--lesson-edge-color", color);
-  card.style.setProperty("--lesson-type-color", color || "#0a84ff");
+  card.style.removeProperty("--lesson-type-color");
+  if (color) card.style.setProperty("--lesson-type-color", color);
 }
 
 function setupLessonColorPicker() {

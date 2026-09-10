@@ -1,4 +1,4 @@
-import { createTeacherDirectory, setupTeacherSuggestions } from './teacher-suggestions.js?v=21';
+import { createTeacherDirectory, setupTeacherSuggestions } from './teacher-suggestions.js?v=23';
 
 export function filterSubgroup(data, subgroup) {
   return { ...data, classes: (data.classes || []).flatMap(item => {
@@ -42,6 +42,12 @@ export function teacherSchedule(data, name) {
 }
 
 export function setupScheduleModes({ onChange, onTeacher, apiBase }) {
+  const subgroupStorageKey = 'schedule-subgroup:v1';
+  const savedSubgroup = (() => {
+    try {
+      return localStorage.getItem(subgroupStorageKey) === 'subgroupB' ? 'subgroupB' : 'subgroupA';
+    } catch { return 'subgroupA'; }
+  })();
   const icons = [
     '<circle cx="12" cy="8" r="4"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/>',
     '<circle cx="9" cy="8" r="3"/><path d="M2 21v-2a7 7 0 0 1 14 0v2M16 5a3 3 0 0 1 0 6M18 14a6 6 0 0 1 4 5v2"/>',
@@ -69,10 +75,12 @@ export function setupScheduleModes({ onChange, onTeacher, apiBase }) {
   const subgroup = document.createElement('div');
   subgroup.className = 'subgroup-control';
   subgroup.hidden = true;
-  subgroup.innerHTML = '<span class="subgroup-label">Подгруппа</span><div class="subgroup-buttons" role="group" aria-label="Подгруппа"><button type="button" data-subgroup="subgroupA" aria-pressed="true">А</button><button type="button" data-subgroup="subgroupB" aria-pressed="false">Б</button></div><select id="subgroup-select" hidden><option value="subgroupA">А</option><option value="subgroupB">Б</option></select>';
+  subgroup.innerHTML = `<span class="subgroup-label">Подгруппа</span><div class="subgroup-buttons" role="group" aria-label="Подгруппа"><button type="button" data-subgroup="subgroupA" aria-pressed="${savedSubgroup === 'subgroupA'}">А</button><button type="button" data-subgroup="subgroupB" aria-pressed="${savedSubgroup === 'subgroupB'}">Б</button></div><select id="subgroup-select" hidden><option value="subgroupA">А</option><option value="subgroupB">Б</option></select>`;
+  subgroup.querySelector('select').value = savedSubgroup;
   controls.querySelector('.controls-select-row').insertBefore(subgroup, document.getElementById('refresh-schedule-button'));
   subgroup.querySelectorAll('[data-subgroup]').forEach(button => button.addEventListener('click', () => {
     subgroup.querySelector('select').value = button.dataset.subgroup;
+    try { localStorage.setItem(subgroupStorageKey, button.dataset.subgroup); } catch { /* storage unavailable */ }
     subgroup.querySelectorAll('button').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
     onChange('subgroup', false);
   }));
