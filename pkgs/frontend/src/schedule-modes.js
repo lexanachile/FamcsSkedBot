@@ -2,6 +2,7 @@ import { createTeacherDirectory, setupTeacherSuggestions } from './teacher-sugge
 import { setupComparison } from './comparison.js?v=30';
 
 export function filterSubgroup(data, subgroup) {
+  if (subgroup === 'both') return data;
   return { ...data, classes: (data.classes || []).flatMap(item => {
     if (item.isCommon) return [item];
     const lesson = item[subgroup];
@@ -50,23 +51,23 @@ export function setupScheduleModes({ onChange, onTeacher, apiBase, comparison })
   const subgroupStorageKey = 'schedule-subgroup:v1';
   const savedSubgroup = (() => {
     try {
-      return localStorage.getItem(subgroupStorageKey) === 'subgroupB' ? 'subgroupB' : 'subgroupA';
+      if (savedMode === 'group') return 'both';
+      const value = localStorage.getItem(subgroupStorageKey);
+      return ['subgroupA', 'subgroupB', 'both'].includes(value) ? value : 'subgroupA';
     } catch { return 'subgroupA'; }
   })();
   const icons = [
-    '<circle cx="12" cy="8" r="4"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/>',
-    '<circle cx="9" cy="8" r="3"/><path d="M2 21v-2a7 7 0 0 1 14 0v2M16 5a3 3 0 0 1 0 6M18 14a6 6 0 0 1 4 5v2"/>',
-    '<path d="m2 8 10-5 10 5-10 5L2 8Zm4 3v6c4 3 8 3 12 0v-6M22 8v9"/>',
-    '<rect x="3" y="4" width="18" height="17" rx="4"/><path d="M8 2v4M16 2v4M3 10h18M12 13v5M9.5 15.5h5"/>',
+    '<path d="M10 2v2M14 2v2M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1M6 2v2"/>',
+    '<circle cx="6" cy="15" r="4"/><circle cx="18" cy="15" r="4"/><path d="M14 15a2 2 0 0 0-2-2 2 2 0 0 0-2 2M2.5 13 5 7c.7-1.3 1.4-2 3-2M21.5 13 19 7c-.7-1.3-1.5-2-3-2"/>',
+    '<path d="M12 3v17a1 1 0 0 1-1 1H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6a1 1 0 0 1-1 1H3M16 19h6M19 22v-6"/>',
   ];
   const modes = [
-    ['subgroup', 'Моя подгруппа', 'p.s. Нажмите на время пары, чтобы выбрать цвет для заметки'],
-    ['group', 'Обе подгруппы вместе', 'p.s. Нажмите на время пары, чтобы выбрать цвет для заметки'],
+    ['subgroup', 'Выберите отображение по подгруппе или группе целиком', 'p.s. Нажмите на время пары, чтобы выбрать цвет для заметки'],
     ['teacher', 'Поиск по фамилии', ''],
     ['compare', 'Сравнение расписаний', ''],
   ];
   const section = document.createElement('section');
-  const modeLabels = ['Подгруппа', 'Группа', 'Преподаватели', 'Сравнение'];
+  const modeLabels = ['Пары', 'Преподаватели', 'Сравнение'];
   section.className = 'mode-section';
   section.setAttribute('aria-label', 'Режим расписания');
   section.innerHTML = `<div class="mode-grid">${modes.map(([id, title], i) => `<div class="mode-option"><span class="mode-label">${modeLabels[i]}</span><button type="button" class="mode-card" data-mode="${id}" aria-label="${title}" title="${title}" aria-pressed="false"><span class="mode-icon mode-icon-${id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[i]}</svg></span></button></div>`).join('')}</div><p id="mode-description" class="mode-description" aria-live="polite" hidden></p>
@@ -87,7 +88,7 @@ export function setupScheduleModes({ onChange, onTeacher, apiBase, comparison })
   const subgroup = document.createElement('div');
   subgroup.className = 'subgroup-control';
   subgroup.hidden = true;
-  subgroup.innerHTML = `<span class="subgroup-label">Подгруппа</span><div class="subgroup-buttons" role="group" aria-label="Подгруппа"><button type="button" data-subgroup="subgroupA" aria-pressed="${savedSubgroup === 'subgroupA'}">А</button><button type="button" data-subgroup="subgroupB" aria-pressed="${savedSubgroup === 'subgroupB'}">Б</button></div><select id="subgroup-select" hidden><option value="subgroupA">А</option><option value="subgroupB">Б</option></select>`;
+  subgroup.innerHTML = `<span class="subgroup-label">Подгруппа</span><div class="subgroup-buttons" role="group" aria-label="Подгруппа"><button type="button" data-subgroup="subgroupA" aria-pressed="${savedSubgroup === 'subgroupA'}">А</button><button type="button" data-subgroup="subgroupB" aria-pressed="${savedSubgroup === 'subgroupB'}">Б</button><button type="button" data-subgroup="both" aria-pressed="${savedSubgroup === 'both'}">А+Б</button></div><select id="subgroup-select" hidden><option value="subgroupA">А</option><option value="subgroupB">Б</option><option value="both">А+Б</option></select>`;
   subgroup.querySelector('select').value = savedSubgroup;
   controls.querySelector('.controls-select-row').insertBefore(subgroup, document.getElementById('refresh-schedule-button'));
   subgroup.querySelectorAll('[data-subgroup]').forEach(button => button.addEventListener('click', () => {
@@ -118,7 +119,9 @@ export function setupScheduleModes({ onChange, onTeacher, apiBase, comparison })
     const name = document.getElementById('teacher-name').value.trim();
     if (name) onTeacher(name);
   });
-  if (modes.some(([id]) => id === savedMode)) {
-    section.querySelector(`[data-mode="${savedMode}"]`)?.click();
+  const initialMode = savedMode === 'group' ? 'subgroup' : savedMode;
+  if (modes.some(([id]) => id === initialMode)) {
+    try { localStorage.setItem(subgroupStorageKey, savedSubgroup); } catch { /* storage unavailable */ }
+    section.querySelector(`[data-mode="${initialMode}"]`)?.click();
   }
 }

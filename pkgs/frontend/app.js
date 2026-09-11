@@ -1,14 +1,14 @@
-import { createLessonColorRow } from "./src/lesson-color-picker.js?v=30";
+import { createLessonColorRow } from "./src/lesson-color-picker.js?v=32";
 import {
   getStoredValue as safeGetStorage,
   readStoredJson as readJsonStorage,
   removeStoredValue as safeRemoveStorage,
   setStoredValue as safeSetStorage,
   writeStoredJson as writeJsonStorage,
-} from "./src/storage.js?v=30";
-import { initializeTelegramWebApp, triggerTelegramHaptic } from "./src/telegram.js?v=30";
-import { setStaleNotice, showToast } from "./src/feedback.js?v=30";
-import { setupScheduleModes, filterSubgroup, teacherSchedule } from "./src/schedule-modes.js?v=30";
+} from "./src/storage.js?v=32";
+import { initializeTelegramWebApp, triggerTelegramHaptic } from "./src/telegram.js?v=32";
+import { setStaleNotice, showToast } from "./src/feedback.js?v=32";
+import { setupScheduleModes, filterSubgroup, teacherSchedule } from "./src/schedule-modes.js?v=34";
 
 let scheduleMode = null;
 let teacherRequest = 0;
@@ -52,7 +52,7 @@ const CACHE_SCHEMA_VERSION = 1;
 const INACTIVITY_REFRESH_MS = 15 * 60 * 1000;
 const LESSON_COLORS_STORAGE_KEY = "lessonColors:v1";
 const LESSON_COLOR_OPTIONS = [
-  { id: "default", label: "Обычный цвет", color: "var(--lesson-inner-surface)" },
+  { id: "default", label: "Обычный цвет", color: "#0b0b0c" },
   { id: "red", label: "Красный", color: "#FF5F56" },
   { id: "yellow", label: "Жёлтый", color: "#fcdb47" },
   { id: "green", label: "Зелёный", color: "#4afa93" },
