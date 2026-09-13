@@ -599,6 +599,11 @@ def parse_course_3_4(file_content: bytes, course_number: int) -> List[Dict]:
 # ============================================================
 
 
+def is_dp_title(title: Any) -> bool:
+    """ДП с номером: регистр, пробелы и вариант дефиса не влияют на тип пары."""
+    return bool(re.fullmatch(r"дп\s*[-‐‑‒–—−]?\s*\d+", str(title or "").strip(), re.IGNORECASE))
+
+
 def extract_class(
     ws: Worksheet,
     rect: Tuple[int, int, int, int],
@@ -644,7 +649,7 @@ def extract_class(
 
     start_time, end_time = parse_time_range(time_label)
 
-    # 1. Физкультура и полные заливки (они не лекции)
+    # 1. Полные заливки: общая ДП — лекция, остальные (например физкультура) — нет.
     covering_merge = next(
         (
             mr
@@ -666,7 +671,7 @@ def extract_class(
                 "startTime": start_time,
                 "endTime": end_time,
                 "isCommon": 1,
-                "isLecture": 0,
+                "isLecture": int(is_dp_title(title)),
                 "classTitleA": str(title).strip() if title else "",
                 "professorNameA": "",
                 "classroomA": None,
@@ -716,8 +721,8 @@ def extract_class(
     if lecture_merge:
         title = ws.cell(row=lecture_merge.min_row, column=lecture_merge.min_col).value
 
-        # Если поток состоит из 1 группы, то это занятие физически не может быть классической лекцией
-        final_is_lecture = 0 if is_single_group_flow else 1
+        # Общая ДП является лекцией даже для потока из одной группы.
+        final_is_lecture = int(is_dp_title(title) or not is_single_group_flow)
 
         # Если лекция объединена по высоте полностью (или на 3-4 строки)
         if lecture_merge.max_row >= max_row or lecture_merge.max_row >= min_row + 2:
@@ -841,7 +846,7 @@ def extract_class(
                 "startTime": start_time,
                 "endTime": end_time,
                 "isCommon": 1,
-                "isLecture": 0,
+                "isLecture": int(is_dp_title(title_a or title_b)),
                 "classTitleA": title_a or title_b or "",
                 "professorNameA": prof_a or prof_b,
                 "classroomA": classroom_a or classroom_b,
