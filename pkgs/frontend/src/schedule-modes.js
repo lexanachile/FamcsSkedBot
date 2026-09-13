@@ -1,4 +1,4 @@
-import { createTeacherDirectory, setupTeacherSuggestions, hasTeacher } from './teacher-suggestions.js?v=39';
+import { createTeacherDirectory, setupTeacherSuggestions, hasTeacher } from './teacher-suggestions.js?v=40';
 import { setupComparison } from './comparison.js?v=39';
 
 export function filterSubgroup(data, subgroup) {

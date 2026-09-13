@@ -8,7 +8,7 @@ import {
 } from "./src/storage.js?v=39";
 import { initializeTelegramWebApp, triggerTelegramHaptic } from "./src/telegram.js?v=39";
 import { setStaleNotice, showToast } from "./src/feedback.js?v=39";
-import { setupScheduleModes, filterSubgroup, teacherSchedule } from "./src/schedule-modes.js?v=39";
+import { setupScheduleModes, filterSubgroup, teacherSchedule } from "./src/schedule-modes.js?v=40";
 import { requestJson } from "./src/request.js?v=39";
 
 let scheduleMode = null;

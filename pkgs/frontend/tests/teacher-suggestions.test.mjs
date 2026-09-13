@@ -28,7 +28,8 @@ test('directory shares concurrent requests and retries a failed load', async () 
   assert.equal(calls, 2);
 });
 
-test('tap on suggestion preserves input focus and searches the selected surname', async () => {
+for (const gesture of ['click', 'tap', 'scroll', 'cancel', 'multi-touch']) {
+test(`suggestion interaction: ${gesture}`, async () => {
   class Element {
     children = []; listeners = {}; value = 'Це';
     setAttribute() {}
@@ -49,14 +50,31 @@ test('tap on suggestion preserves input focus and searches the selected surname'
     const activate = setupTeacherSuggestions({ form, loadNames: async () => ['Цеховая'], onSelect: name => selected.push(name) });
     await activate(true);
     const list = form.children[1], button = list.children[0];
-    let prevented = false;
-    button.dispatch('pointerdown', { preventDefault() { prevented = true; } });
-    assert.equal(prevented, true);
     form.dispatch('focusout', { relatedTarget: null });
     assert.equal(list.hidden, false);
-    button.dispatch('click');
+    if (gesture !== 'click') {
+      const point = { identifier: 1, clientX: 20, clientY: 20 };
+      button.dispatch('touchstart', { touches: gesture === 'multi-touch' ? [point, { ...point, identifier: 2 }] : [point] });
+      if (gesture === 'scroll') {
+        button.dispatch('touchmove', { changedTouches: [{ ...point, clientY: 60 }] });
+      }
+      if (gesture === 'cancel') button.dispatch('touchcancel');
+      let prevented = false;
+      button.dispatch('touchend', { touches: [], changedTouches: [point], preventDefault() { prevented = true; } });
+      assert.equal(prevented, gesture === 'tap');
+      assert.deepEqual(selected, gesture === 'tap' ? ['Цеховая'] : []);
+    }
+    // A synthetic click after touchend must not launch a second request,
+    // or select a teacher after a drag/cancelled gesture.
+    button.dispatch('click', { detail: 1 });
+    if (['scroll', 'cancel', 'multi-touch'].includes(gesture)) {
+      assert.deepEqual(selected, []);
+      assert.equal(list.hidden, false);
+      return;
+    }
     assert.equal(input.value, 'Цеховая');
     assert.deepEqual(selected, ['Цеховая']);
     assert.equal(list.hidden, true);
   } finally { globalThis.document = previousDocument; }
 });
+}

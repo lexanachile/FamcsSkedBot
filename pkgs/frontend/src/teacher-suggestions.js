@@ -74,16 +74,43 @@ export function setupTeacherSuggestions({ form, loadNames, onSelect }) {
       const button = document.createElement('button');
       button.type = 'button';
       button.textContent = name;
-      // Some mobile browsers blur the input with relatedTarget=null on a tap.
-      // Keep focus until click, otherwise focusout hides its target before click.
-      button.addEventListener('pointerdown', event => event.preventDefault());
-      button.addEventListener('mousedown', event => event.preventDefault());
-      button.addEventListener('click', () => {
+      let selected = false;
+      let touch = null;
+      let moved = false;
+      const select = () => {
+        if (selected || !active) return;
+        selected = true;
         input.value = name;
         input.blur();
         list.hidden = true;
         status.textContent = `Выбран преподаватель: ${name}`;
         onSelect(name);
+      };
+      // iOS may lose the synthetic click when focus/keyboard changes on a tap.
+      // Handle a completed tap directly, without cancelling the start of a scroll.
+      button.addEventListener('touchstart', event => {
+        moved = event.touches.length !== 1;
+        const point = event.touches[0];
+        touch = moved ? null : { id: point.identifier, x: point.clientX, y: point.clientY, scrollTop: list.scrollTop };
+      }, { passive: true });
+      const trackTouch = event => {
+        if (!touch) return;
+        const point = Array.from(event.changedTouches).find(item => item.identifier === touch.id);
+        if (point && (Math.hypot(point.clientX - touch.x, point.clientY - touch.y) > 10 || list.scrollTop !== touch.scrollTop)) moved = true;
+      };
+      button.addEventListener('touchmove', trackTouch, { passive: true });
+      button.addEventListener('touchcancel', () => { touch = null; moved = true; });
+      button.addEventListener('touchend', event => {
+        trackTouch(event);
+        if (touch && !moved && event.touches.length === 0) {
+          event.preventDefault();
+          select();
+        }
+        touch = null;
+      }, { passive: false });
+      button.addEventListener('mousedown', event => event.preventDefault());
+      button.addEventListener('click', event => {
+        if (!moved || event.detail === 0) select();
       });
       list.appendChild(button);
     }

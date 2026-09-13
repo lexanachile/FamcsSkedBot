@@ -61,7 +61,7 @@
          поэтому голый HTML физически не может промелькнуть в обычном
          режиме (FORCE_DISABLE_CACHE = false). Версия "?v=39" — меняйте
          вручную при каждом деплое, как и раньше. -->
-    <link rel="stylesheet" id="mainStyle" href="/styles.css?v=39" />
+    <link rel="stylesheet" id="mainStyle" href="/styles.css?v=40" />
     <link rel="stylesheet" href="/src/comparison.css?v=39" />
 
     <!-- ПРЕДЗАГРУЗКА ШРИФТОВ, которые нужны для первого экрана (шапка,
@@ -360,7 +360,7 @@
     <!-- ИСПРАВЛЕНО: Абсолютный путь и сброс кэша.
          Раньше скрипт создавался через document.createElement (оверинжиниринг,
          который ломался). Теперь используется простой и надежный <script src>. 
-         Используется единая версия ?v=39 для всех фронтенд-ресурсов. -->
+         При изменении модулей обновляйте версии по всей цепочке импортов. -->
     <div id="startup-error" role="alert" hidden style="position:fixed;inset:20px 20px auto;z-index:9999;padding:16px;background:#202023;color:#fff;border-radius:16px">
       Не удалось запустить приложение. Проверьте соединение и
       <button type="button" onclick="location.reload()">повторите загрузку</button>.
@@ -377,6 +377,6 @@
         });
       })();
     </script>
-    <script type="module" src="/app.js?v=39"></script>
+    <script type="module" src="/app.js?v=40"></script>
   </body>
 </html>
