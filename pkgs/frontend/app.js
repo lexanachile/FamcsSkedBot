@@ -1,15 +1,15 @@
-import { createLessonColorRow } from "./src/lesson-color-picker.js?v=39";
+import { createLessonColorRow } from "./src/lesson-color-picker.js?v=41";
 import {
   getStoredValue as safeGetStorage,
   readStoredJson as readJsonStorage,
   removeStoredValue as safeRemoveStorage,
   setStoredValue as safeSetStorage,
   writeStoredJson as writeJsonStorage,
-} from "./src/storage.js?v=39";
-import { initializeTelegramWebApp, triggerTelegramHaptic } from "./src/telegram.js?v=39";
-import { setStaleNotice, showToast } from "./src/feedback.js?v=39";
-import { setupScheduleModes, filterSubgroup, teacherSchedule } from "./src/schedule-modes.js?v=40";
-import { requestJson } from "./src/request.js?v=39";
+} from "./src/storage.js?v=41";
+import { initializeTelegramWebApp, triggerTelegramHaptic } from "./src/telegram.js?v=41";
+import { setStaleNotice, showToast } from "./src/feedback.js?v=41";
+import { setupScheduleModes, filterSubgroup, teacherSchedule } from "./src/schedule-modes.js?v=41";
+import { requestJson } from "./src/request.js?v=41";
 
 let scheduleMode = null;
 let teacherRequest = 0;

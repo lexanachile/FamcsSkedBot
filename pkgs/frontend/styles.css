@@ -504,8 +504,8 @@ body {
   flex-direction: row;
   align-items: center;
   justify-content: flex-start;
-  /* На 5px левее центра Пн: шесть равных кнопок и пять промежутков по 8px. */
-  padding-left: calc((100% - 40px) / 12 - 9px);
+  /* Левый край ряда дней + радиус скруглённого торца кнопки высотой 36px. */
+  padding-left: 18px;
   gap: 8px;
   margin-bottom: 0;
 }
