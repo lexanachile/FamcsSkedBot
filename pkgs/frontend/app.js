@@ -6,31 +6,42 @@ import {
   setStoredValue as safeSetStorage,
   writeStoredJson as writeJsonStorage,
 } from "./src/storage.js?v=32";
-import { initializeTelegramWebApp, triggerTelegramHaptic } from "./src/telegram.js?v=32";
+import { initializeTelegramWebApp, triggerTelegramHaptic } from "./src/telegram.js?v=35";
 import { setStaleNotice, showToast } from "./src/feedback.js?v=32";
-import { setupScheduleModes, filterSubgroup, teacherSchedule } from "./src/schedule-modes.js?v=34";
+import { setupScheduleModes, filterSubgroup, teacherSchedule } from "./src/schedule-modes.js?v=37";
+import { requestJson } from "./src/request.js?v=35";
 
 let scheduleMode = null;
 let teacherRequest = 0;
 let restoredSelection = false;
+let scheduleRequest = 0;
+let groupsRequest = 0;
+let selectionRevision = 0;
+let selectedTeacher = null;
+let modesController = null;
+let modeRefreshPending = false;
 
-async function loadTeacher(name) {
+async function loadTeacher(name, { silent = false, forceRefresh = false } = {}) {
+  selectedTeacher = name;
   const request = ++teacherRequest;
-  showLoading(true);
+  if (!silent) showLoading(true);
   hideError();
-  document.getElementById('schedule-container').classList.add('hidden');
-  document.getElementById('day-navigation').classList.add('hidden');
+  if (!silent) {
+    document.getElementById('schedule-container').classList.add('hidden');
+    document.getElementById('day-navigation').classList.add('hidden');
+  }
   try {
-    const response = await fetch(`${TEACHER_API_BASE}/api/teacher?name=${encodeURIComponent(name)}`);
-    if (!response.ok) throw new Error('Не удалось загрузить расписание преподавателя');
-    const result = await response.json();
+    const result = await requestJson(`${TEACHER_API_BASE}/api/teacher?name=${encodeURIComponent(name)}`, forceRefresh ? { cache: 'no-store' } : {});
     if (!result.success) throw new Error('Не удалось загрузить расписание преподавателя');
     if (request === teacherRequest && scheduleMode === 'teacher') {
       displaySchedule(teacherSchedule(result.data, name));
       setStaleNotice(false);
     }
   } catch (error) {
-    if (request === teacherRequest && scheduleMode === 'teacher') showError(error.message);
+    if (request === teacherRequest && scheduleMode === 'teacher') {
+      if (silent) showToast('Не удалось обновить расписание преподавателя');
+      else showError(error.message);
+    }
   } finally {
     if (request === teacherRequest) showLoading(false);
   }
@@ -45,7 +56,7 @@ async function loadTeacher(name) {
 
 // --- Адрес API, откуда сайт берёт список групп и расписание ---
 const API_BASE_URL = "https://famcsschedulebot.yarashsei.workers.dev";
-const TEACHER_API_BASE = ['localhost', '127.0.0.1'].includes(location.hostname) ? '' : API_BASE_URL;
+const TEACHER_API_BASE = API_BASE_URL;
 const SCHEDULE_ENDPOINT = "/api/schedule";
 const GROUPS_ENDPOINT = "/api/groups";
 const CACHE_SCHEMA_VERSION = 1;
@@ -123,7 +134,7 @@ function initApp() {
   initializeTelegramWebApp();
   setupEventListeners();
   setupCustomSelects();
-  setupScheduleModes({ apiBase: TEACHER_API_BASE, onTeacher: loadTeacher,
+  modesController = setupScheduleModes({ apiBase: TEACHER_API_BASE, onTeacher: loadTeacher,
     comparison: {
       apiBase: API_BASE_URL,
       buildLesson: buildClassInfoHTML,
@@ -136,6 +147,7 @@ function initApp() {
     onChange(mode) {
     scheduleMode = mode;
     ++teacherRequest;
+    ++scheduleRequest;
     showLoading(false);
     hideError();
     document.getElementById('welcome-section').classList.add('hidden');
@@ -146,6 +158,7 @@ function initApp() {
         restoredSelection = true;
         restoreSavedState();
       } else if (appState.scheduleData) displaySchedule(appState.scheduleData);
+      else if (appState.currentCourse && appState.currentGroup) loadSchedule(appState.currentCourse, appState.currentGroup);
     }
   } });
   document.getElementById('welcome-section').classList.add('hidden');
@@ -155,6 +168,7 @@ function initApp() {
   setupInactivityRefresh();
   setupLessonColorPicker();
   console.log("Приложение инициализировано");
+  window.dispatchEvent(new Event('schedule-ready'));
 }
 
 function normalizeLessonTitle(title) {
@@ -320,10 +334,10 @@ function setupLessonColorPicker() {
       picker.querySelectorAll('.lesson-color-row').forEach(row => row.dispatchEvent(new Event('refresh-colors')));
     });
     slot.appendChild(picker);
-    const resizeObserver = new ResizeObserver(() => placeScrollTopButtonAbove(picker));
-    resizeObserver.observe(picker);
+    const resizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(() => placeScrollTopButtonAbove(picker)) : null;
+    resizeObserver?.observe(picker);
     const removalObserver = new MutationObserver(() => {
-      if (!picker.isConnected) { resizeObserver.disconnect(); removalObserver.disconnect(); }
+      if (!picker.isConnected) { resizeObserver?.disconnect(); removalObserver.disconnect(); }
     });
     removalObserver.observe(scheduleDays, { childList: true, subtree: true });
     timeButton.setAttribute("aria-expanded", "true");
@@ -369,6 +383,8 @@ function setupEventListeners() {
   const refreshButton = document.getElementById("refresh-schedule-button");
 
   courseSelect.addEventListener("change", async (e) => {
+    ++selectionRevision;
+    ++groupsRequest;
     const course = e.target.value;
     appState.currentCourse = course;
     resetSelectedGroup();
@@ -388,6 +404,7 @@ function setupEventListeners() {
   });
 
   groupSelect.addEventListener("change", (e) => {
+    ++selectionRevision;
     clearVisibleSchedule();
     appState.currentGroup = e.target.value;
     if (appState.currentGroup) {
@@ -556,7 +573,7 @@ function setupDayNavigation() {
 function setupStickyDayNav() {
   const sentinel = document.getElementById("day-nav-sentinel");
   const nav = document.getElementById("day-navigation");
-  if (!sentinel || !nav) return;
+  if (!sentinel || !nav || typeof IntersectionObserver !== 'function') return;
 
   // root — тот же скролл-контейнер, что и у остального сайта
   // (.main-content). Если его вдруг нет в разметке, передаём null —
@@ -762,6 +779,7 @@ function setupScrollTopButton() {
 }
 
 async function restoreSavedState() {
+  const revision = selectionRevision;
   const savedCourse = safeGetStorage("selectedCourse");
   const savedGroup = safeGetStorage("selectedGroup");
   if (savedCourse) {
@@ -802,7 +820,7 @@ async function restoreSavedState() {
     }
 
     const groupsLoaded = await loadGroups(savedCourse);
-    if (appState.currentCourse !== savedCourse || (appState.currentGroup && appState.currentGroup !== savedGroup)) return;
+    if (revision !== selectionRevision || appState.currentCourse !== savedCourse || (appState.currentGroup && appState.currentGroup !== savedGroup)) return;
     if (groupsLoaded && savedGroup) {
       const groupSelect = document.getElementById("group-select");
       if (
@@ -821,6 +839,7 @@ async function restoreSavedState() {
 }
 
 async function loadGroups(course, options = {}) {
+  const request = ++groupsRequest;
   const { forceRefresh = false, silent = false } = options;
   const groupSelect = document.getElementById("group-select");
   const initialCache = readJsonStorage(courseCacheKey(course));
@@ -847,12 +866,10 @@ async function loadGroups(course, options = {}) {
   try {
     const url = new URL(API_BASE_URL + GROUPS_ENDPOINT);
     url.searchParams.append("course", course);
-    const response = await fetch(url, forceRefresh ? { cache: "no-store" } : undefined);
-    if (!response.ok) throw new Error("Ошибка при загрузке групп");
-    const result = await response.json();
+    const result = await requestJson(url, forceRefresh ? { cache: "no-store" } : {});
 
-    if (result.success && result.data.groups) {
-      if (appState.currentCourse !== String(course)) return false;
+    if (result.success && Array.isArray(result.data?.groups)) {
+      if (request !== groupsRequest || appState.currentCourse !== String(course)) return false;
       appState.isUsingCachedGroups = false;
       groupSelect.innerHTML = '<option value="">Выберите группу</option>';
 
@@ -884,7 +901,7 @@ async function loadGroups(course, options = {}) {
       throw new Error("Группы не найдены");
     }
   } catch (error) {
-    if (appState.currentCourse !== String(course)) return false;
+    if (request !== groupsRequest || appState.currentCourse !== String(course)) return false;
     console.error(error);
     const cached = readJsonStorage(courseCacheKey(course));
     if (cached?.groups?.length && appState.currentCourse === String(course)) {
@@ -910,7 +927,7 @@ async function loadGroups(course, options = {}) {
       error.name === "TypeError"
         ? "Проверьте подключение к интернету"
         : error.message;
-    if (!silent) showError(`Не удалось загрузить список групп: ${msg}`);
+    if (!silent && ['group', 'subgroup'].includes(scheduleMode)) showError(`Не удалось загрузить список групп: ${msg}`);
     groupSelect.innerHTML = '<option value="">Ошибка загрузки</option>';
     appState.isUsingCachedGroups = false;
     syncSelectTrigger(groupSelect);
@@ -919,6 +936,11 @@ async function loadGroups(course, options = {}) {
 }
 
 async function loadSchedule(course, group, options = {}) {
+  if (!['group', 'subgroup'].includes(scheduleMode)) return { ok: false, cancelled: true };
+  const request = ++scheduleRequest;
+  const isCurrent = () => request === scheduleRequest &&
+    appState.currentCourse === String(course) && appState.currentGroup === String(group) &&
+    ['group', 'subgroup'].includes(scheduleMode);
   const { forceRefresh = false, silent = false } = options;
   const groupVersion = appState.groupVersions[group] || appState.currentCourseVersion;
   const cached = readJsonStorage(groupCacheKey(course, group));
@@ -937,15 +959,12 @@ async function loadSchedule(course, group, options = {}) {
     const url = new URL(API_BASE_URL + SCHEDULE_ENDPOINT);
     url.searchParams.append("course", course);
     url.searchParams.append("group", group);
-    const response = await fetch(url, forceRefresh ? { cache: "no-store" } : undefined);
-    if (!response.ok) throw new Error(`Ошибка сервера: ${response.status}`);
-    const data = await response.json();
+    const data = await requestJson(url, forceRefresh ? { cache: "no-store" } : {});
 
     // ИСПРАВЛЕНО: Защита от состояния гонки (Race condition)
     // Если юзер быстро нажал на другую группу пока летел запрос — игнорируем ответ
     if (
-      appState.currentCourse !== String(course) ||
-      appState.currentGroup !== String(group)
+      !isCurrent()
     ) {
       return { ok: false, cancelled: true };
     }
@@ -966,7 +985,7 @@ async function loadSchedule(course, group, options = {}) {
       throw new Error(data.message || "Ошибка при получении данных");
     }
   } catch (error) {
-    if (appState.currentCourse !== String(course) || appState.currentGroup !== String(group)) return { ok: false, cancelled: true };
+    if (!isCurrent()) return { ok: false, cancelled: true };
     console.error(error);
     // ИСПРАВЛЕНО: Человечная ошибка сети, если fetch выкинул TypeError (нет интернета)
     const msg =
@@ -981,6 +1000,7 @@ async function loadSchedule(course, group, options = {}) {
     );
     if (hasVisibleFallback) {
       if (cached?.data && (
+        !appState.scheduleData ||
         appState.displayedCourse !== String(course) ||
         appState.displayedGroup !== String(group)
       )) {
@@ -993,7 +1013,7 @@ async function loadSchedule(course, group, options = {}) {
     }
     return { ok: false, error: msg, fromCache: hasVisibleFallback };
   } finally {
-    if (!silent && appState.currentCourse === String(course) && (!appState.currentGroup || appState.currentGroup === String(group))) showLoading(false);
+    if (isCurrent()) showLoading(false);
   }
 }
 
@@ -1054,6 +1074,20 @@ function setupInactivityRefresh() {
 }
 
 async function refreshCurrentSchedule() {
+  if (scheduleMode === 'teacher' || scheduleMode === 'compare') {
+    if (modeRefreshPending) return;
+    modeRefreshPending = true;
+    try {
+      if (scheduleMode === 'teacher' && selectedTeacher) {
+        await loadTeacher(selectedTeacher, { forceRefresh: true, silent: true });
+      } else if (scheduleMode === 'compare') {
+        await modesController?.refreshComparison();
+      }
+    } finally {
+      modeRefreshPending = false;
+    }
+    return;
+  }
   if (scheduleMode !== 'group' && scheduleMode !== 'subgroup') return;
   const course = appState.currentCourse;
   const group = appState.currentGroup;
@@ -1121,11 +1155,6 @@ function pluralizeLessons(count) {
 function displaySchedule(scheduleData) {
   if (!scheduleMode || scheduleMode === 'compare') return;
   if ((scheduleMode === 'teacher') !== Boolean(scheduleData.teacher)) return;
-  if (!scheduleData.teacher && !scheduleData.classes?.length) {
-    resetSelectedGroup();
-    showToast('Расписания этой группы пока нет. Выберите другую группу');
-    return;
-  }
   if (scheduleMode === 'subgroup') scheduleData = filterSubgroup(scheduleData, document.getElementById('subgroup-select').value);
   const scheduleContainer = document.getElementById("schedule-container");
   const welcomeSection = document.getElementById("welcome-section");
@@ -1375,6 +1404,7 @@ function showLoading(show) {
 }
 
 function clearVisibleSchedule() {
+  ++scheduleRequest;
   appState.scheduleData = null;
   document.getElementById('schedule-container').classList.add('hidden');
   document.getElementById('day-navigation').classList.add('hidden');
@@ -1413,6 +1443,7 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+window.addEventListener('telegram-ready', initializeTelegramWebApp);
 window.addEventListener("error", (e) => {
   if (
     e.message &&

@@ -17,7 +17,8 @@ export function normalizeRecord(record: ScheduleRecord): ScheduleRecord {
 
 export function toScheduleClass(record: ScheduleRecord) {
   const common = record.isCommon === true || record.isCommon === 1;
-  const comments = record.comments || record.commentsA || record.commentsB || null;
+  const commentsA = record.commentsA || record.comments || null;
+  const commentsB = record.commentsB || record.comments || null;
   return {
     classId: record.classId,
     groupName: record.groupName,
@@ -28,7 +29,7 @@ export function toScheduleClass(record: ScheduleRecord) {
     endTime: record.endTime,
     isCommon: common,
     isLecture: record.isLecture === true || record.isLecture === 1,
-    subgroupA: { classTitle: record.classTitleA, professorName: record.professorNameA, classroom: record.classroomA, comments },
-    subgroupB: common ? null : { classTitle: record.classTitleB, professorName: record.professorNameB, classroom: record.classroomB, comments },
+    subgroupA: { classTitle: record.classTitleA, professorName: record.professorNameA, classroom: record.classroomA, comments: commentsA },
+    subgroupB: common ? null : { classTitle: record.classTitleB, professorName: record.professorNameB, classroom: record.classroomB, comments: commentsB },
   };
 }

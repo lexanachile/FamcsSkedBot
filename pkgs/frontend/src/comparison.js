@@ -1,15 +1,11 @@
 import { COMPARISON_DAYS, comparisonDay, selectionKey, clockTime } from './comparison-model.js?v=30';
 import { readStoredJson, writeStoredJson } from './storage.js?v=30';
+import { requestJson } from './request.js?v=35';
 
-async function requestData(url) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 20000);
-  try {
-    const response = await fetch(url, { signal: controller.signal });
-    const result = await response.json();
-    if (!response.ok || !result.success) throw new Error('Schedule request failed');
-    return result.data;
-  } finally { clearTimeout(timeout); }
+async function requestData(url, options = {}) {
+  const result = await requestJson(url, options);
+  if (!result.success) throw new Error('Schedule request failed');
+  return result.data;
 }
 
 export function setupComparison({ panel, apiBase, buildLesson, decorateLesson, displayedTime }) {
@@ -73,11 +69,12 @@ export function setupComparison({ panel, apiBase, buildLesson, decorateLesson, d
     });
     dayNav.append(button);
   }
-  const resize = new ResizeObserver(([entry]) => {
+  const updateWidth = width => {
     // Two equally sized groups share the available area beside the fixed clock.
-    if (entry.contentRect.width > 0) panel.style.setProperty('--comparison-column-width', `${Math.max(112, (entry.contentRect.width - 52) / 2)}px`);
-  });
-  resize.observe(scroller);
+    if (width > 0) panel.style.setProperty('--comparison-column-width', `${Math.max(112, (width - 52) / 2)}px`);
+  };
+  if (typeof ResizeObserver === 'function') new ResizeObserver(([entry]) => updateWidth(entry.contentRect.width)).observe(scroller);
+  else window.addEventListener('resize', () => updateWidth(scroller.clientWidth));
   main?.addEventListener('scroll', () => {
     if (panel.hidden) return;
     const top = main.getBoundingClientRect().top + navigation.offsetHeight + 24;
@@ -138,6 +135,7 @@ export function setupComparison({ panel, apiBase, buildLesson, decorateLesson, d
   group.addEventListener('change', () => { submit.disabled = !group.value || adding; });
 
   async function loadColumn(column, force = false) {
+    const request = column.request = (column.request || 0) + 1;
     column.loading = true;
     column.error = '';
     render();
@@ -149,16 +147,31 @@ export function setupComparison({ panel, apiBase, buildLesson, decorateLesson, d
         url.searchParams.set('course', column.course);
         url.searchParams.set('group', column.group);
         const pending = (async () => {
-          const data = await requestData(url);
+          const data = await requestData(url, force ? { cache: 'no-store' } : {});
           if (!Array.isArray(data?.classes)) throw new Error();
           return data;
         })();
         cache.set(key, pending);
         pending.catch(() => { if (cache.get(key) === pending) cache.delete(key); });
       }
-      column.data = await cache.get(key);
-    } catch { column.error = 'Не удалось загрузить расписание'; }
-    finally { column.loading = false; render(); }
+      const data = await cache.get(key);
+      if (column.request === request) column.data = data;
+    } catch {
+      if (column.request === request) column.error = 'Не удалось загрузить расписание';
+    } finally {
+      if (column.request === request) { column.loading = false; render(); }
+    }
+  }
+
+  async function refresh() {
+    // Refresh each group once, sharing its request between both subgroups.
+    const refreshed = new Set();
+    await Promise.all(columns.map(column => {
+      const key = JSON.stringify([column.course, column.group]);
+      const force = !refreshed.has(key);
+      refreshed.add(key);
+      return loadColumn(column, force);
+    }));
   }
   form.addEventListener('submit', async event => {
     event.preventDefault();
@@ -287,8 +300,10 @@ export function setupComparison({ panel, apiBase, buildLesson, decorateLesson, d
   }
   render();
   return {
+    refresh,
     activate(active) {
       panel.hidden = !active;
+      if (active) updateWidth(scroller.clientWidth);
       if (!active) { form.hidden = true; add.setAttribute('aria-expanded', 'false'); return; }
       if (!initialized) {
         initialized = true;

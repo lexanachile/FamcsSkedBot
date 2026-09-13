@@ -14,7 +14,7 @@ import time
 import uuid
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple, Any
-from itertools import groupby
+from itertools import groupby, zip_longest
 
 import requests
 
@@ -902,8 +902,14 @@ def _format_group_diff(group_name: str, previous: List[Dict], current: List[Dict
     def clean(value):
         return re.sub(r"\s+", " ", str(value)).strip() if value not in (None, "") else "—"
 
-    previous_by_key = {key(item): item for item in previous}
-    current_by_key = {key(item): item for item in current}
+    def by_slot(records):
+        slots = {}
+        for item in records:
+            slots.setdefault(key(item), []).append(item)
+        return slots
+
+    previous_by_key = by_slot(previous)
+    current_by_key = by_slot(current)
     days = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"]
     changes_by_day = {}
 
@@ -922,36 +928,65 @@ def _format_group_diff(group_name: str, previous: List[Dict], current: List[Dict
     )
     labels = ("Корректировка названия:", "Замена преподавателя:", "Смена аудитории:")
 
-    def lesson_block(item, changed_category=None, before=None):
+    def metadata(item):
+        return (clean(item.get('comments')), clean(item.get('commentsA')),
+                clean(item.get('commentsB')), bool(item.get('isCommon')),
+                bool(item.get('isLecture')))
+
+    def signature(item):
+        return tuple(clean(item.get(field)) for fields in categories for field in fields) + metadata(item)
+
+    def lesson_block(item, changed_category=None, before=None, show_type=False):
         values = [combined(item, a, b) for a, b in categories]
         if changed_category is not None:
             a, b = categories[changed_category]
             values[changed_category] = f"{combined(before, a, b)} → {values[changed_category]}"
-        return [
+        lines = [
             f"{clean(item.get('startTime'))}–{clean(item.get('endTime'))}",
             values[0],
             values[1],
             f"{values[2]} ауд.",
         ]
+        for field, label in [('comments', 'Примечание'), ('commentsA', 'Примечание А'), ('commentsB', 'Примечание Б')]:
+            if clean(item.get(field)) != '—':
+                lines.append(f'{label}: {clean(item.get(field))}')
+        if show_type:
+            lines.append(f"{'Лекция' if item.get('isLecture') else 'Практика'} · {'Общая пара' if item.get('isCommon') else 'По подгруппам'}")
+        return lines
 
     for slot in sorted(set(previous_by_key) | set(current_by_key)):
-        before, after = previous_by_key.get(slot), current_by_key.get(slot)
+        before_items = list(previous_by_key.get(slot, []))
+        after_items = list(current_by_key.get(slot, []))
+        # Multiple lessons can share a time slot (e.g. alternating weeks).
+        # Remove unchanged pairs first; dictionaries used to silently lose all
+        # but the last lesson, so some real changes never reached subscribers.
+        remaining = []
+        for item in before_items:
+            match = next((i for i, candidate in enumerate(after_items)
+                          if signature(candidate) == signature(item)), None)
+            if match is None:
+                remaining.append(item)
+            else:
+                after_items.pop(match)
         day = days[slot[0] - 1] if isinstance(slot[0], int) and 1 <= slot[0] <= 6 else f"День {slot[0]}"
         blocks = changes_by_day.setdefault(day, [])
-        if before is None:
-            blocks.append(["Добавление:", *lesson_block(after)])
-        elif after is None:
-            blocks.append(["Удаление:", *lesson_block(before)])
-        else:
-            changed = [i for i, fields in enumerate(categories)
-                       if any(clean(before.get(f)) != clean(after.get(f)) for f in fields)]
-            if len(changed) == 1:
-                blocks.append([labels[changed[0]], *lesson_block(after, changed[0], before)])
-            elif changed:
-                blocks.extend([
-                    ["Было:", *lesson_block(before)],
-                    ["Стало:", *lesson_block(after)],
-                ])
+        for before, after in zip_longest(sorted(remaining, key=signature), sorted(after_items, key=signature)):
+            if before is None:
+                blocks.append(["Добавление:", *lesson_block(after)])
+            elif after is None:
+                blocks.append(["Удаление:", *lesson_block(before)])
+            else:
+                changed = [i for i, fields in enumerate(categories)
+                           if any(clean(before.get(f)) != clean(after.get(f)) for f in fields)]
+                changed_metadata = metadata(before) != metadata(after)
+                if len(changed) == 1 and not changed_metadata:
+                    blocks.append([labels[changed[0]], *lesson_block(after, changed[0], before)])
+                elif changed or changed_metadata:
+                    show_type = metadata(before)[-2:] != metadata(after)[-2:]
+                    blocks.extend([
+                        ["Было:", *lesson_block(before, show_type=show_type)],
+                        ["Стало:", *lesson_block(after, show_type=show_type)],
+                    ])
 
     changes_by_day = {day: blocks for day, blocks in changes_by_day.items() if blocks}
     if not changes_by_day:

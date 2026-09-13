@@ -1,4 +1,20 @@
+import { requestJson } from './request.js?v=35';
+
 const normalize = value => value.trim().toLocaleLowerCase('ru').replaceAll('ё', 'е');
+
+export function hasTeacher(value, name) {
+  const surnameOf = part => part.trim()
+      .replace(/^(?:(?:профессор|проф|доцент|доц|(?:старший|ст\.?)\s*(?:преподаватель|преп|пр)|преподаватель|преп|ассистент|ассист)\.?\s+)+/iu, '')
+      .replace(/^(?:[А-ЯЁA-Z]\.\s*){1,2}/u, '')
+      .match(/^[А-ЯЁA-Z][а-яёa-z]+(?:-[А-ЯЁA-Z][а-яёa-z]+)*/u)?.[0];
+  const query = normalize(surnameOf(name) || name);
+  if (!query) return false;
+  // Keep initials and role prefixes out of the surname, and compare whole names.
+  return String(value || '').split(/[,;\/\n]+/u).some(part => {
+    const surname = surnameOf(part);
+    return Boolean(surname && normalize(surname) === query);
+  });
+}
 
 export function createTeacherDirectory(apiBase, request = fetch) {
   let names = null;
@@ -9,9 +25,7 @@ export function createTeacherDirectory(apiBase, request = fetch) {
       pending = (async () => {
         // Не используем AbortSignal.timeout: старые Telegram WebView не
         // реализуют этот метод и тогда подсказки ломаются ещё до fetch.
-        const response = await request(`${apiBase}/api/teachers`);
-        if (!response.ok) throw new Error('Не удалось загрузить фамилии');
-        const result = await response.json();
+        const result = await requestJson(`${apiBase}/api/teachers`, {}, request);
         if (!result.success || !Array.isArray(result.data?.teachers)) throw new Error('Некорректный список преподавателей');
         names = [...new Set(result.data.teachers.filter(name => typeof name === 'string').map(name => name.trim()).filter(Boolean))]
           .sort((a, b) => a.localeCompare(b, 'ru'));
@@ -60,9 +74,13 @@ export function setupTeacherSuggestions({ form, loadNames, onSelect }) {
       const button = document.createElement('button');
       button.type = 'button';
       button.textContent = name;
+      // Some mobile browsers blur the input with relatedTarget=null on a tap.
+      // Keep focus until click, otherwise focusout hides its target before click.
+      button.addEventListener('pointerdown', event => event.preventDefault());
+      button.addEventListener('mousedown', event => event.preventDefault());
       button.addEventListener('click', () => {
         input.value = name;
-        input.focus();
+        input.blur();
         list.hidden = true;
         status.textContent = `Выбран преподаватель: ${name}`;
         onSelect(name);
@@ -83,12 +101,15 @@ export function setupTeacherSuggestions({ form, loadNames, onSelect }) {
   });
   form.addEventListener('submit', () => { list.hidden = true; });
   form.addEventListener('focusout', event => {
-    if (!form.contains(event.relatedTarget)) list.hidden = true;
+    if (event.relatedTarget && !form.contains(event.relatedTarget)) list.hidden = true;
+  });
+  document.addEventListener('pointerdown', event => {
+    if (!form.contains(event.target)) list.hidden = true;
   });
 
   return async enabled => {
     active = enabled;
-    if (!enabled) { list.hidden = true; return; }
+    if (!enabled) { list.hidden = true; status.textContent = ''; return; }
     loading = true;
     failed = false;
     render();

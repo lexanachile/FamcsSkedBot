@@ -1,5 +1,5 @@
-import { createTeacherDirectory, setupTeacherSuggestions } from './teacher-suggestions.js?v=30';
-import { setupComparison } from './comparison.js?v=30';
+import { createTeacherDirectory, setupTeacherSuggestions, hasTeacher } from './teacher-suggestions.js?v=35';
+import { setupComparison } from './comparison.js?v=37';
 
 export function filterSubgroup(data, subgroup) {
   if (subgroup === 'both') return data;
@@ -12,15 +12,13 @@ export function filterSubgroup(data, subgroup) {
 }
 
 export function teacherSchedule(data, name) {
-  const normalize = value => value.trim().toLocaleLowerCase('ru').replaceAll('ё', 'е');
-  const query = normalize(name);
   const slots = new Map();
   for (const item of data.classes || []) {
     const common = item.isCommon === true || item.isCommon === 1;
     for (const side of ['A', 'B']) {
       if (side === 'B' && common) continue;
       const professor = item[`professorName${side}`] || '';
-      if (!normalize(professor).includes(query)) continue;
+      if (!hasTeacher(professor, name)) continue;
       const key = `${item.dayOfWeek}|${item.startTime?.replace('.', ':')}|${item.endTime?.replace('.', ':')}`;
       if (!slots.has(key)) slots.set(key, { ...item, entries: [] });
       const slot = slots.get(key);
@@ -84,7 +82,8 @@ export function setupScheduleModes({ onChange, onTeacher, apiBase, comparison })
   const controls = document.querySelector('.controls-section');
   controls.hidden = true;
   const updateControlsHeight = () => document.documentElement.style.setProperty('--controls-height', `${controls.hidden ? 0 : controls.offsetHeight}px`);
-  new ResizeObserver(updateControlsHeight).observe(controls);
+  if (typeof ResizeObserver === 'function') new ResizeObserver(updateControlsHeight).observe(controls);
+  else window.addEventListener('resize', updateControlsHeight);
   const subgroup = document.createElement('div');
   subgroup.className = 'subgroup-control';
   subgroup.hidden = true;
@@ -124,4 +123,5 @@ export function setupScheduleModes({ onChange, onTeacher, apiBase, comparison })
     try { localStorage.setItem(subgroupStorageKey, savedSubgroup); } catch { /* storage unavailable */ }
     section.querySelector(`[data-mode="${initialMode}"]`)?.click();
   }
+  return { refreshComparison: () => comparisonController.refresh() };
 }

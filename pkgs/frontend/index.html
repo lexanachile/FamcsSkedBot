@@ -61,7 +61,7 @@
          поэтому голый HTML физически не может промелькнуть в обычном
          режиме (FORCE_DISABLE_CACHE = false). Версия "?v=32" — меняйте
          вручную при каждом деплое, как и раньше. -->
-    <link rel="stylesheet" id="mainStyle" href="/styles.css?v=33" />
+    <link rel="stylesheet" id="mainStyle" href="/styles.css?v=36" />
     <link rel="stylesheet" href="/src/comparison.css?v=32" />
 
     <!-- ПРЕДЗАГРУЗКА ШРИФТОВ, которые нужны для первого экрана (шапка,
@@ -105,7 +105,7 @@
       crossorigin
     />
 
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script async src="https://telegram.org/js/telegram-web-app.js" onload="window.dispatchEvent(new Event('telegram-ready'))"></script>
   </head>
   <body>
     <div class="app-container">
@@ -361,6 +361,22 @@
          Раньше скрипт создавался через document.createElement (оверинжиниринг,
          который ломался). Теперь используется простой и надежный <script src>. 
          Используется единая версия ?v=32 для всех фронтенд-ресурсов. -->
-    <script type="module" src="/app.js?v=34"></script>
+    <div id="startup-error" role="alert" hidden style="position:fixed;inset:20px 20px auto;z-index:9999;padding:16px;background:#202023;color:#fff;border-radius:16px">
+      Не удалось запустить приложение. Проверьте соединение и
+      <button type="button" onclick="location.reload()">повторите загрузку</button>.
+    </div>
+    <script>
+      (function () {
+        var timer = setTimeout(function () {
+          document.getElementById('startup-error').hidden = false;
+          try { window.Telegram.WebApp.ready(); } catch (_) {}
+        }, 15000);
+        window.addEventListener('schedule-ready', function () {
+          clearTimeout(timer);
+          document.getElementById('startup-error').hidden = true;
+        });
+      })();
+    </script>
+    <script type="module" src="/app.js?v=37"></script>
   </body>
 </html>

@@ -2,13 +2,13 @@ import { configuredRooms, findRooms } from "../schedule/rooms";
 import { enqueueChanges } from "../schedule/notifications";
 import type { Hono } from "hono";
 import { TIME_SLOTS } from "../constants";
-import { extractTeacherNames, getDayOfWeekName } from "../formatters";
+import { extractTeacherNames, getDayOfWeekName, normalizeTeacherName } from "../formatters";
 import { finalizeCourse, readAllCourses, readGroupSchedule, readGroupScheduleFresh, readGroupsIndex, readManifestFresh, uploadGroup } from "../schedule/repository";
 import { toScheduleClass } from "../schedule/records";
 import type { AppEnvironment, GroupManifestEntry, ScheduleRecord } from "../types";
 
 const validCourse = (value: string | undefined) => {
-  const course = Number.parseInt(value || "", 10);
+  const course = Number(value);
   return Number.isInteger(course) && course >= 1 && course <= 5 ? course : null;
 };
 
@@ -75,9 +75,9 @@ export function registerScheduleRoutes(app: Hono<AppEnvironment>) {
     const name = c.req.query("name")?.trim();
     if (!name) return c.json({ success: false, error: "Missing parameter: name" }, 400);
     try {
-      const query = extractTeacherNames(name)[0]?.toLocaleLowerCase("ru");
+      const query = normalizeTeacherName(extractTeacherNames(name)[0] || name);
       const records = (await readAllCourses(c.env.SCHEDULE_KV)).filter((record) =>
-        [record.professorNameA, record.professorNameB].some((value) => extractTeacherNames(value || "").some(teacher => teacher.toLocaleLowerCase("ru") === query)),
+        [record.professorNameA, record.professorNameB].some((value) => extractTeacherNames(value || "").some(teacher => normalizeTeacherName(teacher) === query)),
       );
       const classes = records.map((record) => ({
         ...record,

@@ -18,3 +18,5 @@ export function extractLastName(fullName: string): string {
 export function extractTeacherNames(value: string): string[] {
   return value.split(/[,;\/\n]+/u).map(extractLastName).filter(Boolean);
 }
+
+export const normalizeTeacherName = (value: string) => value.normalize('NFC').trim().toLocaleLowerCase('ru').replace(/ё/g, 'е');

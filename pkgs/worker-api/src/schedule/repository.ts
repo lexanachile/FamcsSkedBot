@@ -27,12 +27,14 @@ export async function readGroupSchedule(kv: KVNamespace, course: number, group: 
   const manifest = await readJson<CourseManifest>(kv, manifestKey(course));
   if (!manifest) return null;
   const entry = manifest.groups?.[group];
+  if (manifest.groups && !entry) return { records: [], updatedAt: manifest.updatedAt };
   if (entry) {
     const document = await readJson<GroupScheduleDocument>(kv, groupKey(entry.version, course, group));
     if (document) return { records: document.records, updatedAt: document.updatedAt };
-    if (!entry.previousVersion) return null;
+    if (!entry.previousVersion) throw new Error('Published group snapshot is unavailable');
     const previous = await readJson<GroupScheduleDocument>(kv, groupKey(entry.previousVersion, course, group));
-    return previous ? { records: previous.records, updatedAt: previous.updatedAt } : null;
+    if (!previous) throw new Error('Published group snapshot is unavailable');
+    return { records: previous.records, updatedAt: previous.updatedAt };
   }
   const current = await readJson<ScheduleRecord[]>(kv, groupKey(manifest.current, course, group));
   if (current !== null) return { records: current, updatedAt: manifest.updatedAt };
@@ -59,8 +61,9 @@ export const readCourse = (kv: KVNamespace, course: number) =>
       Object.entries(manifest.groups).map(async ([group, entry]) => {
         const current = await readJson<GroupScheduleDocument>(kv, groupKey(entry.version, course, group));
         if (current) return current.records;
-        if (!entry.previousVersion) return [];
-        return (await readJson<GroupScheduleDocument>(kv, groupKey(entry.previousVersion, course, group)))?.records || [];
+        const previous = entry.previousVersion ? await readJson<GroupScheduleDocument>(kv, groupKey(entry.previousVersion, course, group)) : null;
+        if (!previous) throw new Error('Published course snapshot is incomplete');
+        return previous.records;
       }),
     );
     return documents.flat();
