@@ -3,7 +3,7 @@
 // actual progress; shakeSpeed: oscillations/second. All phrases stay here.
 export const fishingCatalog = [
   { id: 'kalinin', name: 'Калинин А.И.', image: '/src/fishing/fishing-photos/kalinin.webp',
-    spots: ['reeds'], periods: ['morning', 'day', 'evening', 'night'], rain: null,
+    spots: ['deep'], periods: ['morning', 'day', 'evening', 'night'], rain: null,
     drift: 0.12, shake: 2.5, shakeSpeed: 1.8,
     phrases: ['Улов у камышей.'] },
   { id: 'grekova', name: 'Грекова А.В.', image: '/src/fishing/fishing-photos/grekova.webp',
