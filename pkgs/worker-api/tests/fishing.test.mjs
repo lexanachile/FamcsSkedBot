@@ -1,0 +1,23 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { build } from '../node_modules/esbuild/lib/main.js';
+
+const bundle = await build({ entryPoints: [new URL('../src/index.ts', import.meta.url).pathname.replace(/^\/(\w:)/, '$1')], bundle: true, write: false, format: 'esm', platform: 'browser' });
+const { default: app } = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
+test('cast never returns phrases or photo; reveal returns only the selected catch', async () => {
+  const items = new Map();
+  const env = { SCHEDULE_KV: { async put(key, value) { items.set(key, JSON.parse(value)); }, async get(key) { return items.get(key); } } };
+  const post = (path, body) => app.request(`http://localhost/api/fishing/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }, env);
+  const cast = await (await post('cast', { spot: 'deep', period: 'night', rain: true })).json();
+  assert.equal(cast.success, true);
+  assert.deepEqual(Object.keys(cast).sort(), ['success', 'token', 'traits']);
+  assert.equal(JSON.stringify(cast).includes('phrases'), false);
+  assert.equal((await post('reveal', { token: cast.token })).status, 409);
+  items.get(`fishing:encounter:${cast.token}`).readyAt = 0;
+  const reveal = await (await post('reveal', { token: cast.token })).json();
+  assert.equal(typeof reveal.catch.caption, 'string');
+  assert.equal(reveal.catch.phrases, undefined);
+  assert.equal(reveal.catch.id, 'deep-mystery');
+  assert.equal((await post('cast', { spot: 'invalid' })).status, 400);
+  assert.equal((await post('reveal', { token: '../catalog' })).status, 400);
+});

@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { registerScheduleRoutes } from "./routes/schedule";
 import { registerSystemRoutes } from "./routes/system";
+import { registerFishingRoutes } from "./routes/fishing";
 import type { AppEnvironment } from "./types";
 
 const app = new Hono<AppEnvironment>();
@@ -11,6 +12,8 @@ app.use("*", cors({
     "https://famcs.online",
     "http://localhost:8788",
     "http://127.0.0.1:8788",
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
   ],
   allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowHeaders: ["Content-Type", "Authorization"],
@@ -23,6 +26,7 @@ app.use("*", async (c, next) => {
 });
 
 registerSystemRoutes(app);
+registerFishingRoutes(app);
 registerScheduleRoutes(app);
 
 app.all("*", (c) => c.json({ success: false, error: "Not Found", message: `Маршрут ${c.req.path} не существует` }, 404));
