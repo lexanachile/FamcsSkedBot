@@ -17,7 +17,15 @@ test('cast never returns phrases or photo; reveal returns only the selected catc
   const reveal = await (await post('reveal', { token: cast.token })).json();
   assert.equal(typeof reveal.catch.caption, 'string');
   assert.equal(reveal.catch.phrases, undefined);
-  assert.equal(reveal.catch.id, 'deep-mystery');
+  assert.equal(reveal.catch.id, 'grekova');
+  assert.equal(reveal.catch.name, 'Грекова А.В.');
+  assert.equal(reveal.catch.image, '/src/fishing/fishing-photos/grekova.webp');
+  const reedsCast = await (await post('cast', { spot: 'reeds', period: 'day', rain: false })).json();
+  items.get(`fishing:encounter:${reedsCast.token}`).readyAt = 0;
+  const reedsReveal = await (await post('reveal', { token: reedsCast.token })).json();
+  assert.equal(reedsReveal.catch.id, 'kalinin');
+  assert.equal(reedsReveal.catch.name, 'Калинин А.И.');
+  assert.equal(reedsReveal.catch.image, '/src/fishing/fishing-photos/kalinin.webp');
   assert.equal((await post('cast', { spot: 'invalid' })).status, 400);
   assert.equal((await post('reveal', { token: '../catalog' })).status, 400);
 });
