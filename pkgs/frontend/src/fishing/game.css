@@ -38,13 +38,14 @@
 .fish-trophy h3 { margin: 0 0 5px; overflow-wrap: anywhere; color: #31564e; font: 400 18px Georgia, serif; }
 .fish-trophy p { display: -webkit-box; margin: 0; overflow: hidden; color: #718077; font-size: 8px; line-height: 1.35; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .fish-trophy-phrases { display: grid; gap: 4px; margin: 7px 0; padding: 0; list-style: none; }
-.fish-trophy-phrases li { padding: 8px 10px; border-radius: 11px; color: #48446e; background: #fff9; font: 700 clamp(15px, 3.7vw, 19px)/1.25 Georgia, serif; overflow-wrap: anywhere; }
+.fish-trophy-phrases li { display: grid; gap: 5px; padding: 8px 10px; border-radius: 11px; color: #48446e; background: #fff9; font: 700 clamp(15px, 3.7vw, 19px)/1.25 Georgia, serif; overflow-wrap: anywhere; }
 .fish-trophy-phrases li.is-locked { color: #8d87aa; background: #79739914; letter-spacing: 2px; }
-.fish-trophy .fish-trophy-owners { display: block; margin-top: 7px; overflow: visible; color: #736d91; font-size: 9px; line-height: 1.45; overflow-wrap: anywhere; -webkit-line-clamp: unset; }
+.fish-trophy-phrases .fish-phrase-owners { display: block; color: #736d91; font: 500 9px/1.45 var(--font-sans), sans-serif; letter-spacing: 0; overflow-wrap: anywhere; }
 .fishing-game[data-view="map"] .fish-dev, .fishing-game[data-view="map"] .fish-help-toggle,
 .fishing-game[data-view="home"] .fish-dev, .fishing-game[data-view="home"] .fish-help-toggle,
 .fishing-game[data-view="shop"] .fish-dev, .fishing-game[data-view="shop"] .fish-hud,
-.fishing-game[data-view="loadout"] .fish-dev, .fishing-game[data-view="loadout"] .fish-hud { display: none; }
+.fishing-game[data-view="loadout"] .fish-dev, .fishing-game[data-view="loadout"] .fish-hud,
+.fishing-game[data-view="leaderboard"] .fish-dev, .fishing-game[data-view="leaderboard"] .fish-hud { display: none; }
 .fish-spot { position: absolute; border: 0; background: transparent; color: #edffd6; display: grid; justify-items: center; gap: 8px; padding: 10px; transform: translate(-50%, -50%); }
 .fish-spot-reeds { left: 21.66%; top: 66.22%; }
 .fish-spot-deep { left: 35.56%; top: 78.33%; }
@@ -86,8 +87,26 @@
 @keyframes fish-choice-chew { 50% { transform: scaleY(.985) translateY(1px); } }
 .fish-result-loader, .fish-pause-ring { display: block; width: 26px; height: 26px; border: 2px solid #fff7; border-top-color: #625a9e; border-radius: 50%; animation: fish-spin 1s linear infinite; }
 .fish-hud { position: absolute; inset: 14px 14px auto; display: flex; justify-content: space-between; align-items: center; z-index: 4; pointer-events: none; }
+.fish-wallet-stack { display: grid; justify-items: stretch; gap: 5px; pointer-events: auto; }
 .fish-count { padding: 7px 12px; background: #253d4466; color: #fff7dc; border: 1px solid #fff3; border-radius: 20px; font-size: 15px; font-weight: 700; }
 .fish-count small { font-size: 8px; letter-spacing: 1px; margin-left: 3px; }
+.fish-leaderboard-open { display: none; min-height: 30px; padding: 5px 10px; border: 1px solid #fffa; border-radius: 14px; color: #514b80; background: linear-gradient(135deg, #fff4cbd9, #e2d9ffd9); box-shadow: 0 5px 16px #34326d20; font-size: 9px; font-weight: 700; backdrop-filter: blur(12px); }
+.fishing-game[data-view="map"] .fish-leaderboard-open { display: block; }
+.fish-leaderboard { position: absolute; inset: 0; z-index: 9; overflow-y: auto; padding: 18px 16px 28px; color: #403c6b; background: radial-gradient(circle at 88% 3%, #ffc3de80, transparent 34%), radial-gradient(circle at 10% 60%, #8de2d35c, transparent 38%), linear-gradient(155deg, #fff1dc, #e8e5ff 58%, #c7f1e7); animation: fish-reveal .45s ease-out both; }
+.fish-leaderboard header { position: sticky; top: -18px; z-index: 2; display: grid; grid-template-columns: 42px 1fr; align-items: center; gap: 10px; margin: -2px -2px 12px; padding: 12px 2px 10px; background: linear-gradient(#f7eaffe8 75%, transparent); backdrop-filter: blur(14px); }
+.fish-leaderboard header small { display: block; color: #8179a2; font-size: 7px; letter-spacing: 1.5px; }
+.fish-leaderboard h2 { margin: 1px 0 0; color: #37335f; font: 400 clamp(24px, 6vw, 34px) Georgia, serif; }
+.fish-leaderboard-back { width: 38px; height: 38px; border: 1px solid #ffffffaa; border-radius: 14px; color: #514b80; background: #ffffff75; font-size: 19px; }
+.fish-leaderboard-me { margin: 4px 3px 12px; padding: 9px 12px; border-radius: 16px; color: #57517d; background: #ffffff72; font-size: 10px; text-align: center; }
+.fish-leaderboard-list { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; counter-reset: none; }
+.fish-leaderboard-list li { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: center; gap: 9px; min-height: 48px; padding: 8px 11px; border: 1px solid #fff9; border-radius: 17px; background: #ffffff70; box-shadow: 0 7px 20px #4d477a0d; }
+.fish-leaderboard-place { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 12px; color: #fff9e9; background: #7469b6; font: 700 13px Georgia, serif; }
+.fish-leaderboard-list li[data-medal="1"] .fish-leaderboard-place { color: #66513f; background: linear-gradient(145deg, #fff2a9, #ffbd72); }
+.fish-leaderboard-list li[data-medal="2"] .fish-leaderboard-place { color: #55536b; background: linear-gradient(145deg, #f2f1ff, #bfc7df); }
+.fish-leaderboard-list li[data-medal="3"] .fish-leaderboard-place { color: #674b55; background: linear-gradient(145deg, #ffc6a0, #d88d83); }
+.fish-leaderboard-list strong { min-width: 0; overflow-wrap: anywhere; color: #45406c; font-size: 11px; }
+.fish-leaderboard-score { color: #7365a1; font: 700 12px Georgia, serif; white-space: nowrap; }
+.fish-leaderboard-list .fish-leaderboard-loading { display: block; padding: 28px 12px; color: #746e91; text-align: center; font-size: 10px; }
 .fish-help-toggle { pointer-events: auto; width: 38px; height: 38px; border-radius: 50%; border: 1px solid #fff5; color: #fff7dc; background: #253d4480; font-size: 20px; }
 .fish-play-hud { position: absolute; bottom: 5%; left: 24%; right: 27%; pointer-events: none; text-align: center; }
 .fish-status { font-size: 11px; font-weight: 600; color: #f0ffd8; text-shadow: 0 1px 6px #092f49; }

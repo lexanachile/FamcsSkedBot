@@ -1,4 +1,4 @@
-import { requestJson } from '../request.js?v=55';
+import { requestJson } from '../request.js?v=79';
 export function minskPeriod(date = new Date()) {
   const hour = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Minsk', hour: '2-digit', hourCycle: 'h23' }).format(date));
   return hour < 6 ? 'night' : hour < 11 ? 'morning' : hour < 18 ? 'day' : hour < 22 ? 'evening' : 'night';

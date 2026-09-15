@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { createHmac } from 'node:crypto';
 import { rareCatchChance, smallFishAmount } from '../src/fishing/rewards.ts';
+import { fishingCatalog, pickFishingCandidate } from '../src/fishing/catalog.ts';
 import { build } from '../node_modules/esbuild/lib/main.js';
 const bundle = await build({ entryPoints: [new URL('../src/index.ts', import.meta.url).pathname.replace(/^\/(\w:)/, '$1')], bundle: true, write: false, format: 'esm', platform: 'browser' });
 const { default: app } = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
@@ -14,6 +15,21 @@ test('rare chance gains one percentage point per common catch and stays capped',
   assert.equal(rareCatchChance(.12, 0, 0), .12);
   assert.ok(Math.abs(rareCatchChance(.12, .05, 3) - .20) < 1e-12);
   assert.equal(rareCatchChance(.12, .10, 83), .95);
+});
+test('Vaskovsky is the rarest and hardest teacher fish', () => {
+  const byId = Object.fromEntries(fishingCatalog.map(fish => [fish.id, fish]));
+  assert.deepEqual(fishingCatalog.map(fish => fish.id), ['kalinin', 'grekova', 'kastrica', 'orlovich', 'vaskovsky']);
+  assert.equal(byId.vaskovsky.name, 'Васьковский М.М.');
+  assert.deepEqual(byId.vaskovsky.phrases, ['Неочевидно', 'ИСУ жил, жив и будет жить.']);
+  assert.deepEqual(byId.kastrica.phrases, ['Вы опустились до уровня ваших штанов']);
+  assert.equal(byId.orlovich.name, 'Орлович Ю.Л.');
+  assert.deepEqual(byId.orlovich.phrases, ['Граф.']);
+  assert.ok(byId.vaskovsky.rarityWeight < Math.min(...fishingCatalog.filter(fish => fish.id !== 'vaskovsky').map(fish => fish.rarityWeight)));
+  assert.ok(byId.vaskovsky.fightPassScale < Math.min(...fishingCatalog.filter(fish => fish.id !== 'vaskovsky').map(fish => fish.fightPassScale)));
+  assert.ok(byId.vaskovsky.fightZoneScale < Math.min(...fishingCatalog.filter(fish => fish.id !== 'vaskovsky').map(fish => fish.fightZoneScale)));
+  assert.ok(byId.vaskovsky.drift > Math.max(...fishingCatalog.filter(fish => fish.id !== 'vaskovsky').map(fish => fish.drift)));
+  assert.equal(pickFishingCandidate(fishingCatalog, 0)?.id, 'kalinin');
+  assert.equal(pickFishingCandidate(fishingCatalog, 1)?.id, 'vaskovsky');
 });
 function auth(id = 1) {
   const params = new URLSearchParams({ auth_date: String(Math.floor(Date.now() / 1000)), user: JSON.stringify({ id, username: 'user' + id }) });
@@ -88,10 +104,12 @@ test('authenticated casts reserve one slot; receipts deduplicate and reject othe
     const saved = await (await f.request('fishing/sync', { receipts: [reveal.receipt], game: { wallet: { smallFish: 1000000 } } })).json();
     assert.equal(saved.revision, 2);
     const total = saved.game.wallet.smallFish + Object.values(saved.game.fish).reduce((sum, fish) => sum + fish.count, 0);
-    assert.equal(total, reveal.catch.kind === 'small' ? reveal.catch.amount : 1);
+    assert.equal(total, reveal.catch.kind === 'small' ? reveal.catch.amount : 31);
+    assert.equal(saved.game.stats.totalCaught, total);
     const writes = f.writes();
     const repeated = await (await f.request('fishing/sync', { receipts: [reveal.receipt] })).json();
     assert.equal(repeated.revision, 2);
+    assert.equal(repeated.game.stats.totalCaught, total);
     assert.equal(f.writes(), writes);
     // A later cycle may be a new slot; reveal saves it and legacy sync must not save it twice.
     const second = await (await f.request('fishing/cast', { spot: 'deep' })).json();
@@ -120,11 +138,15 @@ test('caught common fish build the rare streak and a caught rare fish resets it'
       await f.request('fishing/reveal', { token: cast.token });
       assert.equal(stored()._commonCatchStreak, expected);
     }
+    const walletBeforeRare = stored().wallet.smallFish;
+    const totalBeforeRare = stored().stats.totalCaught;
     now += 5000;
     const rare = await (await f.request('fishing/cast', { spot: 'deep', devCatch: 'rare' })).json();
     now += 10000;
     await f.request('fishing/reveal', { token: rare.token });
     assert.equal(stored()._commonCatchStreak, 0);
+    assert.equal(stored().wallet.smallFish, walletBeforeRare + 30);
+    assert.equal(stored().stats.totalCaught, totalBeforeRare + 31);
     const profile = await (await f.request('fishing/profile')).json();
     assert.equal('_commonCatchStreak' in profile.game, false);
   } finally { Date.now = realNow; f.db.close(); }
@@ -157,6 +179,17 @@ test('colors reject stale versions and do not modify the game row', async () => 
   assert.deepEqual(other.document.colors, {});
   f.db.close();
 });
+test('leaderboard ranks lifetime catch totals instead of spendable balances', async () => {
+  const f = fixture();
+  for (let id = 1; id <= 3; id++) await f.request('fishing/profile', undefined, id);
+  f.db.prepare('UPDATE fishing_players SET game_json = ? WHERE telegram_id = 1').run(JSON.stringify({ wallet: { smallFish: 3 }, fish: { kalinin: { count: 2, phrases: [0] } } }));
+  f.db.prepare('UPDATE fishing_players SET game_json = ? WHERE telegram_id = 2').run(JSON.stringify({ wallet: { smallFish: 0 }, stats: { totalCaught: 12 }, fish: {} }));
+  f.db.prepare('UPDATE fishing_players SET game_json = ? WHERE telegram_id = 3').run(JSON.stringify({ wallet: { smallFish: 1 }, stats: { totalCaught: 7 }, fish: {} }));
+  const result = await (await f.request('fishing/leaderboard', undefined, 1)).json();
+  assert.deepEqual(result.leaders.map(row => [row.position, row.username, row.totalCaught]), [[1, 'user2', 12], [2, 'user3', 7], [3, 'user1', 5]]);
+  assert.deepEqual(result.me, { position: 3, username: 'user1', totalCaught: 5 });
+  f.db.close();
+});
 test('concurrent reward batches merge instead of overwriting', async () => {
   const f = fixture(); const realNow = Date.now; let now = realNow(); Date.now = () => now;
   try {
@@ -185,12 +218,14 @@ test('shop purchase, equipment and bait consumption are atomic', async () => {
     assert.equal(shop.catalog.baits.find(item => item.id === 'crumbs').effects.rarePercent, 2);
     const rod = await (await f.request('fishing/shop/buy', { itemId: 'reed' })).json();
     assert.equal(rod.game.wallet.smallFish, 75);
+    assert.equal(rod.game.stats.totalCaught, 100);
     assert.equal(rod.game.inventory.rods.includes('reed'), true);
     assert.equal((await f.request('fishing/shop/buy', { itemId: 'reed' })).status, 409);
     const equipped = await (await f.request('fishing/loadout', { kind: 'rod', itemId: 'reed' })).json();
     assert.equal(equipped.game.equipped.rod, 'reed');
     const bait = await (await f.request('fishing/shop/buy', { itemId: 'crumbs' })).json();
     assert.equal(bait.game.wallet.smallFish, 67);
+    assert.equal(bait.game.stats.totalCaught, 100);
     assert.equal(bait.game.inventory.baits.crumbs, 1);
     await f.request('fishing/loadout', { kind: 'bait', itemId: 'crumbs' });
     const cast = await (await f.request('fishing/cast', { spot: 'deep' })).json();
@@ -218,20 +253,28 @@ test('shop purchase, equipment and bait consumption are atomic', async () => {
     assert.equal(changed.traits.challenge, 'auto');
   } finally { Date.now = realNow; f.db.close(); }
 });
-test('collection hides unknown teachers and samples at most five owner tags', async () => {
+test('collection counts owners and samples tags separately for every phrase', async () => {
   const f = fixture();
   for (let id = 1; id <= 8; id++) await f.request('fishing/profile', undefined, id);
   for (let id = 1; id <= 7; id++) {
-    const fish = { kalinin: { count: 10 } };
-    if (id <= 6) fish.grekova = { count: 1 };
+    const fish = { kalinin: id === 7 ? { count: 10 } : { count: 10, phrases: [0] } };
+    if (id <= 6) fish.grekova = { count: 1, phrases: id <= 2 ? [0, 1] : [0] };
     f.db.prepare('UPDATE fishing_players SET game_json = ? WHERE telegram_id = ?').run(JSON.stringify({ schemaVersion: 1, savedAt: 0, wallet: { smallFish: 20 }, fish }), id);
   }
-  const collection = await (await f.request('fishing/collection', undefined, 8)).json();
+  const collection = await (await f.request('fishing/collection', undefined, 1)).json();
   const a = collection.cards.find(f => f.id === 'kalinin'), b = collection.cards.find(f => f.id === 'grekova');
-  assert.equal(a.owners, 7); assert.equal(a.usernames.length, 5); assert.equal(a.usernames.every(name => /^user[1-7]$/.test(name)), true);
-  assert.equal(b.owners, 6); assert.equal(b.usernames.length, 5); assert.equal(b.usernames.every(name => /^user[1-6]$/.test(name)), true);
-  assert.equal(a.locked, true); assert.equal(a.name, null); assert.equal(a.image, null);
-  assert.equal(b.phrases.every(phrase => phrase.locked && phrase.text === null), true);
+  assert.equal('owners' in a, false); assert.equal('usernames' in a, false);
+  assert.equal(a.phrases[0].owners, 7); assert.equal(a.phrases[0].usernames.length, 5);
+  assert.equal(a.phrases[0].usernames.every(name => /^user[1-7]$/.test(name)), true);
+  assert.equal(b.phrases[0].owners, 6); assert.equal(b.phrases[0].usernames.length, 5);
+  assert.equal(b.phrases[1].owners, 2); assert.equal(b.phrases[1].usernames.length, 2);
+  assert.equal(b.phrases[1].usernames.every(name => /^user[1-2]$/.test(name)), true);
+
+  const hidden = await (await f.request('fishing/collection', undefined, 8)).json();
+  for (const card of hidden.cards) for (const phrase of card.phrases) {
+    assert.equal(phrase.locked, true); assert.equal(phrase.text, null);
+    assert.equal(phrase.owners, 0); assert.deepEqual(phrase.usernames, []);
+  }
   f.db.close();
 });
 
@@ -241,17 +284,23 @@ test('rare catches prioritize unseen teachers before returning to the full rando
   try {
     await f.request('fishing/profile');
     const caught = [];
-    for (let i = 0; i < 3; i++) {
+    const uniqueCount = fishingCatalog.length;
+    for (let i = 0; i < uniqueCount + 1; i++) {
       now += 12000;
       const cast = await (await f.request('fishing/cast', { spot: 'deep', devCatch: 'rare' })).json();
       now += 10000;
-      caught.push(await (await f.request('fishing/reveal', { token: cast.token })).json());
+      const revealed = await (await f.request('fishing/reveal', { token: cast.token })).json();
+      caught.push({ ...revealed, traits: cast.traits });
     }
-    assert.notEqual(caught[0].catch.id, caught[1].catch.id);
-    assert.equal(caught[0].duplicate, false);
-    assert.equal(caught[1].duplicate, false);
-    assert.equal(caught[2].duplicate, true);
-    assert.ok(['kalinin', 'grekova'].includes(caught[2].catch.id));
+    assert.equal(new Set(caught.slice(0, uniqueCount).map(result => result.catch.id)).size, uniqueCount);
+    assert.equal(caught.slice(0, uniqueCount).every(result => !result.duplicate), true);
+    const vaskovsky = caught.slice(0, uniqueCount).find(result => result.catch.id === 'vaskovsky');
+    const others = caught.slice(0, uniqueCount).filter(result => result.catch.id !== 'vaskovsky');
+    assert.ok(vaskovsky.traits.passMs < Math.min(...others.map(result => result.traits.passMs)));
+    assert.ok(vaskovsky.traits.zoneScale < Math.min(...others.map(result => result.traits.zoneScale)));
+    assert.ok(vaskovsky.traits.drift > Math.max(...others.map(result => result.traits.drift)));
+    assert.equal(caught[uniqueCount].duplicate, true);
+    assert.ok(fishingCatalog.some(fish => fish.id === caught[uniqueCount].catch.id));
   } finally { Date.now = realNow; f.db.close(); }
 });
 
@@ -263,6 +312,9 @@ test('a full collection still randomly draws teachers and accepts successive rel
     f.db.prepare('UPDATE fishing_players SET game_json = ? WHERE telegram_id = 1').run(JSON.stringify({ wallet: { smallFish: 0 }, fish: {
       kalinin: { count: 1, firstCaughtAt: now, phrases: [0] },
       grekova: { count: 1, firstCaughtAt: now, phrases: [0, 1] },
+      kastrica: { count: 1, firstCaughtAt: now, phrases: [0] },
+      orlovich: { count: 1, firstCaughtAt: now, phrases: [0] },
+      vaskovsky: { count: 1, firstCaughtAt: now, phrases: [0] },
     } }));
     const drawn = new Set();
     for (let i = 0; i < 40; i++) {
@@ -274,10 +326,11 @@ test('a full collection still randomly draws teachers and accepts successive rel
       const response = await f.request('fishing/resolve', { receipt: revealed.receipt, choice: i % 2 ? 'eat' : 'release' });
       assert.equal(response.status, 200);
       const saved = await response.json();
-      assert.equal(saved.game.wallet.smallFish, Math.floor((i + 1) / 2));
+      assert.equal(saved.game.wallet.smallFish, 30 * (i + 1) + Math.floor((i + 1) / 2));
       assert.deepEqual(saved.game.fish.grekova.phrases.sort(), [0, 1]);
     }
-    assert.deepEqual([...drawn].sort(), ['grekova', 'kalinin']);
+    assert.equal([...drawn].every(id => fishingCatalog.some(fish => fish.id === id)), true);
+    assert.ok(drawn.size >= 2);
   } finally { Date.now = realNow; f.db.close(); }
 });
 

@@ -1,4 +1,4 @@
-import { FISHING_RIG } from './rig.js?v=66';
+import { FISHING_RIG } from './rig.js?v=79';
 
 export function lakeScene() {
   const { hand, tip, cast } = FISHING_RIG;

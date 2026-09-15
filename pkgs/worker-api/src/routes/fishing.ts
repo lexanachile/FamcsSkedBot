@@ -1,6 +1,6 @@
 import type { Hono } from 'hono';
 import type { AppEnvironment } from '../types';
-import { fishingCatalog, TEACHER_CHANCE } from '../fishing/catalog';
+import { fishingCatalog, pickFishingCandidate, TEACHER_CHANCE } from '../fishing/catalog';
 import { authenticate, authError, hmac, readBody } from '../miniapp/auth';
 import { seal, unseal, SLOT_MS, RECEIPT_TTL, type Reward } from '../fishing/tokens';
 import { ensurePlayer, normalizeGame, publicGame, saveRewards, updatePlayerGame } from '../fishing/repository';
@@ -9,18 +9,23 @@ import { rareCatchChance, smallFishAmount } from '../fishing/rewards';
 import { fishingDevEnabled } from '../fishing/dev';
 
 // Public aggregate only; personal collections are never shared/cached.
-let stats: { until: number; rows: { fish_id: string; owners: number; usernames: (string | null)[] }[] } | undefined;
+let stats: { until: number; rows: { fish_id: string; phrase_id: number; owners: number; usernames: (string | null)[] }[] } | undefined;
 let statsRequest: Promise<NonNullable<typeof stats>['rows']> | undefined;
 async function owners(db: D1Database) {
   if (stats && stats.until > Date.now()) return stats.rows;
   return statsRequest ||= (async () => {
-    const result = await db.prepare(`SELECT f.key AS fish_id, COUNT(*) AS owners
-      FROM fishing_players p, json_each(p.game_json, '$.fish') f
-      WHERE json_extract(f.value, '$.count') > 0 GROUP BY f.key`)
-      .all<{ fish_id: string; owners: number }>();
+    const result = await db.prepare(`SELECT f.key AS fish_id, CAST(ph.value AS INTEGER) AS phrase_id, COUNT(DISTINCT p.telegram_id) AS owners
+      FROM fishing_players p, json_each(p.game_json, '$.fish') f,
+        json_each(CASE WHEN json_type(f.value, '$.phrases') = 'array' THEN json_extract(f.value, '$.phrases') ELSE '[0]' END) ph
+      WHERE json_extract(f.value, '$.count') > 0 GROUP BY f.key, CAST(ph.value AS INTEGER)`)
+      .all<{ fish_id: string; phrase_id: number; owners: number }>();
     const rows = await Promise.all(result.results.map(async entry => {
-      const tags = await db.prepare(`SELECT p.username FROM fishing_players p, json_each(p.game_json, '$.fish') f
-        WHERE f.key = ? AND json_extract(f.value, '$.count') > 0 ORDER BY random() LIMIT 5`).bind(entry.fish_id).all<{ username: string | null }>();
+      const tags = await db.prepare(`SELECT username FROM (
+        SELECT p.telegram_id, p.username FROM fishing_players p, json_each(p.game_json, '$.fish') f,
+          json_each(CASE WHEN json_type(f.value, '$.phrases') = 'array' THEN json_extract(f.value, '$.phrases') ELSE '[0]' END) ph
+        WHERE f.key = ? AND CAST(ph.value AS INTEGER) = ? AND json_extract(f.value, '$.count') > 0
+        GROUP BY p.telegram_id, p.username
+      ) ORDER BY random() LIMIT 5`).bind(entry.fish_id, entry.phrase_id).all<{ username: string | null }>();
       return { ...entry, usernames: tags.results.map(row => row.username) };
     }));
     stats = { until: Date.now() + 300000, rows };
@@ -34,6 +39,27 @@ export function registerFishingRoutes(app: Hono<AppEnvironment>) {
     const row = await ensurePlayer(c.env.DB, user.id, user.username);
     return c.json({ success: true, userId: user.id, revision: row.revision, game: publicGame(JSON.parse(row.game_json)),
       devEnabled: fishingDevEnabled(c.req.url, user.id, c.env) });
+  });
+  app.get('/api/fishing/leaderboard', async c => {
+    let user; try { user = await authenticate(c); } catch (error) { return authError(c, error); }
+    await ensurePlayer(c.env.DB, user.id, user.username);
+    const result = await c.env.DB.prepare(`WITH scores AS (
+      SELECT telegram_id, username, MAX(0, CAST(COALESCE(
+        json_extract(game_json, '$.stats.totalCaught'),
+        COALESCE(json_extract(game_json, '$.wallet.smallFish'), 0) + COALESCE((
+          SELECT SUM(COALESCE(json_extract(f.value, '$.count'), 0)) FROM json_each(game_json, '$.fish') f
+        ), 0)
+      ) AS INTEGER)) AS total_caught FROM fishing_players
+    ), ranked AS (
+      SELECT telegram_id, username, total_caught,
+        ROW_NUMBER() OVER (ORDER BY total_caught DESC, telegram_id ASC) AS position
+      FROM scores WHERE total_caught > 0
+    )
+    SELECT telegram_id, username, total_caught, position FROM ranked
+    WHERE position <= 50 OR telegram_id = ? ORDER BY position`).bind(user.id)
+      .all<{ telegram_id: number; username: string | null; total_caught: number; position: number }>();
+    const rows = result.results.map(row => ({ position: row.position, username: row.username, totalCaught: row.total_caught }));
+    return c.json({ success: true, leaders: rows.filter(row => row.position <= 50), me: rows.find((_, index) => result.results[index]?.telegram_id === user.id) || null });
   });
   app.get('/api/fishing/shop', async c => {
     let user; try { user = await authenticate(c); } catch (error) { return authError(c, error); }
@@ -92,12 +118,15 @@ export function registerFishingRoutes(app: Hono<AppEnvironment>) {
     const game = normalizeGame(JSON.parse(row.game_json));
     const counts = await owners(c.env.DB);
     return c.json({ success: true, cards: fishingCatalog.map(fish => {
-      const entry = counts.find(item => item.fish_id === fish.id);
       const caught = game.fish[fish.id]?.count || 0;
       return { id: fish.id, count: caught, locked: !caught,
         name: caught ? fish.name : null, image: caught ? fish.image : null,
-        phrases: fish.phrases.map((text, id) => ({ id, locked: !game.fish[fish.id]?.phrases.includes(id), text: game.fish[fish.id]?.phrases.includes(id) ? text : null })),
-        owners: entry?.owners || 0, usernames: entry?.usernames || [] };
+        phrases: fish.phrases.map((text, id) => {
+          const unlocked = Boolean(game.fish[fish.id]?.phrases.includes(id));
+          const entry = counts.find(item => item.fish_id === fish.id && item.phrase_id === id);
+          return { id, locked: !unlocked, text: unlocked ? text : null,
+            owners: unlocked ? entry?.owners || 0 : 0, usernames: unlocked ? entry?.usernames || [] : [] };
+        }) };
     }) });
   });
   app.post('/api/fishing/cast', async c => {
@@ -133,7 +162,8 @@ export function registerFishingRoutes(app: Hono<AppEnvironment>) {
         : roll < rareCatchChance(TEACHER_CHANCE, bait?.rareBonus || 0, game._commonCatchStreak);
       const unseen = pool.filter(fish => !(game.fish[fish.id]?.count > 0));
       const candidates = unseen.length ? unseen : pool;
-      const fish = rare && candidates.length ? candidates[bytes[4] % candidates.length] : null;
+      const fishRoll = new DataView(bytes.buffer).getUint32(4) / 4294967296;
+      const fish = rare ? pickFishingCandidate(candidates, fishRoll) : null;
       const cast = { slot, baitId: bait?.id || null, fish: fish?.id || null, readyAt: now + (fish ? 9000 : 2500), rodId: rod.id, devKey };
       game._cast = cast;
       return { changed: true, value: cast };
@@ -145,7 +175,7 @@ export function registerFishingRoutes(app: Hono<AppEnvironment>) {
     const payload: Reward = { kind: 'cast', uid: user.id, slot, fish: fish?.id || null, readyAt: cast.readyAt, expiresAt: slot * SLOT_MS + 600000, amount };
     return c.json({ success: true, token: await seal(c.env.TELEGRAM_BOT_TOKEN!, payload), slot, nextCastAt: (slot + 1) * SLOT_MS,
       revision: draw.revision, game: publicGame(draw.game), usedBait: bait?.id || null, rod: rod.id,
-      traits: fish ? { challenge: 'fight', passMs: Math.round(3200 * Math.max(.8, rod.reactionMs / 2200)), zoneScale: rod.zoneScale, divisions: rod.divisions, waitScale: bait?.waitScale || 1,
+      traits: fish ? { challenge: 'fight', passMs: Math.round(3200 * Math.max(.8, rod.reactionMs / 2200) * fish.fightPassScale), zoneScale: rod.zoneScale * fish.fightZoneScale, divisions: rod.divisions, waitScale: bait?.waitScale || 1,
         drift: fish.drift * rod.driftScale, shake: fish.shake * rod.shakeScale, shakeSpeed: fish.shakeSpeed }
         : { challenge: rod.autoSmall ? 'auto' : 'quick', passMs: rod.reactionMs, quickZone: rod.quickZone, divisions: rod.divisions, waitScale: bait?.waitScale || 1, drift: 0, shake: 1.5, shakeSpeed: 1 } });
   });

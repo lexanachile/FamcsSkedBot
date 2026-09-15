@@ -1,15 +1,15 @@
-import { lakeScene } from './scene.js?v=69';
-import { createFight, advance, strike, displayedProgress, passPosition, REST_MS } from './engine.js?v=72';
-import { createProgress } from './progress.js?v=74';
-import { setupEnvironment } from './environment.js?v=55';
-import { bindStrikeInput } from './input.js?v=67';
-import { bindCatchChoiceInput, catchChoiceKeyframes, withCatchChoice } from './catch-choice.js?v=75';
-import { ownerLine } from './collection.js?v=73';
-import { getLocation, worldMapMarkup } from './locations.js?v=65';
-import { devBaitOptions, devCatchOptions, devRodOptions, optionsMarkup, renderLoadout, renderShop, storeMarkup } from './storefront.js?v=64';
+import { lakeScene } from './scene.js?v=79';
+import { createFight, advance, strike, displayedProgress, passPosition, REST_MS } from './engine.js?v=79';
+import { createProgress } from './progress.js?v=79';
+import { setupEnvironment } from './environment.js?v=79';
+import { bindStrikeInput } from './input.js?v=79';
+import { bindCatchChoiceInput, catchChoiceKeyframes, withCatchChoice } from './catch-choice.js?v=79';
+import { ownerLine } from './collection.js?v=79';
+import { getLocation, worldMapMarkup } from './locations.js?v=79';
+import { devBaitOptions, devCatchOptions, devRodOptions, optionsMarkup, renderLoadout, renderShop, storeMarkup } from './storefront.js?v=79';
 
-import { createLocationNotice } from './location-notice.js?v=57';
-import { FISHING_RIG } from './rig.js?v=66';
+import { createLocationNotice } from './location-notice.js?v=79';
+import { FISHING_RIG } from './rig.js?v=79';
 
 export function anglerPose(state, elapsed, fight, motionTime, reduced = false, strikePulse = 0) {
   const bite = state === 'approach' ? 1 - Math.pow(1 - Math.min(1, elapsed / 2200), 3) : 0;
@@ -69,7 +69,8 @@ export function mountFishing(host) {
         <p class="fish-trophy-empty">Здесь появятся карточки пойманных преподавателей.</p>
         <div class="fish-trophy-list"></div>
       </section>
-      <div class="fish-hud"><span class="fish-count" title="Обычные рыбки в кармане">0 <small>РЫБОК</small></span><div class="fish-hud-buttons"><button type="button" class="fish-loadout-open" aria-label="Открыть снаряжение">◇</button><button type="button" class="fish-help-toggle" aria-label="Как играть" aria-expanded="false">?</button></div></div>
+      <section class="fish-leaderboard" aria-label="Топ рыбаков" hidden><header><button type="button" class="fish-leaderboard-back" aria-label="Вернуться на карту">←</button><div><small>ОБЩИЙ УЛОВ</small><h2>Топ рыбаков</h2></div></header><p class="fish-leaderboard-me"></p><ol class="fish-leaderboard-list"><li class="fish-leaderboard-loading">Считаем улов…</li></ol></section>
+      <div class="fish-hud"><div class="fish-wallet-stack"><span class="fish-count" title="Обычные рыбки в кармане">0 <small>РЫБОК</small></span><button type="button" class="fish-leaderboard-open">Топ рыбаков</button></div><div class="fish-hud-buttons"><button type="button" class="fish-loadout-open" aria-label="Открыть снаряжение">◇</button><button type="button" class="fish-help-toggle" aria-label="Как играть" aria-expanded="false">?</button></div></div>
       <button type="button" class="fish-map-return" aria-label="Вернуться на карту" hidden><span>←</span> Карта</button>
       <div class="fish-location-name" hidden></div>
       <div class="fish-dev"><button type="button" class="fish-dev-toggle" aria-label="Настройки разработчика" aria-expanded="false"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m8 6-6 6 6 6m8-12 6 6-6 6m-3-16-2 20"/></svg></button><div class="fish-dev-panel" hidden><label>Время<select name="fish-period"><option value="">Минск · авто</option><option value="morning">Утро</option><option value="day">День</option><option value="evening">Вечер</option><option value="night">Ночь</option></select></label><label>Погода<select name="fish-rain"><option value="">Минск · авто</option><option value="rain">Дождь</option><option value="dry">Без дождя</option></select></label><label>Улов<select name="fish-dev-catch">${optionsMarkup(devCatchOptions)}</select></label><label>Удочка<select name="fish-dev-rod">${optionsMarkup(devRodOptions)}</select></label><label>Прикормка<select name="fish-dev-bait">${optionsMarkup(devBaitOptions)}</select></label><small>Dev-предметы не покупаются и не расходуются.</small><small class="fish-weather-error">Погода недоступна; сохранено последнее состояние.</small></div></div>
@@ -167,13 +168,14 @@ export function mountFishing(host) {
       const copy = document.createElement('div');
       const name = document.createElement('h3'); name.textContent = caught ? (item.name || local?.name || 'Улов') : 'Ещё не пойман';
       const amount = document.createElement('p'); amount.textContent = caught ? `Поймано: ${caught}` : '';
-      const owners = document.createElement('p'); owners.className = 'fish-trophy-owners'; owners.textContent = ownerLine(item);
       const phrases = document.createElement('ul'); phrases.className = 'fish-trophy-phrases';
       for (const phrase of item.phrases || []) {
         const row = document.createElement('li'); row.className = phrase.locked ? 'is-locked' : '';
-        row.textContent = phrase.locked ? '◆ ······' : `«${phrase.text}»`; phrases.append(row);
+        const quote = document.createElement('span'); quote.textContent = phrase.locked ? '◆ ······' : `«${phrase.text}»`; row.append(quote);
+        if (!phrase.locked) { const owners = document.createElement('small'); owners.className = 'fish-phrase-owners'; owners.textContent = ownerLine(phrase); row.append(owners); }
+        phrases.append(row);
       }
-      copy.append(name, amount, phrases, owners); card.append(portrait, copy); return card;
+      copy.append(name, amount, phrases); card.append(portrait, copy); return card;
     }));
   }
   const storeMessage = (selector, message = '') => { q(selector).textContent = message; };
@@ -199,12 +201,12 @@ export function mountFishing(host) {
   }
   function showShop() {
     locationNotice.hide(); reset(); root.dataset.view = 'shop';
-    q('.fish-world-map').hidden = true; q('.fish-home').hidden = true; q('.fish-shop').hidden = false; q('.fish-loadout').hidden = true;
+    q('.fish-world-map').hidden = true; q('.fish-home').hidden = true; q('.fish-leaderboard').hidden = true; q('.fish-shop').hidden = false; q('.fish-loadout').hidden = true;
     q('.fish-map-return').hidden = true; syncPause(); void loadStore('shop');
   }
   function showLoadout() {
     if (state !== 'idle') return;
-    locationNotice.hide(); root.dataset.view = 'loadout'; q('.fish-loadout').hidden = false; q('.fish-shop').hidden = true;
+    locationNotice.hide(); root.dataset.view = 'loadout'; q('.fish-loadout').hidden = false; q('.fish-shop').hidden = true; q('.fish-leaderboard').hidden = true;
     q('.fish-spots').hidden = true; q('.fish-map-return').hidden = true; syncPause(); void loadStore('loadout');
   }
   function closeLoadout() {
@@ -214,17 +216,38 @@ export function mountFishing(host) {
     locationNotice.hide();
     reset();
     root.dataset.view = 'map';
-    q('.fish-world-map').hidden = false; q('.fish-home').hidden = true; q('.fish-shop').hidden = true; q('.fish-loadout').hidden = true;
+    q('.fish-world-map').hidden = false; q('.fish-home').hidden = true; q('.fish-leaderboard').hidden = true; q('.fish-shop').hidden = true; q('.fish-loadout').hidden = true;
     q('.fish-map-return').hidden = true; q('.fish-location-name').hidden = true;
     root.querySelectorAll('[data-location]').forEach(button => button.setAttribute('aria-current', String(button.dataset.location === currentLocation)));
     syncPause();
+  }
+  function drawLeaderboard(result) {
+    const list = q('.fish-leaderboard-list');
+    list.replaceChildren(...result.leaders.map(entry => {
+      const row = document.createElement('li');
+      if (entry.position <= 3) row.dataset.medal = String(entry.position);
+      const place = document.createElement('span'); place.className = 'fish-leaderboard-place'; place.textContent = String(entry.position);
+      const name = document.createElement('strong'); name.textContent = entry.username ? `@${entry.username}` : 'Рыбак без тега';
+      const score = document.createElement('span'); score.className = 'fish-leaderboard-score'; score.textContent = `${entry.totalCaught} ≈`;
+      row.append(place, name, score); return row;
+    }));
+    if (!result.leaders.length) { const empty = document.createElement('li'); empty.className = 'fish-leaderboard-loading'; empty.textContent = 'Первый улов ещё впереди'; list.append(empty); }
+    q('.fish-leaderboard-me').textContent = result.me ? `Ваше место: ${result.me.position} · ${result.me.totalCaught} рыб` : 'У вас пока нет улова';
+  }
+  async function showLeaderboard() {
+    locationNotice.hide(); reset(); root.dataset.view = 'leaderboard';
+    q('.fish-world-map').hidden = true; q('.fish-home').hidden = true; q('.fish-shop').hidden = true; q('.fish-loadout').hidden = true; q('.fish-leaderboard').hidden = false;
+    q('.fish-map-return').hidden = true; q('.fish-leaderboard-me').textContent = '';
+    q('.fish-leaderboard-list').innerHTML = '<li class="fish-leaderboard-loading">Считаем улов…</li>'; syncPause();
+    try { const result = await progress.leaderboard(); if (root.dataset.view === 'leaderboard') drawLeaderboard(result); }
+    catch (error) { if (root.dataset.view === 'leaderboard') q('.fish-leaderboard-list').textContent = error.message; }
   }
   function visit(locationId) {
     const location = getLocation(locationId);
     if (locationId !== 'home' && (!location || location.locked)) return;
     reset();
     if (locationId === 'home') {
-      root.dataset.view = 'home'; q('.fish-world-map').hidden = true; q('.fish-home').hidden = false; q('.fish-shop').hidden = true; q('.fish-loadout').hidden = true;
+      root.dataset.view = 'home'; q('.fish-world-map').hidden = true; q('.fish-home').hidden = false; q('.fish-leaderboard').hidden = true; q('.fish-shop').hidden = true; q('.fish-loadout').hidden = true;
       q('.fish-map-return').hidden = false; q('.fish-location-name').hidden = true;
       locationNotice.show('Дом');
       renderTrophies();
@@ -233,7 +256,7 @@ export function mountFishing(host) {
     }
     currentLocation = location.id; root.dataset.location = location.id; root.dataset.view = 'fishing';
     q('.fish-spots').hidden = false;
-    q('.fish-world-map').hidden = true; q('.fish-home').hidden = true; q('.fish-shop').hidden = true; q('.fish-loadout').hidden = true; q('.fish-map-return').hidden = false;
+    q('.fish-world-map').hidden = true; q('.fish-home').hidden = true; q('.fish-leaderboard').hidden = true; q('.fish-shop').hidden = true; q('.fish-loadout').hidden = true; q('.fish-map-return').hidden = false;
     locationNotice.show(location.name);
     if (progressState.decision) {
       setState('result'); q('.fish-spots').hidden = true; q('.fish-result').hidden = false; showCatch(progressState.decision);
@@ -483,6 +506,8 @@ export function mountFishing(host) {
   root.querySelectorAll('[data-spot]').forEach(button => button.addEventListener('click', () => cast(button.dataset.spot)));
   root.querySelectorAll('[data-location]').forEach(button => button.addEventListener('click', () => visit(button.dataset.location)));
   q('.fish-map-return').addEventListener('click', showMap);
+  q('.fish-leaderboard-open').addEventListener('click', () => { void showLeaderboard(); });
+  q('.fish-leaderboard-back').addEventListener('click', showMap);
   q('.fish-shop-open').addEventListener('click', showShop);
   q('.fish-store-back').addEventListener('click', showMap);
   q('.fish-loadout-open').addEventListener('click', showLoadout);

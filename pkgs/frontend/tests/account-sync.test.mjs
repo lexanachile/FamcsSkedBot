@@ -27,16 +27,18 @@ test('legacy migration can be staged again after a server read without losing lo
   stageLegacyColors(local, { local: '#111111' }, []);
   assert.equal(local.pending.local.value, '#111111');
 });
-test('ordinary fish add currency; teachers replace them without adding currency', () => {
+test('ordinary fish add currency and a rare catch grants thirty common fish', () => {
   const base = { wallet: { smallFish: 5 }, fish: {} };
   const result = projectedGame(base, [
     { catch: { kind: 'small' } }, { catch: { kind: 'teacher', id: 'kalinin' }, caughtAt: 10 },
   ]);
-  assert.equal(result.wallet.smallFish, 6);
+  assert.equal(result.wallet.smallFish, 36);
+  assert.equal(result.stats.totalCaught, 37);
   assert.deepEqual(result.fish.kalinin, { count: 1, firstCaughtAt: 10, phrases: [] });
   assert.deepEqual(base, { wallet: { smallFish: 5 }, fish: {} });
 });
 test('offline projection keeps a multi-fish catch amount', () => {
   const result = projectedGame({ wallet: { smallFish: 4 }, fish: {} }, [{ catch: { kind: 'small', amount: 5 } }]);
   assert.equal(result.wallet.smallFish, 9);
+  assert.equal(result.stats.totalCaught, 9);
 });

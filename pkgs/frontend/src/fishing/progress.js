@@ -1,5 +1,6 @@
-import { accountRequest, accountHint } from '../account-api.js?v=58';
-const empty = () => ({ schemaVersion: 3, savedAt: 0, wallet: { smallFish: 0 }, fish: {}, inventory: { rods: ['twig'], baits: {} }, equipped: { rod: 'twig', bait: null } });
+import { accountRequest, accountHint } from '../account-api.js?v=79';
+const RARE_CATCH_SMALL_FISH_BONUS = 30;
+const empty = () => ({ schemaVersion: 5, savedAt: 0, wallet: { smallFish: 0 }, stats: { totalCaught: 0 }, fish: {}, inventory: { rods: ['twig'], baits: {} }, equipped: { rod: 'twig', bait: null } });
 let database;
 function db() {
   return database ||= new Promise((resolve, reject) => {
@@ -23,14 +24,17 @@ async function pendingOperation(mode, callback, table = 'pending') {
 export function projectedGame(base, pending) {
   const game = JSON.parse(JSON.stringify(base));
   game.inventory ||= { rods: ['twig'], baits: {} };
+  game.stats ||= { totalCaught: game.wallet.smallFish + Object.values(game.fish).reduce((sum, fish) => sum + (fish.count || 0), 0) };
   game.inventory.rods ||= ['twig']; game.inventory.baits ||= {};
   game.equipped ||= { rod: 'twig', bait: null };
   for (const entry of pending) {
-    if (entry.catch.kind === 'small') game.wallet.smallFish += entry.catch.amount || 1;
+    if (entry.catch.kind === 'small') { const amount = entry.catch.amount || 1; game.wallet.smallFish += amount; game.stats.totalCaught += amount; }
     else {
       const previous = game.fish[entry.catch.id];
       game.fish[entry.catch.id] = { ...previous, count: (previous?.count || 0) + 1, firstCaughtAt: previous?.firstCaughtAt || entry.caughtAt,
         phrases: [...new Set([...(previous?.phrases || []), ...(Number.isInteger(entry.catch.phraseId) ? [entry.catch.phraseId] : [])])] };
+      game.wallet.smallFish += RARE_CATCH_SMALL_FISH_BONUS;
+      game.stats.totalCaught += RARE_CATCH_SMALL_FISH_BONUS + 1;
     }
   }
   return game;
@@ -134,6 +138,7 @@ export function createProgress(onChange) {
       const result = await accountRequest('fishing/shop');
       shopCatalog = result.catalog; applyServer(result); return result;
     },
+    async leaderboard() { await init(); if (pending.length) await flush(); return accountRequest('fishing/leaderboard'); },
     async buy(itemId) {
       await flush();
       if (pending.length) throw new Error('Сначала сохраните текущий улов.');

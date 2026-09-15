@@ -1,8 +1,9 @@
 import { fishingCatalog } from './catalog';
 import type { Reward } from './tokens';
 import { baitById, rodById, type BaitId, type RodId } from './shop';
+const RARE_CATCH_SMALL_FISH_BONUS = 30;
 type CastState = { slot: number; baitId: BaitId | null; fish: string | null; readyAt: number; rodId: RodId; devKey?: string };
-export const emptyGame = () => ({ schemaVersion: 4, savedAt: 0, wallet: { smallFish: 0 }, fish: {} as Record<string, { count: number; firstCaughtAt: number; phrases: number[] }>,
+export const emptyGame = () => ({ schemaVersion: 5, savedAt: 0, wallet: { smallFish: 0 }, stats: { totalCaught: 0 }, fish: {} as Record<string, { count: number; firstCaughtAt: number; phrases: number[] }>,
   inventory: { rods: ['twig'] as RodId[], baits: {} as Partial<Record<BaitId, number>> },
   equipped: { rod: 'twig' as RodId, bait: null as BaitId | null }, _cast: null as CastState | null,
   _commonCatchStreak: 0,
@@ -34,6 +35,9 @@ export function normalizeGame(value: unknown): Game {
     game.fish[fish.id] = { count: Math.floor(Number(entry.count)), firstCaughtAt: Number(entry.firstCaughtAt) || 0,
       phrases: Array.isArray(entry.phrases) ? [...new Set(entry.phrases.filter(index => Number.isInteger(index) && index >= 0 && index < fish.phrases.length))] : [0] };
   }
+  const knownCaught = game.wallet.smallFish + Object.values(game.fish).reduce((sum, entry) => sum + entry.count, 0);
+  const storedTotalCaught = Number(source.stats?.totalCaught);
+  game.stats.totalCaught = Number.isFinite(storedTotalCaught) && storedTotalCaught >= 0 ? Math.floor(storedTotalCaught) : knownCaught;
   if (source._catches && typeof source._catches === 'object') game._catches = Object.fromEntries(Object.entries(source._catches).filter(([, entry]) => entry.expiresAt > Date.now()));
   const owned = Array.isArray(source.inventory?.rods) ? source.inventory.rods.filter(id => Boolean(rodById(id))) as RodId[] : [];
   game.inventory.rods = [...new Set(['twig' as RodId, ...owned])];
@@ -81,8 +85,12 @@ export function applyRewards(game: Game, sync: Record<string, number>, rewards: 
       next.fish[reward.fish] = { count: (previous?.count || 0) + 1, firstCaughtAt: Math.min(previous?.firstCaughtAt || reward.readyAt, reward.readyAt), phrases: [...new Set([...(previous?.phrases || []), phrase])] };
       next._commonCatchStreak = 0;
       next._catches[id] = { fish: reward.fish, phrase, duplicate: Boolean(previous?.count), expiresAt: reward.expiresAt };
+      next.wallet.smallFish += RARE_CATCH_SMALL_FISH_BONUS;
+      next.stats.totalCaught += RARE_CATCH_SMALL_FISH_BONUS + 1;
     } else {
-      next.wallet.smallFish += Number.isInteger(reward.amount) && reward.amount! >= 1 && reward.amount! <= 5 ? reward.amount! : 1;
+      const amount = Number.isInteger(reward.amount) && reward.amount! >= 1 && reward.amount! <= 5 ? reward.amount! : 1;
+      next.wallet.smallFish += amount;
+      next.stats.totalCaught += amount;
       next._commonCatchStreak = Math.min(83, next._commonCatchStreak + 1);
     }
     added++;
