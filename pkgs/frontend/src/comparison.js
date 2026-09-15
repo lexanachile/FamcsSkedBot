@@ -1,6 +1,6 @@
-import { COMPARISON_DAYS, comparisonDay, selectionKey, clockTime } from './comparison-model.js?v=45';
-import { readStoredJson, writeStoredJson } from './storage.js?v=45';
-import { requestJson } from './request.js?v=45';
+import { COMPARISON_DAYS, comparisonDay, selectionKey, clockTime } from './comparison-model.js?v=55';
+import { readStoredJson, writeStoredJson } from './storage.js?v=55';
+import { requestJson } from './request.js?v=55';
 
 async function requestData(url, options = {}) {
   const result = await requestJson(url, options);

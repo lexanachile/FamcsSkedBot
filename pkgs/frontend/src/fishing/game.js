@@ -1,12 +1,12 @@
-import { lakeScene } from './scene.js?v=49';
-import { createFight, advance, strike, displayedProgress, PASS_MS, REST_MS } from './engine.js?v=45';
-import { createProgress } from './progress.js?v=48';
-import { setupEnvironment } from './environment.js?v=45';
-import { setupFullscreen } from './fullscreen.js?v=45';
-import { bindStrikeInput } from './input.js?v=45';
-import { getLocation, worldMapMarkup } from './locations.js?v=49';
+import { lakeScene } from './scene.js?v=59';
+import { createFight, advance, strike, displayedProgress, PASS_MS, REST_MS } from './engine.js?v=55';
+import { createProgress } from './progress.js?v=58';
+import { setupEnvironment } from './environment.js?v=55';
+import { setupFullscreen } from './fullscreen.js?v=55';
+import { bindStrikeInput } from './input.js?v=55';
+import { getLocation, worldMapMarkup } from './locations.js?v=59';
 
-import { createLocationNotice } from './location-notice.js?v=47';
+import { createLocationNotice } from './location-notice.js?v=57';
 
 export function anglerPose(state, elapsed, fight, motionTime, reduced = false) {
   const pulling = state === 'fight' && fight?.phase === 'rest';

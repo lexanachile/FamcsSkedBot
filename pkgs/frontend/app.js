@@ -1,17 +1,17 @@
-import { createLessonColorRow } from "./src/lesson-color-picker.js?v=48";
+import { createLessonColorRow } from "./src/lesson-color-picker.js?v=58";
 import {
   getStoredValue as safeGetStorage,
   readStoredJson as readJsonStorage,
   removeStoredValue as safeRemoveStorage,
   setStoredValue as safeSetStorage,
   writeStoredJson as writeJsonStorage,
-} from "./src/storage.js?v=45";
-import { initializeTelegramWebApp, triggerTelegramHaptic } from "./src/telegram.js?v=45";
-import { setStaleNotice, showToast } from "./src/feedback.js?v=45";
-import { setupScheduleModes, filterSubgroup, teacherSchedule } from "./src/schedule-modes.js?v=45";
-import { requestJson } from "./src/request.js?v=45";
-import { setupFishingLauncher } from "./src/fishing-loader.js?v=49";
-import { setupCloudColors } from "./src/cloud-colors.js?v=48";
+} from "./src/storage.js?v=55";
+import { initializeTelegramWebApp, triggerTelegramHaptic } from "./src/telegram.js?v=55";
+import { setStaleNotice, showToast } from "./src/feedback.js?v=55";
+import { setupScheduleModes, filterSubgroup, teacherSchedule } from "./src/schedule-modes.js?v=55";
+import { requestJson } from "./src/request.js?v=55";
+import { setupFishingLauncher } from "./src/fishing-loader.js?v=59";
+import { setupCloudColors } from "./src/cloud-colors.js?v=58";
 
 let scheduleMode = null;
 let teacherRequest = 0;

@@ -17,7 +17,7 @@ export function setupFishingLauncher() {
     return styleReady ||= new Promise((resolve, reject) => {
       const link = document.createElement('link');
       link.rel = 'stylesheet';
-      link.href = new URL('./fishing/game.css?v=49', import.meta.url).href;
+      link.href = new URL('./fishing/game.css?v=59', import.meta.url).href;
       const timeout = setTimeout(() => failed(), 20000);
       function failed() { clearTimeout(timeout); link.remove(); styleReady = null; reject(new Error('CSS unavailable')); }
       link.onload = () => { clearTimeout(timeout); resolve(); };
@@ -36,7 +36,7 @@ export function setupFishingLauncher() {
     button.disabled = true;
     status.textContent = 'Готовим удочки…';
     try {
-      const [module] = await Promise.all([import('./fishing/game.js?v=49'), loadStyle()]);
+      const [module] = await Promise.all([import('./fishing/game.js?v=59'), loadStyle()]);
       host.hidden = false;
       game = module.mountFishing(host);
       reveal();

@@ -1,4 +1,4 @@
-import { accountHint, accountRequest } from './account-api.js?v=48';
+import { accountHint, accountRequest } from './account-api.js?v=58';
 export function mergeColors(remote, pending) {
   const colors = { ...remote };
   for (const [key, edit] of Object.entries(pending)) {

@@ -1,4 +1,4 @@
-import { accountRequest, accountHint } from '../account-api.js?v=48';
+import { accountRequest, accountHint } from '../account-api.js?v=58';
 const empty = () => ({ schemaVersion: 1, savedAt: 0, wallet: { smallFish: 0 }, fish: {} });
 let database;
 function db() {
