@@ -61,7 +61,7 @@
          поэтому голый HTML физически не может промелькнуть в обычном
          режиме (FORCE_DISABLE_CACHE = false). Версия "?v=55" — меняйте
          вручную при каждом деплое, как и раньше. -->
-    <link rel="stylesheet" id="mainStyle" href="/styles.css?v=66" />
+    <link rel="stylesheet" id="mainStyle" href="/styles.css?v=70" />
     <link rel="stylesheet" href="/src/comparison.css?v=55" />
 
     <!-- ПРЕДЗАГРУЗКА ШРИФТОВ, которые нужны для первого экрана (шапка,
@@ -246,8 +246,8 @@
                      см. константу INFO_PANEL_TEXT и функцию renderInfoPanel().
                      Пока текст пустой, плашка скрыта классом .hidden. -->
           <section class="fishing-invite" aria-label="Рыбалка после пар">
-            <p>Всё. Пары закончились. Порыбачим?</p>
-            <button id="fishing-open" type="button" aria-label="Открыть рыбалку" aria-expanded="false" aria-controls="fishing-host"><svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M5 20 16 4m-8 12 5 3M16 4c4 3 5 6 4 10v3a3 3 0 0 1-6 0v-2l2 2"/></svg></button>
+            <p>Всё. Пары закончились.</p>
+            <div class="fishing-invite-action"><strong>Порыбачим?</strong><button id="fishing-open" type="button" aria-label="Открыть рыбалку" aria-expanded="false" aria-controls="fishing-host"><svg width="36" height="20" viewBox="0 0 36 20" fill="none" aria-hidden="true"><path d="M3 10c5-7 16-8 24 0-8 8-19 7-24 0Z" fill="currentColor"/><path d="m26 10 8-7v14l-8-7Z" fill="currentColor"/><circle cx="9" cy="8" r="1.5" fill="#e9fbff"/></svg></button></div>
           </section>
           <div id="fishing-host" hidden></div>
           <div id="info-panel" class="info-panel hidden">
@@ -382,6 +382,6 @@
         });
       })();
     </script>
-    <script type="module" src="/app.js?v=68"></script>
+    <script type="module" src="/app.js?v=69"></script>
   </body>
 </html>

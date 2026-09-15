@@ -23,11 +23,14 @@
 
 [hidden] { display: none !important; }
 
-.fishing-invite { margin: 52px 0 28px; display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; }
+.fishing-invite { margin: 52px 0 28px; display: flex; flex-direction: column; align-items: center; text-align: center; }
 .fishing-invite p { margin: 0; font-size: 14px; color: var(--ink-soft); }
-.fishing-invite button { display: grid; place-items: center; width: 52px; height: 52px; border: 1px solid #3d514a; border-radius: 50%; background: #1c302a; color: #c6f5b3; cursor: pointer; }
+.fishing-invite-action { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 11px; }
+.fishing-invite-action strong { color: var(--ink); font-size: 18px; font-weight: 600; line-height: 1; }
+.fishing-invite button { display: grid; place-items: center; width: 72px; height: 38px; padding: 0; border: 1px solid #b9e8f2; border-radius: 999px; background: linear-gradient(135deg, #c9f1f7, #8fd5e8); color: #28657a; box-shadow: inset 0 1px #ffffffb8, 0 5px 16px #68bbd22e; cursor: pointer; transition: transform .18s ease, box-shadow .18s ease; }
+.fishing-invite button:active { transform: translateX(2px) scale(.97); box-shadow: inset 0 1px #ffffffb8, 0 2px 8px #68bbd226; }
 .fishing-invite button:disabled { opacity: .5; cursor: wait; }
-.fishing-invite button:focus-visible { outline: 2px solid #c6f5b3; outline-offset: 4px; }
+.fishing-invite button:focus-visible { outline: 2px solid #8fd5e8; outline-offset: 4px; }
 .fishing-loading-screen {
   display: grid;
   place-items: center;

@@ -79,6 +79,19 @@ test('authenticated casts reserve one slot; receipts deduplicate and reject othe
     assert.equal(f.writes(), writes);
   } finally { Date.now = realNow; f.db.close(); }
 });
+test('a completed animation is never held behind the old thirty-second cast window', async () => {
+  const f = fixture(); const realNow = Date.now; let now = Math.floor(realNow() / 4000) * 4000 + 1; Date.now = () => now;
+  try {
+    await f.request('fishing/profile');
+    const first = await (await f.request('fishing/cast', { spot: 'deep' })).json();
+    now += 3998;
+    const retry = await (await f.request('fishing/cast', { spot: 'deep' })).json();
+    assert.equal(retry.slot, first.slot);
+    now += 2;
+    const next = await (await f.request('fishing/cast', { spot: 'deep' })).json();
+    assert.equal(next.slot, first.slot + 1);
+  } finally { Date.now = realNow; f.db.close(); }
+});
 test('colors reject stale versions and do not modify the game row', async () => {
   const f = fixture();
   const first = await (await f.request('colors')).json();

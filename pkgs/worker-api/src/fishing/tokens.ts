@@ -1,5 +1,5 @@
 import { hmac } from '../miniapp/auth';
-export const SLOT_MS = 30000;
+export const SLOT_MS = 4000;
 export const RECEIPT_TTL = 86400000;
 const enc = new TextEncoder();
 async function key(secret: string) {

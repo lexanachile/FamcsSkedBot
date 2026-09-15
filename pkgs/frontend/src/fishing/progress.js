@@ -36,7 +36,7 @@ export function projectedGame(base, pending) {
   return game;
 }
 export function createProgress(onChange) {
-  let uid, base = empty(), pending = [], decisions = [], revision = -1, loading, saving, cards = [], shopCatalog = null, error = '', lastSlot = -1;
+  let uid, base = empty(), pending = [], decisions = [], revision = -1, loading, saving, cards = [], shopCatalog = null, error = '';
   const known = new Map();
   const notify = () => onChange?.({ game: projectedGame(base, pending), pending: pending.length, decision: decisions[0] || null, error, cards, catalog: shopCatalog, savedAt: base.savedAt });
   function applyServer(result) {
@@ -55,7 +55,6 @@ export function createProgress(onChange) {
     return loading ||= (async () => {
       const result = await accountRequest('fishing/profile');
       uid = String(result.userId); base = result.game; revision = result.revision;
-      try { lastSlot = Number(localStorage.getItem(`fishing:lastSlot:${uid}`) || -1); } catch { /* optional */ }
       await reloadPending(); await reloadDecisions(); notify();
     })().catch(e => { uid = null; loading = null; error = e.message; notify(); throw e; });
   }
@@ -75,8 +74,6 @@ export function createProgress(onChange) {
       await reloadDecisions();
     }
     await pendingOperation('readwrite', store => store.delete(recoveryKey), 'unrevealed');
-    lastSlot = Math.max(lastSlot, result.slot);
-    try { localStorage.setItem(`fishing:lastSlot:${uid}`, String(lastSlot)); } catch { /* optional */ }
     await reloadPending(); error = ''; notify(); return result;
   }
   async function resolveCatch(result, choice) {
@@ -151,7 +148,6 @@ export function createProgress(onChange) {
     },
     async cast(spot, location, dev = {}) {
       await init(); await recoverReveal();
-      if (Date.now() < (lastSlot + 1) * 30000) throw new Error('Следующий заброс через несколько секунд.');
       const result = await accountRequest('fishing/cast', { spot, location, ...dev });
       applyServer(result); return result;
     },

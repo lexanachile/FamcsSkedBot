@@ -1,6 +1,6 @@
-import { lakeScene } from './scene.js?v=68';
+import { lakeScene } from './scene.js?v=69';
 import { createFight, advance, strike, displayedProgress, REST_MS } from './engine.js?v=62';
-import { createProgress } from './progress.js?v=68';
+import { createProgress } from './progress.js?v=69';
 import { setupEnvironment } from './environment.js?v=55';
 import { bindStrikeInput } from './input.js?v=67';
 import { getLocation, worldMapMarkup } from './locations.js?v=65';
@@ -63,7 +63,7 @@ export function mountFishing(host) {
       <button type="button" class="fish-map-return" aria-label="Вернуться на карту" hidden><span>←</span> Карта</button>
       <div class="fish-location-name" hidden></div>
       <div class="fish-dev"><button type="button" class="fish-dev-toggle" aria-label="Настройки разработчика" aria-expanded="false"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m8 6-6 6 6 6m8-12 6 6-6 6m-3-16-2 20"/></svg></button><div class="fish-dev-panel" hidden><label>Время<select name="fish-period"><option value="">Минск · авто</option><option value="morning">Утро</option><option value="day">День</option><option value="evening">Вечер</option><option value="night">Ночь</option></select></label><label>Погода<select name="fish-rain"><option value="">Минск · авто</option><option value="rain">Дождь</option><option value="dry">Без дождя</option></select></label><label>Улов<select name="fish-dev-catch">${optionsMarkup(devCatchOptions)}</select></label><label>Удочка<select name="fish-dev-rod">${optionsMarkup(devRodOptions)}</select></label><label>Прикормка<select name="fish-dev-bait">${optionsMarkup(devBaitOptions)}</select></label><small>Dev-предметы не покупаются и не расходуются.</small><small class="fish-weather-error">Погода недоступна; сохранено последнее состояние.</small></div></div>
-      <div class="fish-spots" aria-label="Место заброса"><button data-spot="deep" class="fish-spot fish-spot-deep" aria-label="Забросить на глубину"><span>+</span></button></div>
+      <div class="fish-spots" aria-label="Место заброса"><button data-spot="deep" class="fish-spot fish-spot-deep" aria-label="Забросить на глубину"><span>+</span></button></div><div class="fish-catch-plus" hidden aria-hidden="true">+1 <span>≈</span></div>
       <div class="fish-check" hidden><span class="fish-check-mark" aria-hidden="true">⌁</span><div class="fish-track"><div class="fish-zones"></div><div class="fish-cursor"></div></div><span class="fish-round"></span></div>
       <div class="fish-result" hidden><div class="fish-portrait"><span class="fish-result-loader"></span></div><h3></h3><p></p><div class="fish-catch-choices" hidden><button type="button" data-catch-choice="release">Выпустить</button><button type="button" data-catch-choice="eat">Съесть</button></div><button type="button" class="fish-again" aria-label="Ещё заброс">↗</button></div>
       <div class="fish-pause" hidden><span class="fish-pause-ring" aria-hidden="true"></span></div>
@@ -90,7 +90,7 @@ export function mountFishing(host) {
   let selectedSpot = 'deep', currentLocation = 'crossing';
   let open = true, visible = true, raf = 0, last = 0, savedRound = 0;
   let progressState = { game: { wallet: { smallFish: 0 }, fish: {}, inventory: { rods: ['twig'], baits: {} }, equipped: { rod: 'twig', bait: null } }, pending: 0, decision: null, cards: [], catalog: null, error: '' };
-  let retryReveal = null, currentCatch = null, toastTimer = 0, lastSyncMessage = '';
+  let retryReveal = null, currentCatch = null, toastTimer = 0, rewardTimer = 0, lastSyncMessage = '';
   function toast(message, duration = 2800) {
     clearTimeout(toastTimer);
     const element = q('.fish-game-toast');
@@ -232,29 +232,34 @@ export function mountFishing(host) {
     q('.fish-catch-choices').hidden = !result.duplicate || Boolean(result.choice);
     q('.fish-again').hidden = result.duplicate && !result.choice;
   }
+  function showSmallReward() {
+    clearTimeout(rewardTimer);
+    const reward = q('.fish-catch-plus'); reward.hidden = false; reward.classList.remove('is-rising'); void reward.offsetWidth; reward.classList.add('is-rising');
+    rewardTimer = setTimeout(() => { reward.hidden = true; reward.classList.remove('is-rising'); }, 1050);
+  }
   async function finish() {
     const version = session;
-    setState('result');
+    setState('resolving');
     q('.fish-check').hidden = true;
     q('.fish-approach').style.opacity = '0'; q('.fish-pull-wake').style.opacity = '0'; q('.fish-line').style.opacity = '0';
-    q('.fish-result').hidden = false;
+    q('.fish-result').hidden = true;
     q('.fish-result h3').textContent = '';
     q('.fish-result p').textContent = '';
     q('.fish-catch-choices').hidden = true;
     q('.fish-again').hidden = true;
-    const portrait = q('.fish-portrait'); portrait.innerHTML = '<span class="fish-result-loader"></span>';
     if (encounter) {
       const token = encounter.token;
       async function reveal() {
+        setState('resolving'); q('.fish-result').hidden = true;
         q('.fish-again').disabled = true;
         try {
           const result = await progress.reveal(token);
-          if (version !== session || state !== 'result') return;
+          if (version !== session || state !== 'resolving') return;
           retryReveal = null;
-          if (result.catch.kind === 'small') { reset(); return; }
-          showCatch(result);
+          if (result.catch.kind === 'small') { reset(); showSmallReward(); return; }
+          setState('result'); q('.fish-result').hidden = false; showCatch(result);
         } catch (error) {
-          if (version === session) { q('.fish-result p').textContent = error.message; retryReveal = reveal; q('.fish-again').hidden = false; }
+          if (version === session) { setState('result'); q('.fish-result').hidden = false; q('.fish-result p').textContent = error.message; retryReveal = reveal; q('.fish-again').hidden = false; }
         } finally { if (version === session) q('.fish-again').disabled = false; }
       }
       await reveal();
@@ -273,6 +278,9 @@ export function mountFishing(host) {
     setState('idle'); q('.fish-result').hidden = true; q('.fish-check').hidden = true; q('.fish-tension').hidden = true;
     q('.fish-spots').hidden = root.dataset.view !== 'fishing';
     for (const selector of ['.fish-float', '.fish-line', '.fish-bubbles', '.fish-approach', '.fish-pull-wake', '.fish-broken-hook']) q(selector).style.opacity = '0';
+    Object.assign(displayedPose, { shiftX: 0, shiftY: 0, lean: 0, rodAngle: 0 });
+    q('.fish-angler').setAttribute('transform', `translate(0 0) rotate(0 ${FISHING_RIG.body.x} ${FISHING_RIG.body.y})`);
+    q('.fish-rod').setAttribute('transform', `rotate(0 ${FISHING_RIG.hand.x} ${FISHING_RIG.hand.y})`);
     action('', true);
   }
   async function cast(spot) {

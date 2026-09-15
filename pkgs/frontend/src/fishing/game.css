@@ -30,15 +30,15 @@
 .fish-home { padding: 108px 18px 22px; overflow-y: auto; color: #31564e; background: linear-gradient(#e8e0c4ee, #b9c8a9f2), repeating-linear-gradient(90deg, transparent 0 54px, #806d4e13 55px 57px); }
 .fish-home-heading { text-align: center; }
 .fish-trophy-empty { margin: 80px auto 0; max-width: 240px; color: #698077; font-size: 11px; line-height: 1.5; text-align: center; }
-.fish-trophy-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 18px; }
-.fish-trophy { display: flex; align-items: center; gap: 9px; min-width: 0; padding: 9px; border: 1px solid #fff8; border-radius: 14px; background: #f7f2dfbf; box-shadow: 0 5px 14px #4d654328; }
-.fish-trophy-portrait { flex: 0 0 48px; display: grid; place-items: center; width: 48px; height: 48px; overflow: hidden; border: 3px solid #fff8dd; border-radius: 50%; color: #856d52; background: #d9bd86; font: 24px Georgia, serif; }
+.fish-trophy-list { display: grid; grid-template-columns: 1fr; gap: 14px; margin-top: 18px; }
+.fish-trophy { display: grid; grid-template-columns: 104px minmax(0, 1fr); align-items: center; gap: 14px; min-width: 0; padding: 14px; border: 1px solid #fff8; border-radius: 14px; background: #f7f2dfbf; box-shadow: 0 5px 14px #4d654328; }
+.fish-trophy-portrait { display: grid; place-items: center; width: 104px; height: 104px; overflow: hidden; border: 3px solid #fff8dd; border-radius: 50%; color: #856d52; background: #d9bd86; font: 36px Georgia, serif; }
 .fish-trophy-portrait img { width: 100%; height: 100%; object-fit: cover; }
 .fish-trophy > div:last-child { min-width: 0; }
-.fish-trophy h3 { margin: 0 0 3px; overflow-wrap: anywhere; color: #31564e; font: 400 13px Georgia, serif; }
+.fish-trophy h3 { margin: 0 0 5px; overflow-wrap: anywhere; color: #31564e; font: 400 18px Georgia, serif; }
 .fish-trophy p { display: -webkit-box; margin: 0; overflow: hidden; color: #718077; font-size: 8px; line-height: 1.35; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .fish-trophy-phrases { display: grid; gap: 4px; margin: 7px 0; padding: 0; list-style: none; }
-.fish-trophy-phrases li { padding: 5px 7px; border-radius: 9px; color: #48446e; background: #fff9; font: 10px/1.35 Georgia, serif; overflow-wrap: anywhere; }
+.fish-trophy-phrases li { padding: 8px 10px; border-radius: 11px; color: #48446e; background: #fff9; font: 700 clamp(15px, 3.7vw, 19px)/1.25 Georgia, serif; overflow-wrap: anywhere; }
 .fish-trophy-phrases li.is-locked { color: #8d87aa; background: #79739914; letter-spacing: 2px; }
 .fishing-game[data-view="map"] .fish-dev, .fishing-game[data-view="map"] .fish-help-toggle,
 .fishing-game[data-view="home"] .fish-dev, .fishing-game[data-view="home"] .fish-help-toggle,
@@ -188,6 +188,8 @@
 .fish-trophy-portrait, .fish-portrait { background: linear-gradient(140deg, #ffd1a3, #b8a2ed); border: 2px solid #fff9; }
 .fish-result { background: linear-gradient(145deg, #fff2e9eb, #e6e0ffe8); border: 1px solid #fff9; border-radius: 26px; box-shadow: 0 20px 60px #333b8155; backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
 .fish-result p, .fish-trophy p { color: #686283; }
+.fish-result .fish-portrait { width: clamp(120px, 34vw, 158px); height: clamp(120px, 34vw, 158px); margin: 10px 0 14px; }
+.fish-result p { max-width: 300px; margin-bottom: 20px; color: #46406e; font: 700 clamp(18px, 4.8vw, 25px)/1.25 Georgia, serif; }
 .fish-again { background: linear-gradient(120deg, #7167c9, #a070c8); border: 1px solid #fff5; border-radius: 20px; color: #fff5e8; }
 .fish-spot span { border-color: #fff2b9c9; background: #c3fbee26; box-shadow: 0 0 0 8px #d9fff110; animation: fish-spot-breathe 3s ease-in-out infinite; }
 .fish-check { background: #393777b8; border: 1px solid #ffffff59; border-radius: 24px; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
@@ -207,17 +209,15 @@
 .fish-scarf { transform-origin: 378px 383px; animation: fish-scarf-flutter 3s ease-in-out infinite alternate; }
 @keyframes fish-scarf-flutter { to { transform: rotate(-9deg) scaleX(1.06); } }
 .fish-art-particles circle { animation: fish-particle-drift 7s ease-in-out infinite; animation-delay: calc(var(--i) * -.63s); }
-.fishing-game[data-view="fishing"] .fish-scene { animation: fish-scene-enter .8s cubic-bezier(.16,1,.3,1) both; }
+.fishing-game[data-view="fishing"] .fish-scene { opacity: 1; transform: none; }
 .fishing-game[data-view="map"] .fish-world-map { animation: fish-reveal .6s ease-out both; }
 .fishing-game[data-view="home"] .fish-home { animation: fish-reveal .5s ease-out both; }
-.fishing-game[data-view="map"] .fish-scene *, .fishing-game[data-view="home"] .fish-scene * { animation-play-state: paused; }
 @keyframes fish-beacon { 0% { transform: scale(.96); opacity: .8; } 85%, 100% { transform: scale(1.3); opacity: 0; } }
 @keyframes fish-spot-breathe { 50% { box-shadow: 0 0 0 12px #d9fff108; background: #c3fbee42; } }
 @keyframes fish-glow-breathe { to { opacity: .5; } }
 @keyframes fish-route-flow { to { stroke-dashoffset: -130; } }
 @keyframes fish-boat-drift { from { transform: translate(-4px, 1px) rotate(-4deg); } to { transform: translate(5px, -3px) rotate(4deg); } }
 @keyframes fish-particle-drift { 0%, 100% { opacity: 0; transform: translate(0, 5px); } 35% { opacity: .8; } 75% { opacity: .3; transform: translate(10px, -13px); } }
-@keyframes fish-scene-enter { from { opacity: 0; transform: scale(1.035); } to { opacity: 1; transform: scale(1); } }
 .fish-shop-open { position: absolute; z-index: 5; left: 50%; bottom: 18px; transform: translateX(-50%); display: none; align-items: center; gap: 7px; min-height: 40px; padding: 8px 17px; border: 1px solid #fff8; border-radius: 22px; color: #fff5e3; background: #39387fd9; box-shadow: 0 8px 25px #24245c55; backdrop-filter: blur(12px); }
 .fishing-game[data-view="map"] .fish-shop-open { display: flex; }
 .fish-shop-open span { color: #ffe9a7; font-size: 18px; }
@@ -256,6 +256,14 @@
   .fish-help-toggle { width: 32px; height: 36px; }
   .fish-count { padding: 7px 8px; }
   .fish-map-return { padding-inline: 4px; font-size: 11px; }
+}
+.fish-catch-plus { position: absolute; z-index: 5; left: 74%; top: 55%; color: #fff8b8; font: 800 clamp(25px, 7vw, 38px)/1 var(--font-sans), sans-serif; text-shadow: 0 3px 12px #42397699; pointer-events: none; }
+.fish-catch-plus span { color: #9ef0d5; font-family: Georgia, serif; }
+.fish-catch-plus.is-rising { animation: fish-catch-plus 1s cubic-bezier(.16,.8,.25,1) both; }
+@keyframes fish-catch-plus { 0% { opacity: 0; transform: translate(-50%, 16px) scale(.72) rotate(-7deg); } 20% { opacity: 1; transform: translate(-50%, 0) scale(1.08) rotate(2deg); } 70% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -54px) scale(.92) rotate(-2deg); } }
+@media (max-width: 350px) {
+  .fish-trophy { grid-template-columns: 82px minmax(0, 1fr); gap: 10px; padding: 10px; }
+  .fish-trophy-portrait { width: 82px; height: 82px; }
 }
 
 /* Full-bleed portrait game surface. Every transient message stays in the scene. */
