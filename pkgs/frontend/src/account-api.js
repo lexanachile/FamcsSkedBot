@@ -1,5 +1,5 @@
-import { requestJson } from './request.js?v=83';
-import { API_ROOT } from './api-root.js?v=83';
+import { requestJson } from './request.js?v=84';
+import { API_ROOT } from './api-root.js?v=84';
 export { API_ROOT };
 export function accountHint() {
   try { return String(JSON.parse(new URLSearchParams(window.Telegram?.WebApp?.initData).get('user')).id); }
