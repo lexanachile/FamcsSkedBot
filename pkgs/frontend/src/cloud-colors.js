@@ -1,4 +1,4 @@
-import { accountHint, accountRequest } from './account-api.js?v=82';
+import { accountHint, accountRequest } from './account-api.js?v=83';
 
 const HEX = /^#[0-9a-f]{6}$/i;
 const LEGACY_COLORS_KEY = 'lessonColors:v1';
@@ -99,7 +99,7 @@ export function setupCloudColors(onChange, onError) {
   if (migrationPending) stageLegacyColors(local, legacy.colors, legacy.recent);
   else if (!storageGet(migrationKey)) storageSet(migrationKey, 'empty');
 
-  let running = false, timer, disposed = false, reportedError = false;
+  let running = false, timer, disposed = false, reportedError = false, lastRead = 0, failures = 0, fishingOpen = false;
   const dirty = () => Object.keys(local.pending).length > 0 || Boolean(local.recent);
   function persist() { try { localStorage.setItem(key, JSON.stringify(local)); } catch { /* server still available */ } }
   function paint() {
@@ -117,6 +117,7 @@ export function setupCloudColors(onChange, onError) {
     try {
       // Always read latest before merging edits; timestamps never order writes.
       const current = await accountRequest('colors');
+      lastRead = Date.now();
       if (String(current.userId) !== uid) throw new Error('Учётная запись изменилась.');
       local.document = buildColorDocument(current.document, {}, null);
       // Re-stage after the GET too: the cached document may have matched the
@@ -140,20 +141,23 @@ export function setupCloudColors(onChange, onError) {
         migrationPending = false;
       }
       persist();
-      reportedError = false;
+      reportedError = false; failures = 0;
     } catch (error) {
+      failures++;
       if (error.status !== 409) console.warn('Цвета пока не синхронизированы:', error.message);
       if (dirty() && !reportedError && error.status !== 409) {
         onError?.(`Цвета сохранены на устройстве. Сервер: ${error.message}`);
         reportedError = true;
       }
-    } finally { running = false; if (dirty()) queue(10000); }
+    } finally { running = false; if (dirty()) queue(Math.min(300000, 10000 * 2 ** Math.min(failures, 5))); }
   }
-  const refresh = () => { if (!document.hidden) void sync(); };
+  const refresh = () => { if (!document.hidden && (dirty() || (!fishingOpen && Date.now() - lastRead >= 60000))) void sync(); };
+  const fishingVisibility = event => { fishingOpen = event.detail === true; if (!fishingOpen) refresh(); };
+  window.addEventListener('fishing-visibility', fishingVisibility);
   window.addEventListener('focus', refresh);
   window.addEventListener('online', refresh);
   document.addEventListener('visibilitychange', refresh);
-  setInterval(refresh, 60000);
+  const interval = setInterval(refresh, 600000);
   window.addEventListener('lesson-recent-changed', event => {
     local.recent = { value: recentColors(event.detail), seq: ++local.seq }; persist(); queue();
   });
@@ -161,6 +165,6 @@ export function setupCloudColors(onChange, onError) {
   return {
     getColors: () => mergeColors(local.document.colors, local.pending),
     edit(key, value) { local.pending[key] = { value: value?.toLowerCase() || null, seq: ++local.seq }; persist(); queue(); },
-    stop() { disposed = true; clearTimeout(timer); },
+    stop() { disposed = true; clearTimeout(timer); clearInterval(interval); window.removeEventListener('focus', refresh); window.removeEventListener('online', refresh); window.removeEventListener('fishing-visibility', fishingVisibility); document.removeEventListener('visibilitychange', refresh); },
   };
 }

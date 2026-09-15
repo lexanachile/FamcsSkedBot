@@ -7,6 +7,7 @@ export const emptyGame = () => ({ schemaVersion: 5, savedAt: 0, wallet: { smallF
   inventory: { rods: ['twig'] as RodId[], baits: {} as Partial<Record<BaitId, number>> },
   equipped: { rod: 'twig' as RodId, bait: null as BaitId | null }, _cast: null as CastState | null,
   _commonCatchStreak: 0,
+  _purchases: {} as Record<string, { itemId: string; expiresAt: number }>,
   _catches: {} as Record<string, { fish: string | null; phrase: number; duplicate: boolean; expiresAt: number; choice?: 'release' | 'eat' }> });
 export type Game = ReturnType<typeof emptyGame>;
 type Row = { revision: number; game_json: string; sync_json: string; username: string | null };
@@ -39,6 +40,7 @@ export function normalizeGame(value: unknown): Game {
   const storedTotalCaught = Number(source.stats?.totalCaught);
   game.stats.totalCaught = Number.isFinite(storedTotalCaught) && storedTotalCaught >= 0 ? Math.floor(storedTotalCaught) : knownCaught;
   if (source._catches && typeof source._catches === 'object') game._catches = Object.fromEntries(Object.entries(source._catches).filter(([, entry]) => entry.expiresAt > Date.now()));
+  if (source._purchases && typeof source._purchases === 'object') game._purchases = Object.fromEntries(Object.entries(source._purchases).filter(([, entry]) => entry.expiresAt > Date.now()));
   const owned = Array.isArray(source.inventory?.rods) ? source.inventory.rods.filter(id => Boolean(rodById(id))) as RodId[] : [];
   game.inventory.rods = [...new Set(['twig' as RodId, ...owned])];
   if (source.inventory?.baits && typeof source.inventory.baits === 'object') {
@@ -51,13 +53,13 @@ export function normalizeGame(value: unknown): Game {
   return game;
 }
 export function publicGame(value: unknown) {
-  const { _cast, _catches, _commonCatchStreak, ...game } = normalizeGame(value);
+  const { _cast, _catches, _commonCatchStreak, _purchases, ...game } = normalizeGame(value);
   return game;
 }
 
-export async function updatePlayerGame<T>(db: D1Database, id: number, mutate: (game: Game) => { changed: boolean; value: T }) {
+export async function updatePlayerGame<T>(db: D1Database, id: number, mutate: (game: Game) => { changed: boolean; value: T }, initialRow?: Row) {
   for (let retry = 0; retry < 5; retry++) {
-    const row = await readPlayer(db, id);
+    const row = retry === 0 && initialRow ? initialRow : await readPlayer(db, id);
     if (!row) throw new Error('PROFILE');
     const game = normalizeGame(JSON.parse(row.game_json));
     const mutation = mutate(game);
@@ -98,9 +100,9 @@ export function applyRewards(game: Game, sync: Record<string, number>, rewards: 
   if (added) next.savedAt = now;
   return { game: next, seen, added };
 }
-export async function saveRewards(db: D1Database, id: number, rewards: Reward[]) {
+export async function saveRewards(db: D1Database, id: number, rewards: Reward[], initialRow?: Row) {
   for (let retry = 0; retry < 5; retry++) {
-    const row = await readPlayer(db, id);
+    const row = retry === 0 && initialRow ? initialRow : await readPlayer(db, id);
     if (!row) throw new Error('Profile missing');
     const result = applyRewards(normalizeGame(JSON.parse(row.game_json)), JSON.parse(row.sync_json), rewards, Date.now());
     if (!result.added) return { revision: row.revision, game: result.game };

@@ -1,15 +1,15 @@
-import { lakeScene } from './scene.js?v=82';
-import { createFight, advance, strike, displayedProgress, passPosition, REST_MS } from './engine.js?v=82';
-import { createProgress } from './progress.js?v=82';
-import { setupEnvironment } from './environment.js?v=82';
-import { bindStrikeInput } from './input.js?v=82';
-import { bindCatchChoiceInput, catchChoiceKeyframes, withCatchChoice } from './catch-choice.js?v=82';
-import { ownerLine } from './collection.js?v=82';
-import { getLocation, worldMapMarkup } from './locations.js?v=82';
-import { devBaitOptions, devCatchOptions, devRodOptions, optionsMarkup, renderLoadout, renderShop, storeMarkup } from './storefront.js?v=82';
+import { lakeScene } from './scene.js?v=83';
+import { createFight, advance, strike, displayedProgress, passPosition, REST_MS } from './engine.js?v=83';
+import { createProgress } from './progress.js?v=83';
+import { setupEnvironment } from './environment.js?v=83';
+import { bindStrikeInput } from './input.js?v=83';
+import { bindCatchChoiceInput, catchChoiceKeyframes, withCatchChoice } from './catch-choice.js?v=83';
+import { ownerLine } from './collection.js?v=83';
+import { getLocation, worldMapMarkup } from './locations.js?v=83';
+import { devBaitOptions, devCatchOptions, devRodOptions, optionsMarkup, renderLoadout, renderShop, storeMarkup } from './storefront.js?v=83';
 
-import { createLocationNotice } from './location-notice.js?v=82';
-import { FISHING_RIG } from './rig.js?v=82';
+import { createLocationNotice } from './location-notice.js?v=83';
+import { FISHING_RIG } from './rig.js?v=83';
 
 export function anglerPose(state, elapsed, fight, motionTime, reduced = false, strikePulse = 0) {
   const bite = state === 'approach' ? 1 - Math.pow(1 - Math.min(1, elapsed / 2200), 3) : 0;
@@ -550,5 +550,5 @@ export function mountFishing(host) {
   root.dataset.view = 'map';
   showMap();
   progress.init().catch(error => { toast(error.message, 5000); });
-  return { setOpen(value) { open = value; syncPause(); if (!value) void progress.flush(); } };
+  return { setOpen(value) { open = value; syncPause(); progress.setActive(value); } };
 }

@@ -1,5 +1,7 @@
 name = "famcsschedulebot"
 main = "src/index.ts"
+workers_dev = true
+routes = [{ pattern = "famcs.online/api/*", zone_name = "famcs.online" }]
 compatibility_date = "2026-08-30"
 
 

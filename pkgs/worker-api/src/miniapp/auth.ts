@@ -6,9 +6,10 @@ export async function hmac(secret: string | ArrayBuffer, value: string) {
   return crypto.subtle.sign('HMAC', key, encoder.encode(value));
 }
 export async function authenticate(c: Context<AppEnvironment>) {
-  const secret = c.env.TELEGRAM_BOT_TOKEN;
+  return authenticateData(c.env.TELEGRAM_BOT_TOKEN, c.req.header('Authorization')?.replace(/^tma /, '') || '');
+}
+export async function authenticateData(secret: string | undefined, raw: string) {
   if (!secret) throw new Error('AUTH_CONFIG');
-  const raw = c.req.header('Authorization')?.replace(/^tma /, '') || '';
   if (!raw || raw.length > 10000) throw new Error('AUTH');
   const data = new URLSearchParams(raw);
   const keys = [...data.keys()];

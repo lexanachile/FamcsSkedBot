@@ -1,6 +1,6 @@
-import { requestJson } from './request.js?v=82';
-export const API_ROOT = ['localhost', '127.0.0.1'].includes(globalThis.location?.hostname)
-  ? 'http://127.0.0.1:8787/api' : 'https://famcsschedulebot.yarashsei.workers.dev/api';
+import { requestJson } from './request.js?v=83';
+import { API_ROOT } from './api-root.js?v=83';
+export { API_ROOT };
 export function accountHint() {
   try { return String(JSON.parse(new URLSearchParams(window.Telegram?.WebApp?.initData).get('user')).id); }
   catch { return null; }

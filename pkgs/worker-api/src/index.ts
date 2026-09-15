@@ -4,6 +4,7 @@ import { registerScheduleRoutes } from "./routes/schedule";
 import { registerSystemRoutes } from "./routes/system";
 import { registerFishingRoutes } from "./routes/fishing";
 import { registerColorRoutes } from "./routes/colors";
+import { registerFishingSocket } from "./fishing/socket";
 import type { AppEnvironment } from "./types";
 
 const app = new Hono<AppEnvironment>();
@@ -18,7 +19,7 @@ app.use("*", cors({
   ],
   allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowHeaders: ["Content-Type", "Authorization"],
-  maxAge: 600,
+  maxAge: 7200,
 }));
 
 app.use("*", async (c, next) => {
@@ -27,6 +28,7 @@ app.use("*", async (c, next) => {
 });
 
 registerSystemRoutes(app);
+registerFishingSocket(app);
 registerFishingRoutes(app);
 registerColorRoutes(app);
 registerScheduleRoutes(app);

@@ -8,6 +8,13 @@ import { build } from '../node_modules/esbuild/lib/main.js';
 const bundle = await build({ entryPoints: [new URL('../src/index.ts', import.meta.url).pathname.replace(/^\/(\w:)/, '$1')], bundle: true, write: false, format: 'esm', platform: 'browser' });
 const { default: app } = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
 const secret = 'test-only-bot-token';
+
+test('socket rejects ordinary HTTP and untrusted origins before upgrade', async () => {
+  assert.equal((await app.request('http://localhost/api/fishing/socket')).status, 426);
+  assert.equal((await app.request('http://localhost/api/fishing/socket', {
+    headers: { Upgrade: 'websocket', Origin: 'https://evil.example' },
+  })).status, 403);
+});
 test('small fish reward follows the configured 55/30/10/4/1 percent bands', () => {
   assert.deepEqual([0, .5499, .55, .8499, .85, .9499, .95, .9899, .99, .9999].map(smallFishAmount), [1, 1, 2, 2, 3, 3, 4, 4, 5, 5]);
 });
@@ -46,12 +53,12 @@ function fixture() {
     sync_json TEXT NOT NULL DEFAULT '{}');
     CREATE TABLE miniapp_colors (telegram_id INTEGER PRIMARY KEY, revision INTEGER NOT NULL DEFAULT 0,
     colors_json TEXT NOT NULL DEFAULT '{"schemaVersion":1,"savedAt":0,"colors":{},"recentColors":[]}');`);
-  let writes = 0;
+  let writes = 0, aggregateQueries = 0;
   const DB = { prepare(sql) {
     const wrap = args => ({
       bind: (...values) => wrap(values),
       first: async () => db.prepare(sql).get(...args) || null,
-      all: async () => ({ results: db.prepare(sql).all(...args) }),
+      all: async () => { aggregateQueries++; return { results: db.prepare(sql).all(...args) }; },
       run: async () => { const result = db.prepare(sql).run(...args); writes += Number(result.changes); return { meta: { changes: Number(result.changes) } }; },
     });
     return wrap([]);
@@ -60,8 +67,29 @@ function fixture() {
   const request = (path, body, id = 1, method = body === undefined ? 'GET' : 'POST', origin = 'http://localhost') => app.request(origin + '/api/' + path, {
     method, headers: { Authorization: auth(id), 'Content-Type': 'application/json' }, ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   }, env);
-  return { db, env, request, writes: () => writes };
+  return { db, env, request, writes: () => writes, aggregateQueries: () => aggregateQueries };
 }
+
+test('collection aggregates share one SQL query; personal unlocks never share cache', async () => {
+  const f = fixture();
+  try {
+    for (let id = 1; id <= 7; id++) {
+      const game = { wallet: { smallFish: id }, fish: { kalinin: { count: 1, phrases: [0, 0] } } };
+      f.db.prepare('INSERT INTO fishing_players (telegram_id, username, game_json) VALUES (?, ?, ?)').run(id, 'user' + id, JSON.stringify(game));
+    }
+    const first = await (await f.request('fishing/collection')).json();
+    const phrase = first.cards.find(card => card.id === 'kalinin').phrases[0];
+    assert.equal(phrase.owners, 7); assert.equal(phrase.usernames.length, 5);
+    assert.equal(new Set(phrase.usernames).size, 5);
+    const stranger = await (await f.request('fishing/collection', undefined, 8)).json();
+    assert.equal(stranger.cards.find(card => card.id === 'kalinin').phrases[0].text, null);
+    assert.equal(f.aggregateQueries(), 1);
+    const rank1 = await (await f.request('fishing/leaderboard')).json();
+    const rank2 = await (await f.request('fishing/leaderboard', undefined, 2)).json();
+    assert.equal(rank1.me.username, 'user1'); assert.equal(rank2.me.username, 'user2');
+    assert.equal(f.aggregateQueries(), 2);
+  } finally { f.db.close(); }
+});
 test('dev options work locally and stay restricted on the deployed host', async () => {
   const f = fixture();
   const localProfile = await (await f.request('fishing/profile')).json();

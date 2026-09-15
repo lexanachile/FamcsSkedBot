@@ -8,30 +8,8 @@ import { baitById, publicShop, rodById, rods } from '../fishing/shop';
 import { rareCatchChance, smallFishAmount } from '../fishing/rewards';
 import { fishingDevEnabled } from '../fishing/dev';
 
-// Public aggregate only; personal collections are never shared/cached.
-let stats: { until: number; rows: { fish_id: string; phrase_id: number; owners: number; usernames: (string | null)[] }[] } | undefined;
-let statsRequest: Promise<NonNullable<typeof stats>['rows']> | undefined;
-async function owners(db: D1Database) {
-  if (stats && stats.until > Date.now()) return stats.rows;
-  return statsRequest ||= (async () => {
-    const result = await db.prepare(`SELECT f.key AS fish_id, CAST(ph.value AS INTEGER) AS phrase_id, COUNT(DISTINCT p.telegram_id) AS owners
-      FROM fishing_players p, json_each(p.game_json, '$.fish') f,
-        json_each(CASE WHEN json_type(f.value, '$.phrases') = 'array' THEN json_extract(f.value, '$.phrases') ELSE '[0]' END) ph
-      WHERE json_extract(f.value, '$.count') > 0 GROUP BY f.key, CAST(ph.value AS INTEGER)`)
-      .all<{ fish_id: string; phrase_id: number; owners: number }>();
-    const rows = await Promise.all(result.results.map(async entry => {
-      const tags = await db.prepare(`SELECT username FROM (
-        SELECT p.telegram_id, p.username FROM fishing_players p, json_each(p.game_json, '$.fish') f,
-          json_each(CASE WHEN json_type(f.value, '$.phrases') = 'array' THEN json_extract(f.value, '$.phrases') ELSE '[0]' END) ph
-        WHERE f.key = ? AND CAST(ph.value AS INTEGER) = ? AND json_extract(f.value, '$.count') > 0
-        GROUP BY p.telegram_id, p.username
-      ) ORDER BY random() LIMIT 5`).bind(entry.fish_id, entry.phrase_id).all<{ username: string | null }>();
-      return { ...entry, usernames: tags.results.map(row => row.username) };
-    }));
-    stats = { until: Date.now() + 300000, rows };
-    return stats.rows;
-  })().finally(() => { statsRequest = undefined; });
-}
+import { owners, leaderboard } from '../fishing/statistics';
+
 export function registerFishingRoutes(app: Hono<AppEnvironment>) {
   app.use('/api/fishing/*', async (c, next) => { c.header('Cache-Control', 'no-store'); await next(); });
   app.get('/api/fishing/profile', async c => {
@@ -43,23 +21,10 @@ export function registerFishingRoutes(app: Hono<AppEnvironment>) {
   app.get('/api/fishing/leaderboard', async c => {
     let user; try { user = await authenticate(c); } catch (error) { return authError(c, error); }
     await ensurePlayer(c.env.DB, user.id, user.username);
-    const result = await c.env.DB.prepare(`WITH scores AS (
-      SELECT telegram_id, username, MAX(0, CAST(COALESCE(
-        json_extract(game_json, '$.stats.totalCaught'),
-        COALESCE(json_extract(game_json, '$.wallet.smallFish'), 0) + COALESCE((
-          SELECT SUM(COALESCE(json_extract(f.value, '$.count'), 0)) FROM json_each(game_json, '$.fish') f
-        ), 0)
-      ) AS INTEGER)) AS total_caught FROM fishing_players
-    ), ranked AS (
-      SELECT telegram_id, username, total_caught,
-        ROW_NUMBER() OVER (ORDER BY total_caught DESC, telegram_id ASC) AS position
-      FROM scores WHERE total_caught > 0
-    )
-    SELECT telegram_id, username, total_caught, position FROM ranked
-    WHERE position <= 50 OR telegram_id = ? ORDER BY position`).bind(user.id)
-      .all<{ telegram_id: number; username: string | null; total_caught: number; position: number }>();
-    const rows = result.results.map(row => ({ position: row.position, username: row.username, totalCaught: row.total_caught }));
-    return c.json({ success: true, leaders: rows.filter(row => row.position <= 50), me: rows.find((_, index) => result.results[index]?.telegram_id === user.id) || null });
+    const rows = await leaderboard(c.env.DB);
+    const publicRow = (row: typeof rows[number]) => ({ position: row.position, username: row.username, totalCaught: row.total_caught });
+    const me = rows.find(row => row.telegram_id === user.id);
+    return c.json({ success: true, leaders: rows.slice(0, 50).map(publicRow), me: me ? publicRow(me) : null });
   });
   app.get('/api/fishing/shop', async c => {
     let user; try { user = await authenticate(c); } catch (error) { return authError(c, error); }
@@ -69,18 +34,25 @@ export function registerFishingRoutes(app: Hono<AppEnvironment>) {
   app.post('/api/fishing/shop/buy', async c => {
     let user; try { user = await authenticate(c); } catch (error) { return authError(c, error); }
     const body = await readBody(c, 2000).catch(() => null);
+    const requestId = body?.requestId;
+    if (requestId !== undefined && (typeof requestId !== 'string' || !/^[a-zA-Z0-9-]{16,80}$/.test(requestId))) return c.json({ success: false, error: 'Некорректный идентификатор покупки.' }, 400);
     const item = rodById(body?.itemId) || baitById(body?.itemId);
     if (!item || item.price <= 0) return c.json({ success: false, error: 'Такого товара нет.' }, 400);
-    await ensurePlayer(c.env.DB, user.id, user.username);
+    const initialRow = await ensurePlayer(c.env.DB, user.id, user.username);
     try {
       const result = await updatePlayerGame(c.env.DB, user.id, game => {
+        if (requestId && game._purchases[requestId]) {
+          if (game._purchases[requestId].itemId !== item.id) throw new Error('REQUEST');
+          return { changed: false, value: null };
+        }
         if (game.wallet.smallFish < item.price) throw new Error('FUNDS');
         if (item.kind === 'rod' && game.inventory.rods.includes(item.id)) throw new Error('OWNED');
         game.wallet.smallFish -= item.price;
         if (item.kind === 'rod') game.inventory.rods.push(item.id);
         else game.inventory.baits[item.id] = (game.inventory.baits[item.id] || 0) + 1;
+        if (requestId) game._purchases[requestId] = { itemId: item.id, expiresAt: Date.now() + 86400000 };
         return { changed: true, value: null };
-      });
+      }, initialRow);
       return c.json({ success: true, revision: result.revision, game: publicGame(result.game) });
     } catch (error) {
       const code = error instanceof Error ? error.message : '';
@@ -91,7 +63,7 @@ export function registerFishingRoutes(app: Hono<AppEnvironment>) {
     let user; try { user = await authenticate(c); } catch (error) { return authError(c, error); }
     const body = await readBody(c, 2000).catch(() => null);
     if (!['rod', 'bait'].includes(body?.kind)) return c.json({ success: false, error: 'Некорректное снаряжение.' }, 400);
-    await ensurePlayer(c.env.DB, user.id, user.username);
+    const initialRow = await ensurePlayer(c.env.DB, user.id, user.username);
     try {
       const result = await updatePlayerGame(c.env.DB, user.id, game => {
         if (body.kind === 'rod') {
@@ -106,7 +78,7 @@ export function registerFishingRoutes(app: Hono<AppEnvironment>) {
           game.equipped.bait = bait?.id || null;
         }
         return { changed: true, value: null };
-      });
+      }, initialRow);
       return c.json({ success: true, revision: result.revision, game: publicGame(result.game) });
     } catch (error) {
       return c.json({ success: false, error: error instanceof Error && error.message === 'NOT_OWNED' ? 'Сначала купите предмет.' : 'Не удалось выбрать снаряжение.' }, error instanceof Error && error.message === 'NOT_OWNED' ? 409 : 503);
@@ -143,7 +115,7 @@ export function registerFishingRoutes(app: Hono<AppEnvironment>) {
     const roll = new DataView(bytes.buffer).getUint32(0) / 4294967296;
     const isDev = fishingDevEnabled(c.req.url, user.id, c.env);
     const devKey = isDev ? [body?.devCatch || '', body?.devRod || '', body?.devBait || ''].join(':') : '';
-    await ensurePlayer(c.env.DB, user.id, user.username);
+    const initialRow = await ensurePlayer(c.env.DB, user.id, user.username);
     const draw = await updatePlayerGame(c.env.DB, user.id, game => {
       if (game._cast?.slot === slot && (!isDev || game._cast.devKey === devKey)) return { changed: false, value: game._cast };
       const sameSlot = game._cast?.slot === slot;
@@ -167,7 +139,7 @@ export function registerFishingRoutes(app: Hono<AppEnvironment>) {
       const cast = { slot, baitId: bait?.id || null, fish: fish?.id || null, readyAt: now + (fish ? 9000 : 2500), rodId: rod.id, devKey };
       game._cast = cast;
       return { changed: true, value: cast };
-    });
+    }, initialRow);
     const cast = draw.value;
     const fish = fishingCatalog.find(item => item.id === cast.fish);
     const rod = rodById(cast.rodId) || rods[0], bait = baitById(cast.baitId);
@@ -190,9 +162,8 @@ export function registerFishingRoutes(app: Hono<AppEnvironment>) {
     const phraseBytes = new Uint8Array(await hmac(c.env.TELEGRAM_BOT_TOKEN!, 'phrase:v1:' + user.id + ':' + reward.slot));
     const phrase = fish ? phraseBytes[0] % fish.phrases.length : 0;
     const receipt = { ...reward, kind: 'receipt' as const, phrase, expiresAt: reward.slot * SLOT_MS + RECEIPT_TTL };
-    await ensurePlayer(c.env.DB, user.id, user.username);
-    const saved = await saveRewards(c.env.DB, user.id, [receipt]);
-    stats = undefined;
+    const initialRow = await ensurePlayer(c.env.DB, user.id, user.username);
+    const saved = await saveRewards(c.env.DB, user.id, [receipt], initialRow);
     const record = saved.game._catches[String(reward.slot)];
     return c.json({ success: true, receipt: await seal(c.env.TELEGRAM_BOT_TOKEN!, receipt), slot: reward.slot, expiresAt: receipt.expiresAt,
       revision: saved.revision, game: publicGame(saved.game), duplicate: record?.duplicate || false, choice: record?.choice || null,

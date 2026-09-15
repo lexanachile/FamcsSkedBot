@@ -5,6 +5,7 @@ import vm from 'node:vm';
 import { requestJson } from '../src/request.js';
 import { teacherSchedule } from '../src/schedule-modes.js';
 import { initializeTelegramWebApp } from '../src/telegram.js';
+import { API_ROOT } from '../src/api-root.js';
 
 const deferred = () => {
   let resolve, reject;
@@ -24,7 +25,7 @@ function app() {
     return elements.get(id);
   };
   const context = vm.createContext({
-    console, URL, Event, requestAnimationFrame() {},
+    console, URL, Event, API_ROOT, requestAnimationFrame() {},
     window: { addEventListener() {} },
     document: { readyState: 'loading', addEventListener() {}, getElementById: element, createElement: () => ({}) },
     requestJson(url, options) { const pending = deferred(); requests.push({ url: String(url), options, ...pending }); return pending.promise; },

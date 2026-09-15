@@ -1,4 +1,5 @@
-import { accountRequest, accountHint } from '../account-api.js?v=82';
+import { accountRequest as httpRequest, accountHint, API_ROOT } from '../account-api.js?v=83';
+import { createGameTransport } from './transport.js?v=83';
 const RARE_CATCH_SMALL_FISH_BONUS = 30;
 const empty = () => ({ schemaVersion: 5, savedAt: 0, wallet: { smallFish: 0 }, stats: { totalCaught: 0 }, fish: {}, inventory: { rods: ['twig'], baits: {} }, equipped: { rod: 'twig', bait: null } });
 let database;
@@ -40,11 +41,30 @@ export function projectedGame(base, pending) {
   return game;
 }
 export function createProgress(onChange) {
+  const transport = createGameTransport({ url: API_ROOT.replace(/^http/, 'ws') + '/fishing/socket',
+    credentials: () => window.Telegram?.WebApp?.initData || '', http: httpRequest });
+  const accountRequest = (...args) => transport.request(...args);
+  let lastProfileAt = 0, refreshing, active = true;
+  const reads = new Map();
+  const purchases = new Map();
+  function cachedRead(path, ttl) {
+    const old = reads.get(path);
+    if (old && old.until > Date.now()) return old.promise;
+    const entry = { until: Date.now() + ttl, promise: null };
+    entry.promise = accountRequest(path).then(result => {
+      if (path === 'fishing/shop') applyServer(result);
+      return result;
+    }).catch(error => { if (reads.get(path) === entry) reads.delete(path); throw error; });
+    reads.set(path, entry); return entry.promise;
+  }
   let uid, base = empty(), pending = [], decisions = [], revision = -1, loading, saving, cards = [], shopCatalog = null, error = '', devEnabled = false;
   const known = new Map();
   const notify = () => onChange?.({ game: projectedGame(base, pending), pending: pending.length, decision: decisions[0] || null, error, cards, catalog: shopCatalog, savedAt: base.savedAt, devEnabled });
   function applyServer(result) {
-    if (result.game && result.revision >= revision) { base = result.game; revision = result.revision; }
+    if (result.game && result.revision >= revision) {
+      if (JSON.stringify(base.fish) !== JSON.stringify(result.game.fish)) reads.delete('fishing/collection');
+      base = result.game; revision = result.revision; lastProfileAt = Date.now();
+    }
     error = ''; notify();
   }
   async function reloadPending() {
@@ -58,7 +78,7 @@ export function createProgress(onChange) {
     if (uid) { if (accountHint() !== uid) throw new Error('Откройте игру заново для другой учётной записи.'); return; }
     return loading ||= (async () => {
       const result = await accountRequest('fishing/profile');
-      uid = String(result.userId); base = result.game; revision = result.revision; devEnabled = result.devEnabled === true;
+      uid = String(result.userId); lastProfileAt = Date.now(); base = result.game; revision = result.revision; devEnabled = result.devEnabled === true;
       await reloadPending(); await reloadDecisions(); notify();
     })().catch(e => { uid = null; loading = null; error = e.message; notify(); throw e; });
   }
@@ -68,6 +88,7 @@ export function createProgress(onChange) {
     const recoveryKey = `${uid}:${token}`;
     await pendingOperation('readwrite', store => store.put({ key: recoveryKey, uid, token }), 'unrevealed');
     const result = await accountRequest('fishing/reveal', { token });
+    if (result.catch?.kind === 'teacher') reads.delete('fishing/collection');
     if (result.game) applyServer(result);
     else {
       const entry = { ...result, key: `${uid}:${result.slot}`, uid, caughtAt: Date.now() };
@@ -106,7 +127,7 @@ export function createProgress(onChange) {
         const result = await accountRequest('fishing/sync', { game: projectedGame(base, pending), receipts: batch.map(e => e.receipt) });
         const done = new Set([...result.accepted, ...result.expired]);
         await pendingOperation('readwrite', store => { for (const e of batch) if (done.has(e.slot)) store.delete(e.key); });
-        if (result.revision >= revision) { base = result.game; revision = result.revision; }
+        if (result.revision >= revision) { base = result.game; revision = result.revision; lastProfileAt = Date.now(); }
         error = result.expired.length ? 'Часть несохранённых уловов истекла (более суток).' : '';
         await reloadPending(); notify();
       }
@@ -115,35 +136,58 @@ export function createProgress(onChange) {
   async function collection() {
     await init();
     if (saving) await saving;
-    const result = await accountRequest('fishing/collection');
+    const result = await cachedRead('fishing/collection', 60000);
     cards = result.cards; notify();
   }
   async function refresh() {
-    if (!uid || saving) return;
-    if (pending.length) { await flush(); return; }
-    const result = await accountRequest('fishing/profile');
-    // A flush may have started while GET was in flight; never apply it then.
-    if (!saving && !pending.length && result.revision >= revision) { base = result.game; revision = result.revision; devEnabled = result.devEnabled === true; notify(); }
+    if (!uid || accountHint() !== uid || saving || !active || Date.now() - lastProfileAt < 60000) return;
+    if (refreshing) return refreshing;
+    refreshing = (async () => {
+      if (pending.length) { await flush(); return; }
+      const result = await accountRequest('fishing/profile');
+      if (!saving && !pending.length) applyServer(result);
+    })().finally(() => { refreshing = null; });
+    return refreshing;
   }
   const safeRefresh = () => { if (!document.hidden) refresh().catch(e => { error = e.message; notify(); }); };
   setInterval(() => { if (uid && pending.length) void flush(); }, 300000);
   window.addEventListener('online', safeRefresh);
   window.addEventListener('focus', safeRefresh);
-  document.addEventListener('visibilitychange', () => { if (document.hidden) { if (uid && pending.length) void flush(); } else safeRefresh(); });
-  window.addEventListener('pagehide', () => { if (uid && pending.length) void flush(); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) {
+    if (uid && pending.length) void flush().finally(() => transport.closeWhenIdle());
+    else transport.closeWhenIdle();
+  } else safeRefresh(); });
+  window.addEventListener('pagehide', () => transport.close());
   return {
     init, flush, collection,
+    setActive(value) { active = value; if (value) safeRefresh(); else transport.closeWhenIdle(); },
     async shop() {
       await init();
-      const result = await accountRequest('fishing/shop');
-      shopCatalog = result.catalog; applyServer(result); return result;
+      const result = await cachedRead('fishing/shop', 600000);
+      shopCatalog = result.catalog; notify(); return result;
     },
-    async leaderboard() { await init(); if (pending.length) await flush(); return accountRequest('fishing/leaderboard'); },
+    async leaderboard() { await init(); if (pending.length) await flush(); return cachedRead('fishing/leaderboard', 60000); },
     async buy(itemId) {
       await flush();
       if (pending.length) throw new Error('Сначала сохраните текущий улов.');
-      const result = await accountRequest('fishing/shop/buy', { itemId });
-      applyServer(result); return result;
+      const key = `fishing:purchase:${uid}:${itemId}`;
+      let purchase = purchases.get(key);
+      if (!purchase) { try { purchase = JSON.parse(localStorage.getItem(key)); } catch { /* optional persistence */ } }
+      if (!purchase || purchase.expiresAt <= Date.now()) {
+        purchase = { requestId: crypto.randomUUID(), expiresAt: Date.now() + 23 * 3600000 };
+        // Retain the same ID after an ambiguous network failure or page reload.
+        try { localStorage.setItem(key, JSON.stringify(purchase)); } catch { /* same-session retry below */ }
+      }
+      purchases.set(key, purchase);
+      try {
+        const result = await accountRequest('fishing/shop/buy', { itemId, requestId: purchase.requestId });
+        purchases.delete(key);
+        try { localStorage.removeItem(key); } catch { /* optional persistence */ }
+        applyServer(result); return result;
+      } catch (error) {
+        if (error.status >= 400 && error.status < 500) { purchases.delete(key); try { localStorage.removeItem(key); } catch {} }
+        throw error;
+      }
     },
     async equip(kind, itemId) {
       await flush();

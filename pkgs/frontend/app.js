@@ -1,17 +1,18 @@
-import { createLessonColorRow } from "./src/lesson-color-picker.js?v=82";
+import { API_ROOT } from './src/api-root.js?v=83';
+import { createLessonColorRow } from "./src/lesson-color-picker.js?v=83";
 import {
   getStoredValue as safeGetStorage,
   readStoredJson as readJsonStorage,
   removeStoredValue as safeRemoveStorage,
   setStoredValue as safeSetStorage,
   writeStoredJson as writeJsonStorage,
-} from "./src/storage.js?v=82";
-import { initializeTelegramWebApp, triggerTelegramHaptic } from "./src/telegram.js?v=82";
-import { setStaleNotice, showToast } from "./src/feedback.js?v=82";
-import { setupScheduleModes, filterSubgroup, teacherSchedule } from "./src/schedule-modes.js?v=82";
-import { requestJson } from "./src/request.js?v=82";
-import { setupFishingLauncher } from "./src/fishing-loader.js?v=82";
-import { setupCloudColors } from "./src/cloud-colors.js?v=82";
+} from "./src/storage.js?v=83";
+import { initializeTelegramWebApp, triggerTelegramHaptic } from "./src/telegram.js?v=83";
+import { setStaleNotice, showToast } from "./src/feedback.js?v=83";
+import { setupScheduleModes, filterSubgroup, teacherSchedule } from "./src/schedule-modes.js?v=83";
+import { requestJson } from "./src/request.js?v=83";
+import { setupFishingLauncher } from "./src/fishing-loader.js?v=83";
+import { setupCloudColors } from "./src/cloud-colors.js?v=83";
 
 let scheduleMode = null;
 let teacherRequest = 0;
@@ -57,7 +58,7 @@ async function loadTeacher(name, { silent = false, forceRefresh = false } = {}) 
 // для обычной подстройки внешнего вида/текстов не требуется.
 
 // --- Адрес API, откуда сайт берёт список групп и расписание ---
-const API_BASE_URL = "https://famcsschedulebot.yarashsei.workers.dev";
+const API_BASE_URL = API_ROOT.replace(/\/api$/, '');
 const TEACHER_API_BASE = API_BASE_URL;
 const SCHEDULE_ENDPOINT = "/api/schedule";
 const GROUPS_ENDPOINT = "/api/groups";

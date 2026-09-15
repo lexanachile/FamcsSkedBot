@@ -7,7 +7,9 @@ export function setupFishingLauncher() {
   const host = document.getElementById('fishing-host');
   let game;
   let styleReady;
+  function announce() { window.dispatchEvent(new CustomEvent('fishing-visibility', { detail: !host.hidden })); }
   function reveal() {
+    announce();
     if (typeof host.animate === 'function' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       host.animate([{ height: '0px', overflow: 'hidden' }, { height: `${host.scrollHeight}px`, overflow: 'hidden' }], { duration: 550, easing: 'cubic-bezier(.2,.8,.2,1)' });
     }
@@ -16,7 +18,7 @@ export function setupFishingLauncher() {
     return styleReady ||= new Promise((resolve, reject) => {
       const link = document.createElement('link');
       link.rel = 'stylesheet';
-      link.href = new URL('./fishing/game.css?v=82', import.meta.url).href;
+      link.href = new URL('./fishing/game.css?v=83', import.meta.url).href;
       const timeout = setTimeout(() => failed(), 20000);
       function failed() { clearTimeout(timeout); link.remove(); styleReady = null; reject(new Error('CSS unavailable')); }
       link.onload = () => { clearTimeout(timeout); resolve(); };
@@ -28,7 +30,7 @@ export function setupFishingLauncher() {
     if (game) {
       host.hidden = !host.hidden;
       button.setAttribute('aria-expanded', String(!host.hidden));
-      game.setOpen(!host.hidden);
+      game.setOpen(!host.hidden); announce();
       if (!host.hidden) reveal();
       return;
     }
@@ -37,7 +39,7 @@ export function setupFishingLauncher() {
     host.innerHTML = '<section class="fishing-loading-screen" role="status">Готовим удочки…</section>';
     button.setAttribute('aria-expanded', 'true');
     try {
-      const [module] = await Promise.all([import('./fishing/game.js?v=82'), loadStyle()]);
+      const [module] = await Promise.all([import('./fishing/game.js?v=83'), loadStyle()]);
       host.hidden = false;
       game = module.mountFishing(host);
       reveal();
