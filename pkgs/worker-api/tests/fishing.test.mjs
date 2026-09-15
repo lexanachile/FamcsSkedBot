@@ -190,6 +190,26 @@ test('collection hides unknown teachers and samples at most five owner tags', as
   f.db.close();
 });
 
+test('rare catches prioritize unseen teachers before returning to the full random pool', async () => {
+  const f = fixture(); f.env.TEST_TELEGRAM_USER_ID = '1';
+  const realNow = Date.now; let now = realNow(); Date.now = () => now;
+  try {
+    await f.request('fishing/profile');
+    const caught = [];
+    for (let i = 0; i < 3; i++) {
+      now += 12000;
+      const cast = await (await f.request('fishing/cast', { spot: 'deep', devCatch: 'rare' })).json();
+      now += 10000;
+      caught.push(await (await f.request('fishing/reveal', { token: cast.token })).json());
+    }
+    assert.notEqual(caught[0].catch.id, caught[1].catch.id);
+    assert.equal(caught[0].duplicate, false);
+    assert.equal(caught[1].duplicate, false);
+    assert.equal(caught[2].duplicate, true);
+    assert.ok(['kalinin', 'grekova'].includes(caught[2].catch.id));
+  } finally { Date.now = realNow; f.db.close(); }
+});
+
 test('a full collection still randomly draws teachers and accepts successive release/eat choices', async () => {
   const f = fixture(); f.env.TEST_TELEGRAM_USER_ID = '1';
   const realNow = Date.now; let now = realNow(); Date.now = () => now;

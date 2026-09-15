@@ -105,7 +105,7 @@ export function registerFishingRoutes(app: Hono<AppEnvironment>) {
     const now = Date.now(), slot = Math.floor(now / SLOT_MS);
     const hour = (new Date(slot * SLOT_MS).getUTCHours() + 3) % 24;
     const period = hour < 6 ? 'night' : hour < 11 ? 'morning' : hour < 18 ? 'day' : hour < 22 ? 'evening' : 'night';
-    // One deterministic draw per user / 30-second slot, so retries cannot reroll.
+    // One deterministic draw per short slot, so transport retries cannot reroll.
     // Rain-specific encounters stay disabled until authoritative weather is supplied.
     const pool = fishingCatalog.filter(f => f.spots.includes('deep') && f.periods.includes(period) && f.rain === null);
     const bytes = new Uint8Array(await hmac(c.env.TELEGRAM_BOT_TOKEN!, 'draw:v1:' + user.id + ':' + slot));
@@ -128,7 +128,9 @@ export function registerFishingRoutes(app: Hono<AppEnvironment>) {
         } else { game.equipped.bait = null; bait = undefined; }
       }
       const rare = isDev && body?.devCatch === 'rare' ? true : isDev && body?.devCatch === 'small' ? false : roll < Math.min(.95, TEACHER_CHANCE + (bait?.rareBonus || 0));
-      const fish = rare && pool.length ? pool[bytes[4] % pool.length] : null;
+      const unseen = pool.filter(fish => !(game.fish[fish.id]?.count > 0));
+      const candidates = unseen.length ? unseen : pool;
+      const fish = rare && candidates.length ? candidates[bytes[4] % candidates.length] : null;
       const cast = { slot, baitId: bait?.id || null, fish: fish?.id || null, readyAt: now + (fish ? 9000 : 2500), rodId: rod.id, devKey };
       game._cast = cast;
       return { changed: true, value: cast };
