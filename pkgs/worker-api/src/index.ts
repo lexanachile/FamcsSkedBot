@@ -3,6 +3,7 @@ import { cors } from "hono/cors";
 import { registerScheduleRoutes } from "./routes/schedule";
 import { registerSystemRoutes } from "./routes/system";
 import { registerFishingRoutes } from "./routes/fishing";
+import { registerColorRoutes } from "./routes/colors";
 import type { AppEnvironment } from "./types";
 
 const app = new Hono<AppEnvironment>();
@@ -27,6 +28,7 @@ app.use("*", async (c, next) => {
 
 registerSystemRoutes(app);
 registerFishingRoutes(app);
+registerColorRoutes(app);
 registerScheduleRoutes(app);
 
 app.all("*", (c) => c.json({ success: false, error: "Not Found", message: `Маршрут ${c.req.path} не существует` }, 404));

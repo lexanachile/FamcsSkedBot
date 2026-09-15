@@ -1,4 +1,5 @@
 export type Bindings = {
+  TELEGRAM_BOT_TOKEN?: string;
   DB: D1Database;
   SCHEDULE_KV: KVNamespace;
   NOTIFICATIONS_QUEUE: Queue;

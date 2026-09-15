@@ -1,6 +1,7 @@
 // Server-only catalog. Never copy this module into the static frontend.
 // drift: progress points/second toward fish; shake: cosmetic points around
 // actual progress; shakeSpeed: oscillations/second. All phrases stay here.
+export const TEACHER_CHANCE = 0.12;
 export const fishingCatalog = [
   { id: 'kalinin', name: 'Калинин А.И.', image: '/src/fishing/fishing-photos/kalinin.webp',
     spots: ['deep'], periods: ['morning', 'day', 'evening', 'night'], rain: null,
