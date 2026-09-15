@@ -1,4 +1,4 @@
-import { FISHING_RIG } from './rig.js?v=79';
+import { FISHING_RIG } from './rig.js?v=80';
 
 export function lakeScene() {
   const { hand, tip, cast } = FISHING_RIG;
@@ -52,7 +52,7 @@ export function lakeScene() {
     <path class="fish-line" d="M${tip.x} ${tip.y}Q174 330 ${cast.x} ${cast.y}" fill="none" stroke="#fff7d7" stroke-width="1.2" opacity="0"/>
     <g class="fish-broken-hook" opacity="0" fill="none" stroke="#fff7d7" stroke-width="1.7" stroke-linecap="round"><path d="M0-8v10c0 9 12 9 12 0"/><path d="m12 2-4 2"/></g>
   <g class="fish-pull-wake" opacity="0" fill="none" stroke="#c8f8e8" stroke-linecap="round"><path d="M21-8q24-10 48 0"/><path d="M27 1q31-8 61 2"/><path d="M19 10q23 9 47 2"/></g>
-  <g class="fish-approach" opacity="0"><ellipse cx="0" cy="0" rx="23" ry="9" fill="#173d67" opacity=".72"/><path d="m19 0 16-10v20z" fill="#173d67" opacity=".68"/><path d="M-12-1q7-8 14 0" fill="none" stroke="#8ee9d3" stroke-width="1.5"/><circle cx="-15" cy="-2" r="1.5" fill="#fff3bd"/></g>
+  <g class="fish-approach" opacity="0"><ellipse cx="0" cy="0" rx="23" ry="9" fill="#173d67" opacity=".72"/><path class="fish-approach-tail" d="m19 0 16-10v20z" fill="#173d67" opacity=".68"/><path class="fish-approach-fin" d="M-2 4q9 12 15 2" fill="#5db9bd" opacity=".55"/><path d="M-12-1q7-8 14 0" fill="none" stroke="#8ee9d3" stroke-width="1.5"/><circle cx="-15" cy="-2" r="1.5" fill="#fff3bd"/></g>
   <g class="fish-bubbles" fill="none" stroke="#c5f5d7" stroke-width="1.7" opacity="0"><circle cx="-18" cy="4" r="4"/><circle cx="9" cy="-6" r="6"/><circle cx="23" cy="9" r="3"/></g>
   <g class="fish-float" opacity="0"><ellipse class="fish-ripple" cy="5" rx="19" ry="6" fill="none" stroke="#d9f6cc" opacity=".6"/><path d="M0-19V0" stroke="#fff6d5" stroke-width="3"/><path d="M0-19v9" stroke="#ff715f" stroke-width="5" stroke-linecap="round"/><ellipse cy="2" rx="4" ry="6" fill="#ffe7ad"/></g>
   <g class="fish-rain" stroke="#dceeff" stroke-width="1.1" opacity=".45">${Array.from({ length: 35 }, (_, i) => `<path d="M${(i * 83) % 480} ${(i * 127) % 620 - 40}l-9 28"/>`).join('')}</g>

@@ -1,4 +1,4 @@
-import { accountHint, accountRequest } from './account-api.js?v=79';
+import { accountHint, accountRequest } from './account-api.js?v=80';
 
 const HEX = /^#[0-9a-f]{6}$/i;
 const LEGACY_COLORS_KEY = 'lessonColors:v1';

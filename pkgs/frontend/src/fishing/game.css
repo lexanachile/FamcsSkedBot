@@ -132,11 +132,15 @@
 .fish-reeds { transform-origin: 20px 500px; animation: fish-reeds 5s ease-in-out infinite alternate; }
 .fish-ripple { transform-box: fill-box; transform-origin: center; animation: fish-ripple 2s ease-out infinite; }
 .fishing-game[data-state="approach"] .fish-bubbles { animation: fish-shimmer .65s ease-in-out infinite alternate; }
+.fishing-game[data-state="approach"] .fish-approach-tail { transform-box: fill-box; transform-origin: left center; animation: fish-tail-swim .14s ease-in-out infinite alternate; }
+.fishing-game[data-state="approach"] .fish-approach-fin { transform-box: fill-box; transform-origin: top center; animation: fish-fin-swim .28s ease-in-out infinite alternate; }
 .fishing-game.is-paused *, .fishing-game.is-paused { animation-play-state: paused !important; }
 @keyframes fish-reveal { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes fish-shimmer { from { opacity: .25; } to { opacity: .65; } }
 @keyframes fish-reeds { from { transform: rotate(-1deg); } to { transform: rotate(2deg); } }
 @keyframes fish-ripple { from { transform: scale(.55); opacity: .7; } to { transform: scale(1.8); opacity: 0; } }
+@keyframes fish-tail-swim { from { transform: skewY(-12deg) scaleX(.86); } to { transform: skewY(12deg) scaleX(1.08); } }
+@keyframes fish-fin-swim { from { transform: rotate(-8deg); } to { transform: rotate(12deg); } }
 @keyframes fish-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .fishing-game, .fishing-game * { animation: none !important; transition: none !important; } }
 @media (max-width: 430px) {

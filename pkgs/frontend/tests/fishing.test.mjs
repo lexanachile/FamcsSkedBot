@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createFight, advance, strike, displayedProgress, passPosition, PASS_MS, REST_MS } from '../src/fishing/engine.js';
 import { bindStrikeInput } from '../src/fishing/input.js';
 import { minskPeriod } from '../src/fishing/environment.js';
-import { anglerPose, biteFishPosition, orbitFishPosition, RARE_ORBIT_MS, rodTip, linePath } from '../src/fishing/game.js';
+import { anglerPose, biteFishPosition, orbitFishPose, orbitFishPosition, RARE_ORBIT_MS, rodTip, linePath } from '../src/fishing/game.js';
 import { getLocation, worldMapMarkup } from '../src/fishing/locations.js';
 import { lakeScene } from '../src/fishing/scene.js';
 import { readTrophies, writeTrophies, TROPHIES_KEY } from '../src/fishing/trophies.js';
@@ -285,7 +285,7 @@ test('bite drags the whole angler left and a skill-check hit pulls the rod up an
   assert.ok(hookTip.y < baseTip.y);
 });
 
-test('a rare fish completes a one-second lap around the float before pulling left', () => {
+test('a rare fish swims around the float with lake perspective before pulling left', () => {
   const point = { x: 160, y: 470 };
   const start = orbitFishPosition(point, 0), quarter = orbitFishPosition(point, .25);
   const half = orbitFishPosition(point, .5), end = orbitFishPosition(point, 1);
@@ -293,8 +293,16 @@ test('a rare fish completes a one-second lap around the float before pulling lef
   const biteStart = biteFishPosition(point, 0);
   assert.ok(Math.hypot(start.x - biteStart.x, start.y - biteStart.y) < 1e-10);
   assert.ok(Math.hypot(end.x - start.x, end.y - start.y) < 1e-10);
-  for (const position of [start, quarter, half, end]) assert.ok(Math.abs(Math.hypot(position.x - point.x, position.y - point.y) - Math.hypot(20, 12)) < 1e-10);
-  assert.ok(quarter.x < point.x && quarter.y > point.y);
+  const samples = Array.from({ length: 101 }, (_, index) => orbitFishPose(point, index / 100));
+  const near = samples.reduce((best, pose) => pose.y > best.y ? pose : best);
+  const far = samples.reduce((best, pose) => pose.y < best.y ? pose : best);
+  assert.ok(near.scaleY > far.scaleY);
+  assert.ok(near.opacity > far.opacity);
+  assert.ok(samples.some(pose => pose.scaleX < 0));
+  assert.ok(samples.some(pose => Math.abs(pose.scaleX) < .1));
+  assert.ok(Math.abs(orbitFishPose(point, 0).angle) < 1e-10);
+  assert.ok(Math.abs(orbitFishPose(point, 1).angle) < 1e-10);
+  assert.ok(quarter.x < point.x);
   assert.ok(half.x < point.x && half.y < point.y);
   assert.ok(biteFishPosition(point, 1).x < end.x);
 });

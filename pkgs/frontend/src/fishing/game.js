@@ -1,15 +1,15 @@
-import { lakeScene } from './scene.js?v=79';
-import { createFight, advance, strike, displayedProgress, passPosition, REST_MS } from './engine.js?v=79';
-import { createProgress } from './progress.js?v=79';
-import { setupEnvironment } from './environment.js?v=79';
-import { bindStrikeInput } from './input.js?v=79';
-import { bindCatchChoiceInput, catchChoiceKeyframes, withCatchChoice } from './catch-choice.js?v=79';
-import { ownerLine } from './collection.js?v=79';
-import { getLocation, worldMapMarkup } from './locations.js?v=79';
-import { devBaitOptions, devCatchOptions, devRodOptions, optionsMarkup, renderLoadout, renderShop, storeMarkup } from './storefront.js?v=79';
+import { lakeScene } from './scene.js?v=80';
+import { createFight, advance, strike, displayedProgress, passPosition, REST_MS } from './engine.js?v=80';
+import { createProgress } from './progress.js?v=80';
+import { setupEnvironment } from './environment.js?v=80';
+import { bindStrikeInput } from './input.js?v=80';
+import { bindCatchChoiceInput, catchChoiceKeyframes, withCatchChoice } from './catch-choice.js?v=80';
+import { ownerLine } from './collection.js?v=80';
+import { getLocation, worldMapMarkup } from './locations.js?v=80';
+import { devBaitOptions, devCatchOptions, devRodOptions, optionsMarkup, renderLoadout, renderShop, storeMarkup } from './storefront.js?v=80';
 
-import { createLocationNotice } from './location-notice.js?v=79';
-import { FISHING_RIG } from './rig.js?v=79';
+import { createLocationNotice } from './location-notice.js?v=80';
+import { FISHING_RIG } from './rig.js?v=80';
 
 export function anglerPose(state, elapsed, fight, motionTime, reduced = false, strikePulse = 0) {
   const bite = state === 'approach' ? 1 - Math.pow(1 - Math.min(1, elapsed / 2200), 3) : 0;
@@ -55,10 +55,33 @@ export function biteFishPosition(point, progress) {
 }
 
 export const RARE_ORBIT_MS = 1000;
-export function orbitFishPosition(point, progress) {
+export function orbitFishPose(point, progress) {
   const t = Math.max(0, Math.min(1, progress));
-  const radius = Math.hypot(20, 12), angle = Math.atan2(12, 20) + t * Math.PI * 2;
-  return { x: point.x + Math.cos(angle) * radius, y: point.y + Math.sin(angle) * radius };
+  const radiusX = 34;
+  const startAngle = Math.acos(20 / radiusX);
+  const radiusY = 12 / Math.sin(startAngle);
+  const angle = startAngle + t * Math.PI * 2;
+  const x = point.x + Math.cos(angle) * radiusX;
+  const y = point.y + Math.sin(angle) * radiusY;
+  const depth = (Math.sin(angle) + 1) / 2;
+  const startDepth = (Math.sin(startAngle) + 1) / 2;
+  const perspective = (.78 + depth * .22) / (.78 + startDepth * .22);
+  const velocityX = -radiusX * Math.sin(angle);
+  const velocityY = radiusY * Math.cos(angle);
+  const facing = Math.tanh(-velocityX / 7);
+  const bank = Math.max(-13, Math.min(13,
+    Math.sign(velocityX || 1) * Math.atan2(velocityY, Math.max(1, Math.abs(velocityX))) * 180 / Math.PI)) * Math.sin(Math.PI * t);
+  return {
+    x, y, angle: bank,
+    scaleX: perspective * facing,
+    scaleY: perspective * (.88 + Math.abs(facing) * .12),
+    opacity: Math.min(1, .62 + depth * .38),
+    depth,
+  };
+}
+export function orbitFishPosition(point, progress) {
+  const { x, y } = orbitFishPose(point, progress);
+  return { x, y };
 }
 
 export function mountFishing(host) {
@@ -421,11 +444,13 @@ export function mountFishing(host) {
       const orbit = rare ? Math.min(1, elapsed / RARE_ORBIT_MS) : 1;
       const t = Math.min(1, Math.max(0, elapsed - (rare ? RARE_ORBIT_MS : 0)) / 2200);
       const pull = 1 - Math.pow(1 - t, 3);
-      fishPosition = circling ? orbitFishPosition(point, orbit) : biteFishPosition(point, t);
-      const orbitRotation = circling ? orbit * 360 : 0;
-      const fishTransform = `translate(${fishPosition.x} ${fishPosition.y}) rotate(${orbitRotation})`;
-      q('.fish-approach').style.opacity = String(circling ? Math.min(1, orbit * 8) : Math.min(1, t * 5)); q('.fish-approach').setAttribute('transform', fishTransform);
-      q('.fish-pull-wake').style.opacity = String(circling ? .58 : .75 * pull); q('.fish-pull-wake').setAttribute('transform', fishTransform);
+      const orbitPose = circling ? orbitFishPose(point, orbit) : null;
+      fishPosition = orbitPose || biteFishPosition(point, t);
+      const fishTransform = orbitPose
+        ? `translate(${orbitPose.x} ${orbitPose.y}) rotate(${orbitPose.angle}) scale(${orbitPose.scaleX} ${orbitPose.scaleY})`
+        : `translate(${fishPosition.x} ${fishPosition.y})`;
+      q('.fish-approach').style.opacity = String(orbitPose ? Math.min(orbitPose.opacity, orbit * 8) : Math.min(1, t * 5)); q('.fish-approach').setAttribute('transform', fishTransform);
+      q('.fish-pull-wake').style.opacity = String(orbitPose ? (.22 + orbitPose.depth * .34) : .75 * pull); q('.fish-pull-wake').setAttribute('transform', fishTransform);
       q('.fish-bubbles').setAttribute('transform', `translate(${fishPosition.x + 18} ${fishPosition.y + 5})`);
       if (!circling) { root.dataset.pull = 'bite'; q('.fish-float').style.opacity = '0'; }
       if (t === 1) {

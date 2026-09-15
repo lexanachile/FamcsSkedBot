@@ -1,4 +1,4 @@
-import { accountRequest, accountHint } from '../account-api.js?v=79';
+import { accountRequest, accountHint } from '../account-api.js?v=80';
 const RARE_CATCH_SMALL_FISH_BONUS = 30;
 const empty = () => ({ schemaVersion: 5, savedAt: 0, wallet: { smallFish: 0 }, stats: { totalCaught: 0 }, fish: {}, inventory: { rods: ['twig'], baits: {} }, equipped: { rod: 'twig', bait: null } });
 let database;
