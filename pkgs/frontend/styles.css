@@ -28,7 +28,17 @@
 .fishing-invite button { display: grid; place-items: center; width: 52px; height: 52px; border: 1px solid #3d514a; border-radius: 50%; background: #1c302a; color: #c6f5b3; cursor: pointer; }
 .fishing-invite button:disabled { opacity: .5; cursor: wait; }
 .fishing-invite button:focus-visible { outline: 2px solid #c6f5b3; outline-offset: 4px; }
-#fishing-load-status { color: var(--ink-soft); font-size: 12px; }
+.fishing-loading-screen {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 3 / 4;
+  padding: 24px;
+  color: #fff7e8;
+  background: radial-gradient(circle at 78% 18%, #ffb9d4 0 8%, transparent 30%), linear-gradient(155deg, #6557c5, #42bad2 60%, #7ce5c9);
+  font: 500 13px var(--font-sans), sans-serif;
+  text-align: center;
+}
+.fishing-loading-screen small { display: block; margin-top: 8px; font-size: 10px; opacity: .8; }
 
 .mode-section { margin-bottom: 24px; }
 .mode-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--mode-gap); width: 100%; max-width: calc(291px + var(--mode-gap) + var(--mode-gap)); margin-inline: auto; padding: 0; }
@@ -490,6 +500,11 @@ body {
     calc(var(--screen-edge-x) + env(safe-area-inset-left, 0px));
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+}
+
+#fishing-host {
+  margin-right: calc(0px - var(--screen-edge-x) - env(safe-area-inset-right, 0px));
+  margin-left: calc(0px - var(--screen-edge-x) - env(safe-area-inset-left, 0px));
 }
 
 /* ============================================================

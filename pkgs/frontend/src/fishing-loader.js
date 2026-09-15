@@ -5,7 +5,6 @@ export function setupFishingLauncher() {
   if (!button || button.dataset.ready) return;
   button.dataset.ready = 'true';
   const host = document.getElementById('fishing-host');
-  const status = document.getElementById('fishing-load-status');
   let game;
   let styleReady;
   function reveal() {
@@ -17,7 +16,7 @@ export function setupFishingLauncher() {
     return styleReady ||= new Promise((resolve, reject) => {
       const link = document.createElement('link');
       link.rel = 'stylesheet';
-      link.href = new URL('./fishing/game.css?v=59', import.meta.url).href;
+      link.href = new URL('./fishing/game.css?v=66', import.meta.url).href;
       const timeout = setTimeout(() => failed(), 20000);
       function failed() { clearTimeout(timeout); link.remove(); styleReady = null; reject(new Error('CSS unavailable')); }
       link.onload = () => { clearTimeout(timeout); resolve(); };
@@ -34,17 +33,17 @@ export function setupFishingLauncher() {
       return;
     }
     button.disabled = true;
-    status.textContent = 'Готовим удочки…';
+    host.hidden = false;
+    host.innerHTML = '<section class="fishing-loading-screen" role="status">Готовим удочки…</section>';
+    button.setAttribute('aria-expanded', 'true');
     try {
-      const [module] = await Promise.all([import('./fishing/game.js?v=59'), loadStyle()]);
+      const [module] = await Promise.all([import('./fishing/game.js?v=66'), loadStyle()]);
       host.hidden = false;
       game = module.mountFishing(host);
       reveal();
       button.setAttribute('aria-expanded', 'true');
-      status.textContent = '';
     } catch {
-      host.hidden = true;
-      status.textContent = 'Не удалось открыть озеро. Нажмите ещё раз.';
+      host.innerHTML = '<section class="fishing-loading-screen fishing-loading-error" role="alert">Не удалось открыть озеро.<small>Нажмите кнопку рыбалки ещё раз.</small></section>';
     } finally { button.disabled = false; }
   });
 }

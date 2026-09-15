@@ -3,7 +3,8 @@ import type { AppEnvironment } from '../types';
 import { fishingCatalog, TEACHER_CHANCE } from '../fishing/catalog';
 import { authenticate, authError, hmac, readBody } from '../miniapp/auth';
 import { seal, unseal, SLOT_MS, RECEIPT_TTL, type Reward } from '../fishing/tokens';
-import { ensurePlayer, saveRewards } from '../fishing/repository';
+import { ensurePlayer, normalizeGame, publicGame, saveRewards, updatePlayerGame } from '../fishing/repository';
+import { baitById, publicShop, rodById, rods } from '../fishing/shop';
 
 // Public aggregate only; personal collections are never shared/cached.
 let stats: { until: number; rows: { fish_id: string; owners: number; usernames: string }[] } | undefined;
@@ -25,12 +26,63 @@ export function registerFishingRoutes(app: Hono<AppEnvironment>) {
   app.get('/api/fishing/profile', async c => {
     let user; try { user = await authenticate(c); } catch (error) { return authError(c, error); }
     const row = await ensurePlayer(c.env.DB, user.id, user.username);
-    return c.json({ success: true, userId: user.id, revision: row.revision, game: JSON.parse(row.game_json) });
+    return c.json({ success: true, userId: user.id, revision: row.revision, game: publicGame(JSON.parse(row.game_json)) });
+  });
+  app.get('/api/fishing/shop', async c => {
+    let user; try { user = await authenticate(c); } catch (error) { return authError(c, error); }
+    const row = await ensurePlayer(c.env.DB, user.id, user.username);
+    return c.json({ success: true, revision: row.revision, game: publicGame(JSON.parse(row.game_json)), catalog: publicShop() });
+  });
+  app.post('/api/fishing/shop/buy', async c => {
+    let user; try { user = await authenticate(c); } catch (error) { return authError(c, error); }
+    const body = await readBody(c, 2000).catch(() => null);
+    const item = rodById(body?.itemId) || baitById(body?.itemId);
+    if (!item || item.price <= 0) return c.json({ success: false, error: 'Такого товара нет.' }, 400);
+    await ensurePlayer(c.env.DB, user.id, user.username);
+    try {
+      const result = await updatePlayerGame(c.env.DB, user.id, game => {
+        if (game.wallet.smallFish < item.price) throw new Error('FUNDS');
+        if (item.kind === 'rod' && game.inventory.rods.includes(item.id)) throw new Error('OWNED');
+        game.wallet.smallFish -= item.price;
+        if (item.kind === 'rod') game.inventory.rods.push(item.id);
+        else game.inventory.baits[item.id] = (game.inventory.baits[item.id] || 0) + 1;
+        return { changed: true, value: null };
+      });
+      return c.json({ success: true, revision: result.revision, game: publicGame(result.game) });
+    } catch (error) {
+      const code = error instanceof Error ? error.message : '';
+      return c.json({ success: false, error: code === 'FUNDS' ? 'Не хватает рыбок.' : code === 'OWNED' ? 'Эта удочка уже куплена.' : 'Не удалось купить предмет.' }, code === 'FUNDS' || code === 'OWNED' ? 409 : 503);
+    }
+  });
+  app.post('/api/fishing/loadout', async c => {
+    let user; try { user = await authenticate(c); } catch (error) { return authError(c, error); }
+    const body = await readBody(c, 2000).catch(() => null);
+    if (!['rod', 'bait'].includes(body?.kind)) return c.json({ success: false, error: 'Некорректное снаряжение.' }, 400);
+    await ensurePlayer(c.env.DB, user.id, user.username);
+    try {
+      const result = await updatePlayerGame(c.env.DB, user.id, game => {
+        if (body.kind === 'rod') {
+          const rod = rodById(body.itemId);
+          if (!rod || !game.inventory.rods.includes(rod.id)) throw new Error('NOT_OWNED');
+          if (game.equipped.rod === rod.id) return { changed: false, value: null };
+          game.equipped.rod = rod.id;
+        } else {
+          const bait = body.itemId === null ? null : baitById(body.itemId);
+          if (body.itemId !== null && (!bait || !(game.inventory.baits[bait.id] || 0))) throw new Error('NOT_OWNED');
+          if (game.equipped.bait === (bait?.id || null)) return { changed: false, value: null };
+          game.equipped.bait = bait?.id || null;
+        }
+        return { changed: true, value: null };
+      });
+      return c.json({ success: true, revision: result.revision, game: publicGame(result.game) });
+    } catch (error) {
+      return c.json({ success: false, error: error instanceof Error && error.message === 'NOT_OWNED' ? 'Сначала купите предмет.' : 'Не удалось выбрать снаряжение.' }, error instanceof Error && error.message === 'NOT_OWNED' ? 409 : 503);
+    }
   });
   app.get('/api/fishing/collection', async c => {
     let user; try { user = await authenticate(c); } catch (error) { return authError(c, error); }
     const row = await ensurePlayer(c.env.DB, user.id, user.username);
-    const game = JSON.parse(row.game_json);
+    const game = normalizeGame(JSON.parse(row.game_json));
     const counts = await owners(c.env.DB);
     return c.json({ success: true, cards: fishingCatalog.map(fish => {
       const entry = counts.find(item => item.fish_id === fish.id);
@@ -52,11 +104,36 @@ export function registerFishingRoutes(app: Hono<AppEnvironment>) {
     const pool = fishingCatalog.filter(f => f.spots.includes('deep') && f.periods.includes(period) && f.rain === null);
     const bytes = new Uint8Array(await hmac(c.env.TELEGRAM_BOT_TOKEN!, 'draw:v1:' + user.id + ':' + slot));
     const roll = new DataView(bytes.buffer).getUint32(0) / 4294967296;
-    const fish = roll < TEACHER_CHANCE && pool.length ? pool[bytes[4] % pool.length] : null;
-    const payload: Reward = { kind: 'cast', uid: user.id, slot, fish: fish?.id || null, readyAt: now + 9000, expiresAt: slot * SLOT_MS + 600000 };
-    return c.json({ success: true, token: await seal(c.env.TELEGRAM_BOT_TOKEN!, payload),
-      slot, nextCastAt: (slot + 1) * SLOT_MS,
-      traits: fish ? { drift: fish.drift, shake: fish.shake, shakeSpeed: fish.shakeSpeed } : { drift: .08, shake: 1.5, shakeSpeed: 1 } });
+    const isDev = String(user.id) === c.env.TEST_TELEGRAM_USER_ID;
+    await ensurePlayer(c.env.DB, user.id, user.username);
+    const draw = await updatePlayerGame(c.env.DB, user.id, game => {
+      if (game._cast?.slot === slot) return { changed: false, value: game._cast };
+      const devRod = isDev ? rodById(body?.devRod) : null;
+      const devBait = isDev ? baitById(body?.devBait) : null;
+      const rod = devRod || rodById(game.equipped.rod) || rods[0];
+      let bait = devBait || baitById(game.equipped.bait);
+      if (!devBait && bait) {
+        const count = game.inventory.baits[bait.id] || 0;
+        if (count > 0) {
+          game.inventory.baits[bait.id] = count - 1;
+          if (count === 1) game.equipped.bait = null;
+        } else { game.equipped.bait = null; bait = undefined; }
+      }
+      const rare = isDev && body?.devCatch === 'rare' ? true : isDev && body?.devCatch === 'small' ? false : roll < Math.min(.95, TEACHER_CHANCE + (bait?.rareBonus || 0));
+      const fish = rare && pool.length ? pool[bytes[4] % pool.length] : null;
+      const cast = { slot, baitId: bait?.id || null, fish: fish?.id || null, readyAt: now + (fish ? 9000 : 2500), rodId: rod.id };
+      game._cast = cast;
+      return { changed: true, value: cast };
+    });
+    const cast = draw.value;
+    const fish = fishingCatalog.find(item => item.id === cast.fish);
+    const rod = rodById(cast.rodId) || rods[0], bait = baitById(cast.baitId);
+    const payload: Reward = { kind: 'cast', uid: user.id, slot, fish: fish?.id || null, readyAt: cast.readyAt, expiresAt: slot * SLOT_MS + 600000 };
+    return c.json({ success: true, token: await seal(c.env.TELEGRAM_BOT_TOKEN!, payload), slot, nextCastAt: (slot + 1) * SLOT_MS,
+      revision: draw.revision, game: publicGame(draw.game), usedBait: bait?.id || null, rod: rod.id,
+      traits: fish ? { challenge: 'fight', passMs: Math.round(3200 * Math.max(.8, rod.reactionMs / 2200)), zoneScale: rod.zoneScale, divisions: rod.divisions, waitScale: bait?.waitScale || 1,
+        drift: fish.drift * rod.driftScale, shake: fish.shake * rod.shakeScale, shakeSpeed: fish.shakeSpeed }
+        : { challenge: rod.autoSmall ? 'auto' : 'quick', passMs: rod.reactionMs, quickZone: rod.quickZone, divisions: rod.divisions, waitScale: bait?.waitScale || 1, drift: 0, shake: 1.5, shakeSpeed: 1 } });
   });
   app.post('/api/fishing/reveal', async c => {
     let user; try { user = await authenticate(c); } catch (error) { return authError(c, error); }
@@ -86,7 +163,7 @@ export function registerFishingRoutes(app: Hono<AppEnvironment>) {
     // Snapshot is sent for the client protocol, but NEVER trusted as a balance.
     try {
       const result = await saveRewards(c.env.DB, user.id, rewards);
-      return c.json({ success: true, ...result, accepted: rewards.map(r => r.slot), expired });
+      return c.json({ success: true, revision: result.revision, game: publicGame(result.game), accepted: rewards.map(r => r.slot), expired });
     } catch { return c.json({ success: false, error: 'Не удалось сохранить. Повторите позже.' }, 503); }
   });
 }

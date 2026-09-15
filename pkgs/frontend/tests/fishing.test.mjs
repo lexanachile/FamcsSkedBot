@@ -3,16 +3,38 @@ import assert from 'node:assert/strict';
 import { createFight, advance, strike, displayedProgress, PASS_MS, REST_MS } from '../src/fishing/engine.js';
 import { bindStrikeInput } from '../src/fishing/input.js';
 import { minskPeriod } from '../src/fishing/environment.js';
-import { anglerPose, rodTip } from '../src/fishing/game.js';
+import { anglerPose, biteFishPosition, rodTip, linePath } from '../src/fishing/game.js';
 import { getLocation, worldMapMarkup } from '../src/fishing/locations.js';
+import { lakeScene } from '../src/fishing/scene.js';
 import { readTrophies, writeTrophies, TROPHIES_KEY } from '../src/fishing/trophies.js';
 import { createLocationNotice } from '../src/fishing/location-notice.js';
+import { devBaitOptions, devCatchOptions, devRodOptions, storeMarkup } from '../src/fishing/storefront.js';
 
 test('only home and crossing can be opened from the map', () => {
-  const buttons = [...worldMapMarkup().matchAll(/<button\b[^>]*data-location="([^"]+)"[^>]*>/g)];
+  const map = worldMapMarkup();
+  assert.ok(map.includes('<h2>Карта</h2>'));
+  assert.ok(map.includes('viewBox="0 0 450 600"'));
+  assert.ok(!map.includes('preserveAspectRatio="none"'));
+  assert.ok(!map.includes('МАЛЕНЬКИЙ МИР'));
+  const buttons = [...map.matchAll(/<button\b[^>]*data-location="([^"]+)"[^>]*>/g)];
   assert.deepEqual(buttons.filter(([markup]) => !markup.includes(' disabled')).map(([, id]) => id), ['home', 'crossing']);
   for (const id of ['main', 'zhdany', 'passage']) assert.equal(getLocation(id).locked, true);
   assert.equal(getLocation('crossing').locked, false);
+});
+test('lake scene is drawn in a native portrait coordinate system', () => {
+  const scene = lakeScene();
+  assert.ok(scene.includes('viewBox="0 0 450 600"'));
+  assert.ok(scene.includes('preserveAspectRatio="xMidYMid meet"'));
+  assert.ok(!scene.includes('slice'));
+  assert.ok(scene.includes('class="fish-raccoon"'));
+});
+test('store and biome loadout expose every dev rod and bait', () => {
+  const markup = storeMarkup();
+  assert.ok(markup.includes('fish-shop'));
+  assert.ok(markup.includes('fish-loadout'));
+  assert.deepEqual(devRodOptions.map(([id]) => id), ['', 'twig', 'reed', 'lake', 'moon', 'auto']);
+  assert.deepEqual(devBaitOptions.map(([id]) => id), ['', 'crumbs', 'berries', 'glow']);
+  assert.deepEqual(devCatchOptions.map(([id]) => id), ['', 'small', 'rare']);
 });
 
 test('location title holds for three seconds and cancels old navigation timers', () => {
@@ -37,22 +59,51 @@ test('location title holds for three seconds and cancels old navigation timers',
 });
 
 test('touch scores on contact at the displayed position, release does not score again', () => {
-  const handlers = {};
-  const button = { disabled: false, addEventListener(name, handler) { handlers[name] = handler; } };
+  const buttonHandlers = {}, surfaceHandlers = {};
+  const button = { disabled: false, addEventListener(name, handler) { buttonHandlers[name] = handler; } };
+  const surface = { addEventListener(name, handler) { surfaceHandlers[name] = handler; } };
   const root = { addEventListener() {} };
   const fight = createFight(() => 0);
   fight.elapsed = .2 * PASS_MS;
-  bindStrikeInput(button, root, () => strike(fight));
-  handlers.pointerdown({ isPrimary: true, button: 0, preventDefault() {} });
+  bindStrikeInput(button, surface, root, () => strike(fight));
+  const target = { closest: () => null };
+  surfaceHandlers.pointerdown({ isPrimary: true, button: 0, target, preventDefault() {} });
   assert.equal(fight.hits, 1);
   fight.elapsed = .4 * PASS_MS; // finger is released after the sector has passed
-  handlers.click({ detail: 1 });
+  buttonHandlers.click({ detail: 1 });
   assert.equal(fight.attempts, 1);
   assert.equal(fight.progress, 49);
-  handlers.pointerdown({ isPrimary: false, button: 0, preventDefault() {} });
+  surfaceHandlers.pointerdown({ isPrimary: false, button: 0, target, preventDefault() {} });
   assert.equal(fight.attempts, 1);
-  handlers.click({ detail: 0 }); // assistive/keyboard activation
+  buttonHandlers.click({ detail: 0 }); // assistive/keyboard activation
   assert.equal(fight.attempts, 2);
+});
+
+test('screen-wide strike ignores interface controls', () => {
+  const handlers = {};
+  const button = { disabled: false, addEventListener() {} };
+  const surface = { addEventListener(name, handler) { handlers[name] = handler; } };
+  const root = { addEventListener() {} };
+  let hits = 0;
+  bindStrikeInput(button, surface, root, () => hits++);
+  handlers.pointerdown({ isPrimary: true, button: 0, target: { closest: () => ({}) }, preventDefault() {} });
+  assert.equal(hits, 0);
+  handlers.pointerdown({ isPrimary: true, button: 0, target: { closest: () => null }, preventDefault() {} });
+  assert.equal(hits, 1);
+});
+test('screen-wide strike is inactive after the fight result opens', () => {
+  const handlers = {};
+  const button = { disabled: false, addEventListener() {} };
+  const surface = { addEventListener(name, handler) { handlers[name] = handler; } };
+  const root = { addEventListener() {} };
+  let active = false, hits = 0;
+  bindStrikeInput(button, surface, root, () => hits++, () => active);
+  const event = { isPrimary: true, button: 0, target: { closest: () => null }, preventDefault() {} };
+  handlers.pointerdown(event);
+  assert.equal(hits, 0);
+  active = true;
+  handlers.pointerdown(event);
+  assert.equal(hits, 1);
 });
 
 test('Space scores on keydown only and held keys do not repeat', () => {
@@ -60,7 +111,7 @@ test('Space scores on keydown only and held keys do not repeat', () => {
   const button = { disabled: false, addEventListener() {} };
   const root = { addEventListener(name, handler) { handlers[name] = handler; } };
   let hits = 0;
-  bindStrikeInput(button, root, () => hits++);
+  bindStrikeInput(button, { addEventListener() {} }, root, () => hits++);
   const event = { code: 'Space', target: { closest: () => null }, preventDefault() {}, repeat: false };
   handlers.keydown(event);
   handlers.keydown({ ...event, repeat: true });
@@ -80,6 +131,27 @@ test('cosmetic movement never changes real progress; drift depends on fish', () 
   const actual = fight.progress;
   for (let i = 0; i < 100; i++) { fight.motionTime = i / 10; assert.ok(Math.abs(displayedProgress(fight) - actual) <= 4); }
   assert.equal(fight.progress, actual);
+});
+test('small fish is caught by one correctly timed tap and escapes after its only pass', () => {
+  const caught = createFight(() => 0, { challenge: 'quick' });
+  assert.equal(caught.zones.length, 1);
+  advance(caught, 100);
+  assert.equal(caught.outcome, null);
+  caught.elapsed = .5 * PASS_MS;
+  assert.equal(strike(caught), 'hit');
+  assert.equal(caught.progress, 100);
+  assert.equal(caught.outcome, 'caught');
+  const escaped = createFight(() => 0, { challenge: 'quick' });
+  advance(escaped, PASS_MS);
+  assert.equal(escaped.outcome, 'escaped');
+});
+test('better rods slow the reaction pass and widen its target', () => {
+  const starter = createFight(() => 0, { challenge: 'quick', passMs: 1200, quickZone: .075, divisions: 12 });
+  const moon = createFight(() => 0, { challenge: 'quick', passMs: 2800, quickZone: .2, divisions: 5 });
+  assert.equal(starter.passMs, 1200);
+  assert.equal(moon.passMs, 2800);
+  assert.ok((moon.zones[0].end - moon.zones[0].start) > (starter.zones[0].end - starter.zones[0].start));
+  assert.ok(starter.divisions > moon.divisions);
 });
 
 test('a missed pass loses progress and gives exactly five seconds of recovery', () => {
@@ -124,14 +196,33 @@ test('unanswered passes eventually let the fish escape', () => {
   assert.equal(fight.outcome, 'escaped');
 });
 
-test('rod stays attached and its pull animation remains restrained', () => {
-  assert.deepEqual(rodTip(0, 0), { x: 350, y: 195 });
-  const fight = { phase: 'rest', elapsed: REST_MS / 2 };
-  const pose = anglerPose('fight', 0, fight, 0, false);
-  assert.equal(pose.lean, 3.5);
-  assert.equal(pose.rodAngle, 12);
-  const tip = rodTip(pose.rodAngle, pose.lean);
-  assert.ok(Number.isFinite(tip.x) && Number.isFinite(tip.y));
+test('rod rotation preserves the hand joint through body rotation and translation', () => {
+  assert.deepEqual(rodTip(0, 0), { x: 180, y: 221 });
+  for (const rodAngle of [-14, 0, 8, 22]) for (const lean of [-3, 0, 4]) {
+    const b = lean * Math.PI / 180;
+    const hand = { x: -7 + 365 + (322 - 365) * Math.cos(b) - (370 - 455) * Math.sin(b), y: 2 + 455 + (322 - 365) * Math.sin(b) + (370 - 455) * Math.cos(b) };
+    const tip = rodTip(rodAngle, lean, -7, 2);
+    assert.ok(Math.abs(Math.hypot(tip.x - hand.x, tip.y - hand.y) - Math.hypot(142, 149)) < 1e-8);
+    const end = { x: 72, y: 454 };
+    const path = linePath(tip, end, .96);
+    assert.ok(path.startsWith(`M${tip.x} ${tip.y} `));
+    assert.ok(path.endsWith(' 72 454'));
+  }
+});
+test('bite drags the whole angler left and a skill-check hit pulls the rod up and back', () => {
+  const fishStart = biteFishPosition({ x: 160, y: 470 }, 0);
+  const fishEnd = biteFishPosition({ x: 160, y: 470 }, 1);
+  assert.deepEqual(fishStart, { x: 180, y: 482 });
+  assert.ok(fishEnd.x < fishStart.x && fishEnd.y < fishStart.y);
+  const bite = anglerPose('approach', 2200, null, 0);
+  assert.ok(bite.shiftX < 0);
+  const fight = { phase: 'pass', elapsed: 100, motionTime: 0 };
+  const base = anglerPose('fight', 0, fight, 0, false, 0);
+  const hook = anglerPose('fight', 0, fight, 0, false, 1);
+  const baseTip = rodTip(base.rodAngle, base.lean, base.shiftX, base.shiftY);
+  const hookTip = rodTip(hook.rodAngle, hook.lean, hook.shiftX, hook.shiftY);
+  assert.ok(hookTip.x > baseTip.x);
+  assert.ok(hookTip.y < baseTip.y);
 });
 
 test('world map exposes every destination and trophies persist locally', () => {

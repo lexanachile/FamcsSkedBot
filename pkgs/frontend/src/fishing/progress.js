@@ -1,5 +1,5 @@
 import { accountRequest, accountHint } from '../account-api.js?v=58';
-const empty = () => ({ schemaVersion: 1, savedAt: 0, wallet: { smallFish: 0 }, fish: {} });
+const empty = () => ({ schemaVersion: 2, savedAt: 0, wallet: { smallFish: 0 }, fish: {}, inventory: { rods: ['twig'], baits: {} }, equipped: { rod: 'twig', bait: null } });
 let database;
 function db() {
   return database ||= new Promise((resolve, reject) => {
@@ -22,6 +22,9 @@ async function pendingOperation(mode, callback, table = 'pending') {
 }
 export function projectedGame(base, pending) {
   const game = JSON.parse(JSON.stringify(base));
+  game.inventory ||= { rods: ['twig'], baits: {} };
+  game.inventory.rods ||= ['twig']; game.inventory.baits ||= {};
+  game.equipped ||= { rod: 'twig', bait: null };
   for (const entry of pending) {
     if (entry.catch.kind === 'small') game.wallet.smallFish++;
     else {
@@ -32,9 +35,13 @@ export function projectedGame(base, pending) {
   return game;
 }
 export function createProgress(onChange) {
-  let uid, base = empty(), pending = [], revision = -1, loading, saving, cards = [], error = '', lastSlot = -1;
+  let uid, base = empty(), pending = [], revision = -1, loading, saving, cards = [], shopCatalog = null, error = '', lastSlot = -1;
   const known = new Map();
-  const notify = () => onChange?.({ game: projectedGame(base, pending), pending: pending.length, error, cards, savedAt: base.savedAt });
+  const notify = () => onChange?.({ game: projectedGame(base, pending), pending: pending.length, error, cards, catalog: shopCatalog, savedAt: base.savedAt });
+  function applyServer(result) {
+    if (result.game && result.revision >= revision) { base = result.game; revision = result.revision; }
+    error = ''; notify();
+  }
   async function reloadPending() {
     pending = (await pendingOperation('readonly', store => store.getAll())).filter(item => item.uid === uid);
     for (const entry of pending) known.set(entry.catch.id, entry.catch);
@@ -107,10 +114,28 @@ export function createProgress(onChange) {
   window.addEventListener('pagehide', () => { if (uid && pending.length) void flush(); });
   return {
     init, flush, collection,
-    async cast(spot, location) {
+    async shop() {
+      await init();
+      const result = await accountRequest('fishing/shop');
+      shopCatalog = result.catalog; applyServer(result); return result;
+    },
+    async buy(itemId) {
+      await flush();
+      if (pending.length) throw new Error('Сначала сохраните текущий улов.');
+      const result = await accountRequest('fishing/shop/buy', { itemId });
+      applyServer(result); return result;
+    },
+    async equip(kind, itemId) {
+      await flush();
+      if (pending.length) throw new Error('Сначала сохраните текущий улов.');
+      const result = await accountRequest('fishing/loadout', { kind, itemId });
+      applyServer(result); return result;
+    },
+    async cast(spot, location, dev = {}) {
       await init(); await recoverReveal();
       if (Date.now() < (lastSlot + 1) * 30000) throw new Error('Следующий заброс через несколько секунд.');
-      return accountRequest('fishing/cast', { spot, location });
+      const result = await accountRequest('fishing/cast', { spot, location, ...dev });
+      applyServer(result); return result;
     },
     reveal,
     pendingCard(id) { return known.get(id); },

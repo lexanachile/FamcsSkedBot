@@ -1,8 +1,9 @@
-// Pointer input is scored on contact, never on release. Keyboard/assistive
-// clicks still work; the click generated after pointerdown must not score twice.
-export function bindStrikeInput(button, root, hit) {
-  button.addEventListener('pointerdown', event => {
-    if (!event.isPrimary || event.button !== 0 || button.disabled) return;
+// Pointer input is scored anywhere on the scene on contact, never on release.
+// Real controls are excluded so opening an overlay cannot score a strike.
+export function bindStrikeInput(button, surface, root, hit, screenActive = () => !button.disabled) {
+  surface.addEventListener('pointerdown', event => {
+    if (!event.isPrimary || event.button !== 0 || button.disabled || !screenActive()) return;
+    if (event.target.closest?.('button:not(.fish-action), select, input, a, .fish-help, .fish-dev-panel')) return;
     event.preventDefault();
     hit();
   });
@@ -10,7 +11,7 @@ export function bindStrikeInput(button, root, hit) {
     if (event.detail === 0 && !button.disabled) hit();
   });
   root.addEventListener('keydown', event => {
-    if (event.code !== 'Space' || event.target.closest('select, .fish-fullscreen, .fish-dev-toggle, .fish-help-toggle, .fish-again, .fish-map-return, [data-location], [data-spot]')) return;
+    if (event.code !== 'Space' || event.target.closest('select, .fish-dev-toggle, .fish-help-toggle, .fish-help-close, .fish-again, .fish-map-return, [data-location], [data-spot]')) return;
     event.preventDefault();
     if (!event.repeat && !button.disabled) hit();
   });

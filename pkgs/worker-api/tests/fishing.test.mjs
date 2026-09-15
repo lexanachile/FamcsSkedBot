@@ -37,7 +37,7 @@ function fixture() {
   }, env);
   return { db, env, request, writes: () => writes };
 }
-test('authenticated casts use no storage; receipts deduplicate and reject other users', async () => {
+test('authenticated casts reserve one slot; receipts deduplicate and reject other users', async () => {
   const f = fixture();
   const realNow = Date.now; let now = Math.floor(realNow() / 30000) * 30000 + 10;
   Date.now = () => now;
@@ -48,21 +48,23 @@ test('authenticated casts use no storage; receipts deduplicate and reject other 
     const cast = await (await f.request('fishing/cast', { spot: 'deep', location: 'crossing' })).json();
     assert.equal(cast.success, true);
     assert.equal(cast.catch, undefined);
-    assert.equal(f.writes(), before);
+    assert.ok(['quick', 'fight'].includes(cast.traits.challenge));
+    assert.equal(f.writes(), before + 1);
+    const afterCast = f.writes();
     assert.equal((await f.request('fishing/reveal', { token: cast.token })).status, 409);
-    now += 10000;
+    now += cast.traits.challenge === 'quick' ? 3000 : 10000;
     const reveal = await (await f.request('fishing/reveal', { token: cast.token })).json();
     assert.equal(reveal.success, true);
-    assert.equal(f.writes(), before);
+    assert.equal(f.writes(), afterCast);
     assert.equal((await f.request('fishing/sync', { receipts: [reveal.receipt] }, 2)).status, 400);
     assert.equal((await f.request('fishing/sync', { receipts: ['tampered'] })).status, 400);
     const saved = await (await f.request('fishing/sync', { receipts: [reveal.receipt], game: { wallet: { smallFish: 1000000 } } })).json();
-    assert.equal(saved.revision, 1);
+    assert.equal(saved.revision, 2);
     const total = saved.game.wallet.smallFish + Object.values(saved.game.fish).reduce((sum, fish) => sum + fish.count, 0);
     assert.equal(total, 1);
     const writes = f.writes();
     const repeated = await (await f.request('fishing/sync', { receipts: [reveal.receipt] })).json();
-    assert.equal(repeated.revision, 1);
+    assert.equal(repeated.revision, 2);
     assert.equal(f.writes(), writes);
     // A second device retrieves the same draw in the same slot.
     const second = await (await f.request('fishing/cast', { spot: 'deep' })).json();
@@ -105,8 +107,48 @@ test('concurrent reward batches merge instead of overwriting', async () => {
     }
     await Promise.all(receipts.map(receipt => f.request('fishing/sync', { receipts: [receipt] })));
     const profile = await (await f.request('fishing/profile')).json();
-    assert.equal(profile.revision, 2);
+    assert.equal(profile.revision, 4);
     assert.equal(profile.game.wallet.smallFish + Object.values(profile.game.fish).reduce((s, f) => s + f.count, 0), 2);
+  } finally { Date.now = realNow; f.db.close(); }
+});
+test('shop purchase, equipment and bait consumption are atomic', async () => {
+  const f = fixture(); const realNow = Date.now; let now = Math.floor(realNow() / 30000) * 30000 + 10; Date.now = () => now;
+  try {
+    await f.request('fishing/profile');
+    f.db.prepare('UPDATE fishing_players SET game_json = ? WHERE telegram_id = 1').run(JSON.stringify({ schemaVersion: 1, savedAt: 0, wallet: { smallFish: 100 }, fish: {} }));
+    const shop = await (await f.request('fishing/shop')).json();
+    assert.equal(shop.catalog.rods.some(item => item.id === 'auto' && item.price === 500), true);
+    assert.equal(shop.catalog.baits.find(item => item.id === 'crumbs').effects.rarePercent, 2);
+    const rod = await (await f.request('fishing/shop/buy', { itemId: 'reed' })).json();
+    assert.equal(rod.game.wallet.smallFish, 75);
+    assert.equal(rod.game.inventory.rods.includes('reed'), true);
+    assert.equal((await f.request('fishing/shop/buy', { itemId: 'reed' })).status, 409);
+    const equipped = await (await f.request('fishing/loadout', { kind: 'rod', itemId: 'reed' })).json();
+    assert.equal(equipped.game.equipped.rod, 'reed');
+    const bait = await (await f.request('fishing/shop/buy', { itemId: 'crumbs' })).json();
+    assert.equal(bait.game.wallet.smallFish, 67);
+    assert.equal(bait.game.inventory.baits.crumbs, 1);
+    await f.request('fishing/loadout', { kind: 'bait', itemId: 'crumbs' });
+    const cast = await (await f.request('fishing/cast', { spot: 'deep' })).json();
+    assert.equal(cast.usedBait, 'crumbs');
+    assert.equal(cast.rod, 'reed');
+    assert.equal(cast.game.inventory.baits.crumbs, 0);
+    assert.equal(cast.game.equipped.bait, null);
+    assert.equal(cast.traits.waitScale, .85);
+    const writes = f.writes();
+    const retry = await (await f.request('fishing/cast', { spot: 'deep' })).json();
+    assert.equal(retry.usedBait, 'crumbs');
+    assert.equal(f.writes(), writes);
+    assert.equal((await f.request('fishing/shop/buy', { itemId: 'auto' })).status, 409);
+    f.env.TEST_TELEGRAM_USER_ID = '1'; now += 30000;
+    const dev = await (await f.request('fishing/cast', { spot: 'deep', devCatch: 'small', devRod: 'auto', devBait: 'glow' })).json();
+    assert.equal(dev.rod, 'auto');
+    assert.equal(dev.usedBait, 'glow');
+    assert.equal(dev.game.inventory.baits.glow || 0, 0);
+    assert.equal(dev.traits.challenge, 'auto');
+    now += 30000;
+    const rare = await (await f.request('fishing/cast', { spot: 'deep', devCatch: 'rare', devRod: 'auto' })).json();
+    assert.equal(rare.traits.challenge, 'fight');
   } finally { Date.now = realNow; f.db.close(); }
 });
 test('collection hides unknown teachers and shows tags only below three owners', async () => {
