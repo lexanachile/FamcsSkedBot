@@ -11,7 +11,7 @@ import { setStaleNotice, showToast } from "./src/feedback.js?v=55";
 import { setupScheduleModes, filterSubgroup, teacherSchedule } from "./src/schedule-modes.js?v=55";
 import { requestJson } from "./src/request.js?v=55";
 import { setupFishingLauncher } from "./src/fishing-loader.js?v=59";
-import { setupCloudColors } from "./src/cloud-colors.js?v=58";
+import { setupCloudColors } from "./src/cloud-colors.js?v=60";
 
 let scheduleMode = null;
 let teacherRequest = 0;
