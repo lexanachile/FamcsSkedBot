@@ -89,6 +89,7 @@ export function registerFishingRoutes(app: Hono<AppEnvironment>) {
       const caught = game.fish[fish.id]?.count || 0;
       return { id: fish.id, count: caught, locked: !caught,
         name: caught ? fish.name : null, image: caught ? fish.image : null,
+        phrases: fish.phrases.map((text, id) => ({ id, locked: !game.fish[fish.id]?.phrases.includes(id), text: game.fish[fish.id]?.phrases.includes(id) ? text : null })),
         owners: entry?.owners || 0, usernames: entry ? JSON.parse(entry.usernames) : [] };
     }) });
   });
@@ -143,10 +144,39 @@ export function registerFishingRoutes(app: Hono<AppEnvironment>) {
     if (reward.uid !== user.id || reward.kind !== 'cast' || reward.expiresAt <= Date.now()) return c.json({ success: false, error: 'Заброс истёк.' }, 400);
     if (Date.now() < reward.readyAt) return c.json({ success: false, error: 'Улов ещё не готов.' }, 409);
     const fish = fishingCatalog.find(f => f.id === reward.fish);
-    const receipt = { ...reward, kind: 'receipt' as const, expiresAt: reward.slot * SLOT_MS + RECEIPT_TTL };
+    const phraseBytes = new Uint8Array(await hmac(c.env.TELEGRAM_BOT_TOKEN!, 'phrase:v1:' + user.id + ':' + reward.slot));
+    const phrase = fish ? phraseBytes[0] % fish.phrases.length : 0;
+    const receipt = { ...reward, kind: 'receipt' as const, phrase, expiresAt: reward.slot * SLOT_MS + RECEIPT_TTL };
+    await ensurePlayer(c.env.DB, user.id, user.username);
+    const saved = await saveRewards(c.env.DB, user.id, [receipt]);
+    stats = undefined;
+    const record = saved.game._catches[String(reward.slot)];
     return c.json({ success: true, receipt: await seal(c.env.TELEGRAM_BOT_TOKEN!, receipt), slot: reward.slot, expiresAt: receipt.expiresAt,
-      catch: fish ? { kind: 'teacher', id: fish.id, name: fish.name, image: fish.image, caption: fish.phrases[0] || '' }
+      revision: saved.revision, game: publicGame(saved.game), duplicate: record?.duplicate || false, choice: record?.choice || null,
+      catch: fish ? { kind: 'teacher', id: fish.id, name: fish.name, image: fish.image, phraseId: phrase, caption: fish.phrases[phrase] || '' }
         : { kind: 'small', id: 'smallFish', name: 'Маленькая рыбка', image: null, caption: '+1 рыбка в карман' } });
+  });
+  app.post('/api/fishing/resolve', async c => {
+    let user; try { user = await authenticate(c); } catch (error) { return authError(c, error); }
+    const body = await readBody(c, 5000).catch(() => null);
+    if (!['release', 'eat'].includes(body?.choice)) return c.json({ success: false, error: 'Некорректный выбор.' }, 400);
+    let reward: Reward;
+    try { reward = await unseal<Reward>(c.env.TELEGRAM_BOT_TOKEN!, body?.receipt); } catch { return c.json({ success: false, error: 'Неверный улов.' }, 400); }
+    if (reward.uid !== user.id || reward.kind !== 'receipt' || reward.expiresAt <= Date.now() || !reward.fish) return c.json({ success: false, error: 'Улов истёк.' }, 400);
+    try {
+      const result = await updatePlayerGame(c.env.DB, user.id, game => {
+        const record = game._catches[String(reward.slot)];
+        if (!record || record.fish !== reward.fish || !record.duplicate) throw new Error('INVALID');
+        if (record.choice) {
+          if (record.choice !== body.choice) throw new Error('CHOSEN');
+          return { changed: false, value: record.choice };
+        }
+        record.choice = body.choice;
+        if (body.choice === 'eat') game.wallet.smallFish++;
+        return { changed: true, value: record.choice };
+      });
+      return c.json({ success: true, choice: result.value, revision: result.revision, game: publicGame(result.game) });
+    } catch (error) { return c.json({ success: false, error: error instanceof Error && error.message === 'CHOSEN' ? 'Выбор уже сделан.' : 'Этот улов нельзя обработать.' }, 409); }
   });
   app.post('/api/fishing/sync', async c => {
     let user; try { user = await authenticate(c); } catch (error) { return authError(c, error); }

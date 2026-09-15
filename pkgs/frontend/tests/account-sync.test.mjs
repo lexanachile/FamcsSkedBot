@@ -33,6 +33,6 @@ test('ordinary fish add currency; teachers replace them without adding currency'
     { catch: { kind: 'small' } }, { catch: { kind: 'teacher', id: 'kalinin' }, caughtAt: 10 },
   ]);
   assert.equal(result.wallet.smallFish, 6);
-  assert.deepEqual(result.fish.kalinin, { count: 1, firstCaughtAt: 10 });
+  assert.deepEqual(result.fish.kalinin, { count: 1, firstCaughtAt: 10, phrases: [] });
   assert.deepEqual(base, { wallet: { smallFish: 5 }, fish: {} });
 });

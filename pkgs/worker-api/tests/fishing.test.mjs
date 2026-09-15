@@ -55,7 +55,7 @@ test('authenticated casts reserve one slot; receipts deduplicate and reject othe
     now += cast.traits.challenge === 'quick' ? 3000 : 10000;
     const reveal = await (await f.request('fishing/reveal', { token: cast.token })).json();
     assert.equal(reveal.success, true);
-    assert.equal(f.writes(), afterCast);
+    assert.equal(f.writes(), afterCast + 1);
     assert.equal((await f.request('fishing/sync', { receipts: [reveal.receipt] }, 2)).status, 400);
     assert.equal((await f.request('fishing/sync', { receipts: ['tampered'] })).status, 400);
     const saved = await (await f.request('fishing/sync', { receipts: [reveal.receipt], game: { wallet: { smallFish: 1000000 } } })).json();
@@ -164,5 +164,70 @@ test('collection hides unknown teachers and shows tags only below three owners',
   assert.equal(a.owners, 3); assert.deepEqual(a.usernames, []);
   assert.equal(b.owners, 2); assert.deepEqual(b.usernames, ['user1', 'user2']);
   assert.equal(a.locked, true); assert.equal(a.name, null); assert.equal(a.image, null);
+  assert.equal(b.phrases.every(phrase => phrase.locked && phrase.text === null), true);
   f.db.close();
+});
+
+test('teacher phrases unlock separately and repeated catches require one permanent choice', async () => {
+  const f = fixture(); f.env.TEST_TELEGRAM_USER_ID = '1';
+  const realNow = Date.now; let now = Math.floor(realNow() / 30000) * 30000 + 10; Date.now = () => now;
+  try {
+    await f.request('fishing/profile');
+    async function catchRare() {
+      now += 30000;
+      const cast = await (await f.request('fishing/cast', { spot: 'deep', devCatch: 'rare' })).json();
+      now += 10000;
+      return (await (await f.request('fishing/reveal', { token: cast.token })).json());
+    }
+    let first;
+    for (let i = 0; i < 40 && !first; i++) {
+      const result = await catchRare();
+      if (result.catch.id === 'grekova') first = result;
+    }
+    assert.ok(first); assert.equal(first.duplicate, false);
+    assert.equal((await f.request('fishing/resolve', { receipt: first.receipt, choice: 'eat' })).status, 409);
+    let collection = await (await f.request('fishing/collection')).json();
+    let grekova = collection.cards.find(card => card.id === 'grekova');
+    assert.equal(grekova.phrases.filter(phrase => !phrase.locked).length, 1);
+    assert.equal(grekova.phrases.filter(phrase => phrase.locked).every(phrase => phrase.text === null), true);
+
+    let released;
+    for (let i = 0; i < 40 && !released; i++) {
+      const result = await catchRare();
+      if (result.catch.id !== 'grekova') continue;
+      assert.equal(result.duplicate, true);
+      const before = result.game.wallet.smallFish;
+      const response = await (await f.request('fishing/resolve', { receipt: result.receipt, choice: 'release' })).json();
+      assert.equal(response.game.wallet.smallFish, before);
+      assert.ok(response.game.fish.grekova.count >= 2);
+      assert.equal((await f.request('fishing/resolve', { receipt: result.receipt, choice: 'eat' })).status, 409);
+      released = result;
+    }
+    assert.ok(released);
+
+    for (let i = 0; i < 80; i++) {
+      collection = await (await f.request('fishing/collection')).json();
+      grekova = collection.cards.find(card => card.id === 'grekova');
+      if (grekova.phrases.every(phrase => !phrase.locked)) break;
+      const result = await catchRare();
+      if (result.catch.id === 'grekova') await f.request('fishing/resolve', { receipt: result.receipt, choice: 'release' });
+    }
+
+    let eaten;
+    for (let i = 0; i < 40 && !eaten; i++) {
+      const result = await catchRare();
+      if (result.catch.id !== 'grekova') continue;
+      const before = result.game.wallet.smallFish;
+      const firstChoice = await (await f.request('fishing/resolve', { receipt: result.receipt, choice: 'eat' })).json();
+      const repeatedChoice = await (await f.request('fishing/resolve', { receipt: result.receipt, choice: 'eat' })).json();
+      assert.equal(firstChoice.game.wallet.smallFish, before + 1);
+      assert.equal(repeatedChoice.game.wallet.smallFish, before + 1);
+      eaten = result;
+    }
+    assert.ok(eaten);
+    collection = await (await f.request('fishing/collection')).json();
+    grekova = collection.cards.find(card => card.id === 'grekova');
+    assert.ok(grekova.phrases.some(phrase => phrase.text === 'Глазками'));
+    assert.ok(grekova.phrases.some(phrase => phrase.text === 'Мальчик думает бабушка не видит.'));
+  } finally { Date.now = realNow; f.db.close(); }
 });

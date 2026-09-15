@@ -37,6 +37,9 @@
 .fish-trophy > div:last-child { min-width: 0; }
 .fish-trophy h3 { margin: 0 0 3px; overflow-wrap: anywhere; color: #31564e; font: 400 13px Georgia, serif; }
 .fish-trophy p { display: -webkit-box; margin: 0; overflow: hidden; color: #718077; font-size: 8px; line-height: 1.35; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.fish-trophy-phrases { display: grid; gap: 4px; margin: 7px 0; padding: 0; list-style: none; }
+.fish-trophy-phrases li { padding: 5px 7px; border-radius: 9px; color: #48446e; background: #fff9; font: 10px/1.35 Georgia, serif; overflow-wrap: anywhere; }
+.fish-trophy-phrases li.is-locked { color: #8d87aa; background: #79739914; letter-spacing: 2px; }
 .fishing-game[data-view="map"] .fish-dev, .fishing-game[data-view="map"] .fish-help-toggle,
 .fishing-game[data-view="home"] .fish-dev, .fishing-game[data-view="home"] .fish-help-toggle,
 .fishing-game[data-view="shop"] .fish-dev, .fishing-game[data-view="shop"] .fish-hud,
@@ -64,6 +67,10 @@
 .fish-result p { max-width: 230px; font-size: 10px; line-height: 1.5; margin: 0 0 16px; color: #73877b; }
 .fish-again { width: auto; min-height: 38px; justify-content: center; padding: 9px 22px; }
 .fish-again { border: 1px solid #9fc7b7; border-radius: 22px; color: #f1ffe1; background: #356b61; font-size: 12px; }
+.fish-catch-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; width: min(100%, 260px); }
+.fish-catch-choices button { min-height: 42px; padding: 9px 13px; border: 1px solid #fff9; border-radius: 17px; color: #fff8e8; background: linear-gradient(135deg, #5d69bc, #8a67ba); font-size: 11px; }
+.fish-catch-choices button:last-child { color: #51436e; background: linear-gradient(135deg, #ffe79e, #f3a69c); }
+.fish-result-loader, .fish-pause-ring { display: block; width: 26px; height: 26px; border: 2px solid #fff7; border-top-color: #625a9e; border-radius: 50%; animation: fish-spin 1s linear infinite; }
 .fish-hud { position: absolute; inset: 14px 14px auto; display: flex; justify-content: space-between; align-items: center; z-index: 4; pointer-events: none; }
 .fish-count { padding: 7px 12px; background: #253d4466; color: #fff7dc; border: 1px solid #fff3; border-radius: 20px; font-size: 15px; font-weight: 700; }
 .fish-count small { font-size: 8px; letter-spacing: 1px; margin-left: 3px; }
@@ -87,6 +94,7 @@
 @media (max-width: 350px) { .fish-result { inset: 14% 7%; padding: 10px; } .fish-portrait { margin: 6px 0; } .fish-result p { margin-bottom: 8px; font-size: 9px; } }
 .fish-pause { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #224f56b8; color: #fff0d5; font: 26px Georgia, serif; backdrop-filter: blur(5px); }
 .fish-pause span { margin: 10px 20px; font: 11px var(--font-sans), sans-serif; text-align: center; }
+.fish-pause .fish-pause-ring { width: 34px; height: 34px; margin: 0; }
 .fish-shimmer { animation: fish-shimmer 4s ease-in-out infinite alternate; }
 .fish-reeds { transform-origin: 20px 500px; animation: fish-reeds 5s ease-in-out infinite alternate; }
 .fish-ripple { transform-box: fill-box; transform-origin: center; animation: fish-ripple 2s ease-out infinite; }
@@ -96,6 +104,7 @@
 @keyframes fish-shimmer { from { opacity: .25; } to { opacity: .65; } }
 @keyframes fish-reeds { from { transform: rotate(-1deg); } to { transform: rotate(2deg); } }
 @keyframes fish-ripple { from { transform: scale(.55); opacity: .7; } to { transform: scale(1.8); opacity: 0; } }
+@keyframes fish-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .fishing-game, .fishing-game * { animation: none !important; transition: none !important; } }
 @media (max-width: 430px) {
   .fish-map-heading { margin-top: 58px; }

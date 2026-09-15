@@ -49,7 +49,8 @@ export function lakeScene() {
     <path class="fish-scarf" d="M378 383q20 0 24 12l-14-1 3 11q-15-5-17-19" fill="#ed789d"/><path d="m346 383 18 8 20-14" fill="none" stroke="#ed789d" stroke-width="7"/>
   </g>
   <g class="fish-rod"><path d="M${hand.x} ${hand.y}Q263 272 ${tip.x} ${tip.y}" fill="none" stroke="#494277" stroke-width="4" stroke-linecap="round"/><path d="m${hand.x} ${hand.y}-9-17" stroke="#ffc48e" stroke-width="7" stroke-linecap="round"/></g><circle cx="${hand.x}" cy="${hand.y}" r="6" fill="#dfcff4"/></g>
-  <path class="fish-line" d="M${tip.x} ${tip.y}Q174 330 ${cast.x} ${cast.y}" fill="none" stroke="#fff7d7" stroke-width="1.2" opacity="0"/>
+    <path class="fish-line" d="M${tip.x} ${tip.y}Q174 330 ${cast.x} ${cast.y}" fill="none" stroke="#fff7d7" stroke-width="1.2" opacity="0"/>
+    <g class="fish-broken-hook" opacity="0" fill="none" stroke="#fff7d7" stroke-width="1.7" stroke-linecap="round"><path d="M0-8v10c0 9 12 9 12 0"/><path d="m12 2-4 2"/></g>
   <g class="fish-pull-wake" opacity="0" fill="none" stroke="#c8f8e8" stroke-linecap="round"><path d="M21-8q24-10 48 0"/><path d="M27 1q31-8 61 2"/><path d="M19 10q23 9 47 2"/></g>
   <g class="fish-approach" opacity="0"><ellipse cx="0" cy="0" rx="23" ry="9" fill="#173d67" opacity=".72"/><path d="m19 0 16-10v20z" fill="#173d67" opacity=".68"/><path d="M-12-1q7-8 14 0" fill="none" stroke="#8ee9d3" stroke-width="1.5"/><circle cx="-15" cy="-2" r="1.5" fill="#fff3bd"/></g>
   <g class="fish-bubbles" fill="none" stroke="#c5f5d7" stroke-width="1.7" opacity="0"><circle cx="-18" cy="4" r="4"/><circle cx="9" cy="-6" r="6"/><circle cx="23" cy="9" r="3"/></g>

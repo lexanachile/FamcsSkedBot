@@ -1,6 +1,6 @@
-import { lakeScene } from './scene.js?v=66';
+import { lakeScene } from './scene.js?v=68';
 import { createFight, advance, strike, displayedProgress, REST_MS } from './engine.js?v=62';
-import { createProgress } from './progress.js?v=62';
+import { createProgress } from './progress.js?v=68';
 import { setupEnvironment } from './environment.js?v=55';
 import { bindStrikeInput } from './input.js?v=67';
 import { getLocation, worldMapMarkup } from './locations.js?v=65';
@@ -64,11 +64,11 @@ export function mountFishing(host) {
       <div class="fish-location-name" hidden></div>
       <div class="fish-dev"><button type="button" class="fish-dev-toggle" aria-label="Настройки разработчика" aria-expanded="false"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m8 6-6 6 6 6m8-12 6 6-6 6m-3-16-2 20"/></svg></button><div class="fish-dev-panel" hidden><label>Время<select name="fish-period"><option value="">Минск · авто</option><option value="morning">Утро</option><option value="day">День</option><option value="evening">Вечер</option><option value="night">Ночь</option></select></label><label>Погода<select name="fish-rain"><option value="">Минск · авто</option><option value="rain">Дождь</option><option value="dry">Без дождя</option></select></label><label>Улов<select name="fish-dev-catch">${optionsMarkup(devCatchOptions)}</select></label><label>Удочка<select name="fish-dev-rod">${optionsMarkup(devRodOptions)}</select></label><label>Прикормка<select name="fish-dev-bait">${optionsMarkup(devBaitOptions)}</select></label><small>Dev-предметы не покупаются и не расходуются.</small><small class="fish-weather-error">Погода недоступна; сохранено последнее состояние.</small></div></div>
       <div class="fish-spots" aria-label="Место заброса"><button data-spot="deep" class="fish-spot fish-spot-deep" aria-label="Забросить на глубину"><span>+</span></button></div>
-      <div class="fish-check" hidden><span class="fish-check-label">ПОПАДИ<br>В СЕКТОР</span><div class="fish-track"><div class="fish-zones"></div><div class="fish-cursor"></div></div><span class="fish-round"></span></div>
-      <div class="fish-result" hidden><span class="fish-eyebrow">УЛОВ</span><div class="fish-portrait">?</div><h3></h3><p></p><button type="button" class="fish-again">Ещё заброс</button></div>
-      <div class="fish-pause" hidden>Тихая пауза<span>Вернёмся к клёву, когда вы вернётесь.</span></div>
-      <div class="fish-play-hud"><span class="fish-status" role="status" aria-live="polite"></span><span class="fish-hint" hidden></span><div class="fish-tension" hidden><span>РЫБА</span><div role="progressbar" aria-label="Прогресс вываживания" aria-valuemin="0" aria-valuemax="100"><i></i></div><span>ВЫ</span></div></div>
-      <button class="fish-action" type="button" disabled aria-label="Подсечь">Подсечь</button>
+      <div class="fish-check" hidden><span class="fish-check-mark" aria-hidden="true">⌁</span><div class="fish-track"><div class="fish-zones"></div><div class="fish-cursor"></div></div><span class="fish-round"></span></div>
+      <div class="fish-result" hidden><div class="fish-portrait"><span class="fish-result-loader"></span></div><h3></h3><p></p><div class="fish-catch-choices" hidden><button type="button" data-catch-choice="release">Выпустить</button><button type="button" data-catch-choice="eat">Съесть</button></div><button type="button" class="fish-again" aria-label="Ещё заброс">↗</button></div>
+      <div class="fish-pause" hidden><span class="fish-pause-ring" aria-hidden="true"></span></div>
+      <div class="fish-play-hud"><div class="fish-tension" hidden><span aria-hidden="true">≈</span><div role="progressbar" aria-label="Прогресс вываживания" aria-valuemin="0" aria-valuemax="100"><i></i></div><span aria-hidden="true">◆</span></div></div>
+      <button class="fish-action" type="button" disabled aria-label="Подсечь"><span aria-hidden="true">⌁</span></button>
       <div class="fish-game-toast" role="status" aria-live="polite" hidden></div>
       <section class="fish-help" role="dialog" aria-modal="true" aria-label="Как играть" hidden><button type="button" class="fish-help-close" aria-label="Закрыть помощь">×</button><h2>Как играть</h2><p>Выберите локацию, снаряжение и забросьте на глубину. Маленькой рыбке нужен один точный тап в любом месте сцены.</p><p>Редкий улов требует нескольких попаданий. Удочки замедляют индикатор, расширяют сектора и смягчают рывки. Прикормка расходуется по одной порции, ускоряет клёв и повышает шанс редкой встречи.</p></section>
     </div>
@@ -89,8 +89,8 @@ export function mountFishing(host) {
   let landingStart = { x: 92, y: 454 };
   let selectedSpot = 'deep', currentLocation = 'crossing';
   let open = true, visible = true, raf = 0, last = 0, savedRound = 0;
-  let progressState = { game: { wallet: { smallFish: 0 }, fish: {}, inventory: { rods: ['twig'], baits: {} }, equipped: { rod: 'twig', bait: null } }, pending: 0, cards: [], catalog: null, error: '' };
-  let retryReveal = null, toastTimer = 0, lastSyncMessage = '';
+  let progressState = { game: { wallet: { smallFish: 0 }, fish: {}, inventory: { rods: ['twig'], baits: {} }, equipped: { rod: 'twig', bait: null } }, pending: 0, decision: null, cards: [], catalog: null, error: '' };
+  let retryReveal = null, currentCatch = null, toastTimer = 0, lastSyncMessage = '';
   function toast(message, duration = 2800) {
     clearTimeout(toastTimer);
     const element = q('.fish-game-toast');
@@ -107,14 +107,13 @@ export function mountFishing(host) {
     q('.fish-count').firstChild.textContent = `${value.game.wallet.smallFish} `;
     q('.fish-store-wallet').textContent = `${value.game.wallet.smallFish} ≈`;
     q('.fish-loadout-wallet').textContent = `${value.game.wallet.smallFish} ≈`;
-    const syncMessage = value.error || (value.pending ? `Улов ждёт синхронизации: ${value.pending}` : 'Улов сохранён');
+    const syncMessage = value.error;
     if (syncMessage !== lastSyncMessage) { lastSyncMessage = syncMessage; toast(syncMessage, value.error ? 4500 : 2400); }
     if (root.dataset.view === 'home') renderTrophies();
     if (value.catalog && root.dataset.view === 'shop') drawShop();
     if (value.catalog && root.dataset.view === 'loadout') drawLoadout();
   });
-  const status = (title, hint) => { q('.fish-status').textContent = title; q('.fish-hint').textContent = hint; q('.fish-hint').hidden = !hint; };
-  const action = (_label, disabled) => { q('.fish-action').textContent = disabled ? 'Тянем' : 'Подсечь'; q('.fish-action').disabled = disabled; };
+  const action = (_label, disabled) => { q('.fish-action').disabled = disabled; };
   function setState(next) { state = next; elapsed = 0; root.dataset.state = next; }
   function zones() {
     q('.fish-zones').replaceChildren(...fight.zones.map(zone => {
@@ -146,11 +145,16 @@ export function mountFishing(host) {
       }
       const copy = document.createElement('div');
       const name = document.createElement('h3'); name.textContent = caught ? (item.name || local?.name || 'Улов') : 'Ещё не пойман';
-      const amount = document.createElement('p'); amount.textContent = caught ? `В коллекции: ${caught}` : '';
+      const amount = document.createElement('p'); amount.textContent = caught ? `Поймано: ${caught}` : '';
       const owners = document.createElement('p'); owners.textContent = `Есть у ${item.owners} рыбаков`;
       const tags = document.createElement('p');
       if (item.owners > 0 && item.owners < 3) tags.textContent = item.usernames.map(tag => tag ? '@' + tag : 'Рыбак без тега').join(', ');
-      copy.append(name, amount, owners, tags); card.append(portrait, copy); return card;
+      const phrases = document.createElement('ul'); phrases.className = 'fish-trophy-phrases';
+      for (const phrase of item.phrases || []) {
+        const row = document.createElement('li'); row.className = phrase.locked ? 'is-locked' : '';
+        row.textContent = phrase.locked ? '◆ ······' : `«${phrase.text}»`; phrases.append(row);
+      }
+      copy.append(name, amount, phrases, owners, tags); card.append(portrait, copy); return card;
     }));
   }
   const storeMessage = (selector, message = '') => { q(selector).textContent = message; };
@@ -212,8 +216,21 @@ export function mountFishing(host) {
     q('.fish-spots').hidden = false;
     q('.fish-world-map').hidden = true; q('.fish-home').hidden = true; q('.fish-shop').hidden = true; q('.fish-loadout').hidden = true; q('.fish-map-return').hidden = false;
     locationNotice.show(location.name);
-    status('', '');
+    if (progressState.decision) {
+      setState('result'); q('.fish-spots').hidden = true; q('.fish-result').hidden = false; showCatch(progressState.decision);
+    }
     syncPause();
+  }
+  function showCatch(result) {
+    currentCatch = result;
+    const item = result.catch, portrait = q('.fish-portrait');
+    portrait.replaceChildren();
+    portrait.textContent = item.kind === 'small' ? '🐟' : '◆';
+    if (item.image) { const img = document.createElement('img'); img.alt = item.name; img.src = item.image; portrait.replaceChildren(img); }
+    q('.fish-result h3').textContent = item.name;
+    q('.fish-result p').textContent = item.caption || '';
+    q('.fish-catch-choices').hidden = !result.duplicate || Boolean(result.choice);
+    q('.fish-again').hidden = result.duplicate && !result.choice;
   }
   async function finish() {
     const version = session;
@@ -221,62 +238,65 @@ export function mountFishing(host) {
     q('.fish-check').hidden = true;
     q('.fish-approach').style.opacity = '0'; q('.fish-pull-wake').style.opacity = '0'; q('.fish-line').style.opacity = '0';
     q('.fish-result').hidden = false;
-    const caught = fight.outcome === 'caught';
-    let item = { name: 'Улов пойман', image: null, caption: 'Раскрываем улов…' };
-    const portrait = q('.fish-portrait'); portrait.replaceChildren();
-    portrait.textContent = caught ? '?' : '≈';
-    q('.fish-result h3').textContent = caught ? item.name : 'Уплыла. Бывает.';
-    q('.fish-result p').textContent = caught ? item.caption : 'Попробуйте ещё раз.';
-    status(caught ? 'Улов пойман' : 'Рыба уплыла', '');
-    action('Ещё заброс ↗', false);
-    if (caught && encounter) {
+    q('.fish-result h3').textContent = '';
+    q('.fish-result p').textContent = '';
+    q('.fish-catch-choices').hidden = true;
+    q('.fish-again').hidden = true;
+    const portrait = q('.fish-portrait'); portrait.innerHTML = '<span class="fish-result-loader"></span>';
+    if (encounter) {
       const token = encounter.token;
       async function reveal() {
         q('.fish-again').disabled = true;
         try {
           const result = await progress.reveal(token);
           if (version !== session || state !== 'result') return;
-          item = result.catch;
-          q('.fish-result h3').textContent = item.name;
-          q('.fish-result p').textContent = item.caption;
-          portrait.textContent = item.kind === 'small' ? '🐟' : '?';
-          if (item.image) { const img = document.createElement('img'); img.alt = item.name; img.src = item.image; portrait.replaceChildren(img); }
-          retryReveal = null; q('.fish-again').textContent = 'Ещё заброс';
+          retryReveal = null;
+          if (result.catch.kind === 'small') { reset(); return; }
+          showCatch(result);
         } catch (error) {
-          if (version === session) { q('.fish-result p').textContent = error.message; retryReveal = reveal; q('.fish-again').textContent = 'Повторить'; }
+          if (version === session) { q('.fish-result p').textContent = error.message; retryReveal = reveal; q('.fish-again').hidden = false; }
         } finally { if (version === session) q('.fish-again').disabled = false; }
       }
       await reveal();
     }
   }
 
+  async function chooseCatch(choice) {
+    if (!currentCatch) return;
+    q('.fish-catch-choices').querySelectorAll('button').forEach(button => { button.disabled = true; });
+    try { await progress.resolveCatch(currentCatch, choice); reset(); }
+    catch (error) { q('.fish-result p').textContent = error.message; q('.fish-catch-choices').querySelectorAll('button').forEach(button => { button.disabled = false; }); }
+  }
+
   function reset() {
-    session++; encounter = null; retryReveal = null; strikePulse = 0; q('.fish-again').disabled = false; q('.fish-again').textContent = 'Ещё заброс'; delete root.dataset.pull;
+    session++; encounter = null; retryReveal = null; currentCatch = null; strikePulse = 0; q('.fish-again').disabled = false; q('.fish-again').hidden = false; q('.fish-catch-choices').hidden = true; delete root.dataset.pull;
     setState('idle'); q('.fish-result').hidden = true; q('.fish-check').hidden = true; q('.fish-tension').hidden = true;
     q('.fish-spots').hidden = root.dataset.view !== 'fishing';
-    for (const selector of ['.fish-float', '.fish-line', '.fish-bubbles', '.fish-approach', '.fish-pull-wake']) q(selector).style.opacity = '0';
-    status('', ''); action('Подсечь', true);
+    for (const selector of ['.fish-float', '.fish-line', '.fish-bubbles', '.fish-approach', '.fish-pull-wake', '.fish-broken-hook']) q(selector).style.opacity = '0';
+    action('', true);
   }
   async function cast(spot) {
     if (state !== 'idle') return;
     root.focus({ preventScroll: true });
     selectedSpot = spot;
     setState('preparing'); q('.fish-spots').hidden = true;
-    status('Готовим заброс…', '');
     const version = ++session;
     try {
       encounter = await progress.cast(selectedSpot, currentLocation, { devCatch: q('[name="fish-dev-catch"]').value || undefined, devRod: q('[name="fish-dev-rod"]').value || undefined, devBait: q('[name="fish-dev-bait"]').value || undefined });
       if (version !== session) return;
       if (!encounter.success) throw new Error('No encounter');
-    } catch (error) { if (version === session) { reset(); status(error.message, ''); } return; }
+    } catch (error) { if (version === session) { reset(); toast(error.message, 4500); } return; }
     point = { ...FISHING_RIG.cast };
     waitMs = (2800 + Math.random() * 3000) * (encounter.traits.waitScale || 1);
     q('.fish-spots').hidden = true;
     q('.fish-line').setAttribute('d', linePath(FISHING_RIG.tip, point, .5));
-    setState('casting'); status('Красивый заброс', 'На глубине свои секреты…'); action('Леска в полёте…', true); start();
+    setState('casting'); action('', true); start();
   }
   function concludeFight() {
-    if (fight.outcome !== 'caught') { void finish(); return; }
+    if (fight.outcome !== 'caught') {
+      landingStart = { ...fishPosition }; setState('escaping');
+      q('.fish-check').hidden = true; q('.fish-tension').hidden = true; q('.fish-broken-hook').style.opacity = '1'; action('', true); return;
+    }
     landingStart = { ...fishPosition }; strikePulse = 1; setState('landing');
     q('.fish-check').hidden = true; q('.fish-tension').hidden = true; action('', true);
   }
@@ -290,7 +310,6 @@ export function mountFishing(host) {
     const check = q('.fish-check');
     check.classList.remove('is-tap-hit', 'is-tap-miss'); void check.offsetWidth;
     check.classList.add(result === 'hit' ? 'is-tap-hit' : 'is-tap-miss');
-    status(result === 'hit' ? (fight.quick ? 'Точно!' : 'Есть контакт!') : 'Чуть мимо', result === 'hit' ? (fight.quick ? 'Маленькая рыбка уже на крючке.' : 'Держите ритм. Можно поймать следующий сектор.') : (fight.quick ? 'Дождитесь светлого сектора и тапните ещё раз.' : 'Ловите светлые участки, не спешите.'));
     [...q('.fish-zones').children].forEach((el, i) => el.classList.toggle('is-hit', fight.zones[i].hit));
     showProgress(); if (fight.outcome) concludeFight();
   }
@@ -302,10 +321,10 @@ export function mountFishing(host) {
       const t = Math.min(1, elapsed / 1100);
       const x = FISHING_RIG.tip.x + (point.x - FISHING_RIG.tip.x) * t, y = FISHING_RIG.tip.y + (point.y - FISHING_RIG.tip.y) * t - Math.sin(t * Math.PI) * 105;
       q('.fish-float').style.opacity = '1'; q('.fish-float').setAttribute('transform', `translate(${x} ${y})`);
-      if (t === 1) { q('.fish-line').style.opacity = '.7'; setState('waiting'); status('Теперь просто тишина', 'Следите за поплавком. Кто-то уже рядом.'); action('Ждём поклёвку…', true); }
+      if (t === 1) { q('.fish-line').style.opacity = '.7'; setState('waiting'); action('', true); }
     } else if (state === 'waiting' && elapsed >= waitMs) {
       setState('approach'); fishPosition = { x: point.x + 20, y: point.y + 12 }; root.dataset.pull = 'bite';
-      q('.fish-float').style.opacity = '0'; q('.fish-bubbles').setAttribute('transform', `translate(${fishPosition.x} ${fishPosition.y})`); q('.fish-bubbles').style.opacity = '1'; status('Клюёт!', 'Рыба уходит влево. Енот держит леску и готовится к подсечке.');
+      q('.fish-float').style.opacity = '0'; q('.fish-bubbles').setAttribute('transform', `translate(${fishPosition.x} ${fishPosition.y})`); q('.fish-bubbles').style.opacity = '1';
     } else if (state === 'approach') {
       const t = Math.min(1, elapsed / 2200);
       const pull = 1 - Math.pow(1 - t, 3);
@@ -315,7 +334,7 @@ export function mountFishing(host) {
       q('.fish-bubbles').setAttribute('transform', `translate(${fishPosition.x + 18} ${fishPosition.y + 5})`);
       if (t === 1) {
         if (encounter.traits.challenge === 'auto') { fight = { outcome: 'caught' }; q('.fish-bubbles').style.opacity = '0'; void finish(); }
-        else { fight = createFight(Math.random, encounter.traits); q('.fish-track').style.setProperty('--fish-divisions', fight.divisions); zones(); showProgress(); setState('fight'); root.dataset.pull = 'fight'; q('.fish-check').hidden = false; q('.fish-tension').hidden = false; q('.fish-bubbles').style.opacity = '0'; status(fight.quick ? 'Один точный тап' : 'Тянем аккуратно', fight.quick ? 'Коснитесь в любом месте экрана, когда индикатор окажется в светлом секторе.' : 'Коснитесь в любом месте экрана, когда индикатор внутри светлого сектора.'); action('Подсечь · ПРОБЕЛ', false); }
+        else { fight = createFight(Math.random, encounter.traits); q('.fish-track').style.setProperty('--fish-divisions', fight.divisions); zones(); showProgress(); setState('fight'); root.dataset.pull = 'fight'; q('.fish-check').hidden = false; q('.fish-tension').hidden = false; q('.fish-bubbles').style.opacity = '0'; action('', false); }
       }
     } else if (state === 'fight') {
       const previousPhase = fight.phase;
@@ -333,16 +352,21 @@ export function mountFishing(host) {
       q('.fish-check').classList.toggle('is-resting', resting);
       q('.fish-cursor').style.bottom = `${Math.min(100, fight.elapsed / fight.passMs * 100)}%`;
       q('.fish-round').textContent = resting ? `${Math.ceil((REST_MS - fight.elapsed) / 1000)} с` : `0${fight.round}`;
-      if (previousPhase !== fight.phase) {
-        status(resting ? 'Вываживаем…' : 'Новый рывок!', resting ? 'Енот тянет удочку на себя.' : 'Индикатор идёт вверх. Ловите светлые сектора.');
-        action(resting ? 'Рыба набирается сил…' : 'Подсечь · ПРОБЕЛ', resting);
-      }
+      if (previousPhase !== fight.phase) action('', resting);
     } else if (state === 'landing') {
       const t = Math.min(1, elapsed / 380), lift = 1 - Math.pow(1 - t, 2);
       fishPosition = { x: landingStart.x + (160 - landingStart.x) * lift, y: landingStart.y - 36 * lift };
       q('.fish-approach').setAttribute('transform', `translate(${fishPosition.x} ${fishPosition.y})`);
       q('.fish-pull-wake').setAttribute('transform', `translate(${fishPosition.x} ${fishPosition.y})`); q('.fish-pull-wake').style.opacity = String(.6 * (1 - t));
       if (t === 1) void finish();
+    } else if (state === 'escaping') {
+      const t = Math.min(1, elapsed / 720), rush = 1 - Math.pow(1 - t, 3);
+      fishPosition = { x: landingStart.x - 190 * rush, y: landingStart.y + Math.sin(t * Math.PI * 4) * 5 };
+      q('.fish-approach').setAttribute('transform', `translate(${fishPosition.x} ${fishPosition.y})`);
+      q('.fish-approach').style.opacity = String(1 - Math.max(0, (t - .7) / .3));
+      q('.fish-pull-wake').setAttribute('transform', `translate(${fishPosition.x} ${fishPosition.y})`);
+      q('.fish-pull-wake').style.opacity = String(.7 * (1 - t));
+      if (t === 1) reset();
     }
     animatePose(dt);
     environmentTime += dt;
@@ -362,10 +386,16 @@ export function mountFishing(host) {
     const { shiftX, shiftY, lean, rodAngle } = displayedPose;
     q('.fish-angler').setAttribute('transform', `translate(${shiftX} ${shiftY}) rotate(${lean} ${FISHING_RIG.body.x} ${FISHING_RIG.body.y})`);
     q('.fish-rod').setAttribute('transform', `rotate(${rodAngle} ${FISHING_RIG.hand.x} ${FISHING_RIG.hand.y})`);
-    if (state === 'waiting' || state === 'approach' || state === 'fight' || state === 'landing') {
+    if (state === 'waiting' || state === 'approach' || state === 'fight' || state === 'landing' || state === 'escaping') {
       const tip = rodTip(rodAngle, lean, shiftX, shiftY);
-      const end = state === 'waiting' ? point : { x: fishPosition.x - 22, y: fishPosition.y };
-      q('.fish-line').style.opacity = state === 'waiting' ? '.7' : '.92';
+      let end = state === 'waiting' ? point : { x: fishPosition.x - 22, y: fishPosition.y };
+      if (state === 'escaping') {
+        const snap = Math.min(1, elapsed / 720), recoil = 1 - Math.pow(1 - snap, 2);
+        end = { x: landingStart.x - 22 + (tip.x + 26 - (landingStart.x - 22)) * recoil, y: landingStart.y + (tip.y + 48 - landingStart.y) * recoil };
+        q('.fish-broken-hook').setAttribute('transform', `translate(${end.x} ${end.y}) rotate(${snap * 150})`);
+        q('.fish-broken-hook').style.opacity = String(1 - snap);
+      }
+      q('.fish-line').style.opacity = state === 'waiting' ? '.7' : state === 'escaping' ? String(Math.max(0, 1 - elapsed / 720)) : '.92';
       q('.fish-line').setAttribute('d', linePath(tip, end, targetPose.pulling ? .96 : .55));
     }
   }
@@ -384,6 +414,10 @@ export function mountFishing(host) {
   q('.fish-loadout-back').addEventListener('click', closeLoadout);
   bindStrikeInput(q('.fish-action'), q('.fish-stage'), root, hit, () => state === 'fight');
   q('.fish-again').addEventListener('click', () => retryReveal ? retryReveal() : reset());
+  q('.fish-catch-choices').addEventListener('click', event => {
+    const button = event.target.closest('[data-catch-choice]');
+    if (button) void chooseCatch(button.dataset.catchChoice);
+  });
   q('.fish-save').addEventListener('click', async () => { await progress.flush(); await progress.collection().catch(() => {}); });
   const closeHelp = () => { q('.fish-help').hidden = true; q('.fish-help-toggle').setAttribute('aria-expanded', 'false'); };
   q('.fish-help-toggle').addEventListener('click', event => { const help = q('.fish-help'); help.hidden = false; event.currentTarget.setAttribute('aria-expanded', 'true'); q('.fish-help-close').focus(); });
