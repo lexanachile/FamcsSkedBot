@@ -1,4 +1,4 @@
-import { FISHING_RIG } from './rig.js?v=80';
+import { FISHING_RIG } from './rig.js?v=82';
 
 export function lakeScene() {
   const { hand, tip, cast } = FISHING_RIG;
@@ -38,7 +38,9 @@ export function lakeScene() {
     <path d="M389 431q45 3 35-33-4-14-18-12" fill="#b5a6df" stroke="#514b83" stroke-width="3"/><path d="m407 390 12 11m-17 1 19 13m-20 0 15 15" stroke="#615487" stroke-width="9"/>
     <path class="fish-boot-left" d="m343 446-4 28q14 9 28 0l-2-29" fill="#48427b"/><path class="fish-boot-right" d="m376 445 2 27q13 7 23-1l-9-33" fill="#48427b"/>
     <path d="M340 371q-15 28-10 76 31 17 68-3l-11-75z" fill="url(#fish-coat)" stroke="#efa561" stroke-width="2"/><path d="m367 383 3 66m-29-31 17-2v15h-16" fill="none" stroke="#e99662" stroke-width="2"/><circle cx="375" cy="409" r="2" fill="#fff0b1"/>
-    <path d="M344 399q-14 5-24-17" fill="none" stroke="#ffd06d" stroke-width="18" stroke-linecap="round"/><path d="m321 382-7-8" stroke="#d8caf0" stroke-width="11" stroke-linecap="round"/>
+    <path class="fish-arm-sleeve" d="M347 386Q336 383 330 397Q320 390 ${hand.x} ${hand.y}" fill="none" stroke="#ffd06d" stroke-width="19" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M345 393Q336 389 330 401" fill="none" stroke="#e99a62" stroke-width="2.5" stroke-linecap="round" opacity=".72"/>
+    <path class="fish-arm-cuff" d="M327 378Q322 376 318 373" fill="none" stroke="#f5e6ff" stroke-width="11" stroke-linecap="round"/>
     <path d="m339 341-5-34q15-8 28 14m14 0 18-21q14 9 7 37" fill="#c9baed" stroke="#4d4b77" stroke-width="3"/><path d="m340 323 1-10 12 12m28 0 10-16 3 18" fill="#62678b"/>
     <path d="M334 340q26-27 58-4 23 24-8 40-27 14-47-8-12-13-3-28" fill="url(#fish-fur)"/>
     <path d="M337 347q10-14 27-2l-6 16q-19 5-21-14m31-3q16-15 26 2-2 18-20 14z" fill="#494277"/>
@@ -48,7 +50,8 @@ export function lakeScene() {
     <path d="m365 370 4 2 5-3" fill="none" stroke="#695884" stroke-width="1.4" stroke-linecap="round"/><path d="m345 316 11-4" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".7"/>
     <path class="fish-scarf" d="M378 383q20 0 24 12l-14-1 3 11q-15-5-17-19" fill="#ed789d"/><path d="m346 383 18 8 20-14" fill="none" stroke="#ed789d" stroke-width="7"/>
   </g>
-  <g class="fish-rod"><path d="M${hand.x} ${hand.y}Q263 272 ${tip.x} ${tip.y}" fill="none" stroke="#494277" stroke-width="4" stroke-linecap="round"/><path d="m${hand.x} ${hand.y}-9-17" stroke="#ffc48e" stroke-width="7" stroke-linecap="round"/></g><circle cx="${hand.x}" cy="${hand.y}" r="6" fill="#dfcff4"/></g>
+  <g class="fish-rod"><path d="M${hand.x} ${hand.y}Q263 272 ${tip.x} ${tip.y}" fill="none" stroke="#494277" stroke-width="4" stroke-linecap="round"/><path d="m${hand.x} ${hand.y}-9-17" stroke="#ffc48e" stroke-width="7" stroke-linecap="round"/></g>
+  <g class="fish-grip-hand" transform="rotate(-32 ${hand.x} ${hand.y})"><ellipse cx="${hand.x}" cy="${hand.y}" rx="8" ry="6.5" fill="url(#fish-fur)" stroke="#655b8f" stroke-width="1.5"/><path d="M${hand.x - 3} ${hand.y - 4}q3 4 7 6M${hand.x} ${hand.y - 5}q2 4 6 5" fill="none" stroke="#8a7bb1" stroke-width="1.2" stroke-linecap="round"/></g></g>
     <path class="fish-line" d="M${tip.x} ${tip.y}Q174 330 ${cast.x} ${cast.y}" fill="none" stroke="#fff7d7" stroke-width="1.2" opacity="0"/>
     <g class="fish-broken-hook" opacity="0" fill="none" stroke="#fff7d7" stroke-width="1.7" stroke-linecap="round"><path d="M0-8v10c0 9 12 9 12 0"/><path d="m12 2-4 2"/></g>
   <g class="fish-pull-wake" opacity="0" fill="none" stroke="#c8f8e8" stroke-linecap="round"><path d="M21-8q24-10 48 0"/><path d="M27 1q31-8 61 2"/><path d="M19 10q23 9 47 2"/></g>

@@ -1,4 +1,4 @@
-import { requestJson } from './request.js?v=80';
+import { requestJson } from './request.js?v=82';
 export const API_ROOT = ['localhost', '127.0.0.1'].includes(globalThis.location?.hostname)
   ? 'http://127.0.0.1:8787/api' : 'https://famcsschedulebot.yarashsei.workers.dev/api';
 export function accountHint() {
