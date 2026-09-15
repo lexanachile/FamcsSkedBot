@@ -1,15 +1,17 @@
-import { createLessonColorRow } from "./src/lesson-color-picker.js?v=41";
+import { createLessonColorRow } from "./src/lesson-color-picker.js?v=48";
 import {
   getStoredValue as safeGetStorage,
   readStoredJson as readJsonStorage,
   removeStoredValue as safeRemoveStorage,
   setStoredValue as safeSetStorage,
   writeStoredJson as writeJsonStorage,
-} from "./src/storage.js?v=41";
-import { initializeTelegramWebApp, triggerTelegramHaptic } from "./src/telegram.js?v=41";
-import { setStaleNotice, showToast } from "./src/feedback.js?v=41";
-import { setupScheduleModes, filterSubgroup, teacherSchedule } from "./src/schedule-modes.js?v=41";
-import { requestJson } from "./src/request.js?v=41";
+} from "./src/storage.js?v=45";
+import { initializeTelegramWebApp, triggerTelegramHaptic } from "./src/telegram.js?v=45";
+import { setStaleNotice, showToast } from "./src/feedback.js?v=45";
+import { setupScheduleModes, filterSubgroup, teacherSchedule } from "./src/schedule-modes.js?v=45";
+import { requestJson } from "./src/request.js?v=45";
+import { setupFishingLauncher } from "./src/fishing-loader.js?v=49";
+import { setupCloudColors } from "./src/cloud-colors.js?v=48";
 
 let scheduleMode = null;
 let teacherRequest = 0;
@@ -62,6 +64,7 @@ const GROUPS_ENDPOINT = "/api/groups";
 const CACHE_SCHEMA_VERSION = 1;
 const INACTIVITY_REFRESH_MS = 15 * 60 * 1000;
 const LESSON_COLORS_STORAGE_KEY = "lessonColors:v1";
+let cloudColors = null;
 const LESSON_COLOR_OPTIONS = [
   { id: "default", label: "Обычный цвет", color: "#0b0b0c" },
   { id: "red", label: "Красный", color: "#FF5F56" },
@@ -130,8 +133,10 @@ const appState = {
 };
 
 function initApp() {
+  setupFishingLauncher();
   console.log("Инициализация приложения...");
   initializeTelegramWebApp();
+  startCloudColors();
   setupEventListeners();
   setupCustomSelects();
   modesController = setupScheduleModes({ apiBase: TEACHER_API_BASE, onTeacher: loadTeacher,
@@ -216,8 +221,13 @@ function lessonColorKey(title, scope) {
 }
 
 function getLessonColors() {
+  if (cloudColors) return cloudColors.getColors();
   const stored = readJsonStorage(LESSON_COLORS_STORAGE_KEY);
   return stored && typeof stored === "object" && !Array.isArray(stored) ? stored : {};
+}
+
+function startCloudColors() {
+  if (!cloudColors) cloudColors = setupCloudColors(() => document.querySelectorAll('[data-lesson-color-key]').forEach(applyLessonEdge), showToast);
 }
 
 function getLessonColor(title, scope) {
@@ -235,6 +245,8 @@ function saveLessonColor(title, scope, color) {
   else delete colors[key];
   if (scope === "common") delete colors[normalizeLessonTitle(title)];
   writeJsonStorage(LESSON_COLORS_STORAGE_KEY, colors);
+  cloudColors?.edit(key, color || null);
+  if (scope === "common") cloudColors?.edit(normalizeLessonTitle(title), null);
 }
 
 function prepareLessonColor(card, title, scope) {
@@ -1444,6 +1456,7 @@ function escapeHtml(text) {
 }
 
 window.addEventListener('telegram-ready', initializeTelegramWebApp);
+window.addEventListener('telegram-ready', startCloudColors);
 window.addEventListener("error", (e) => {
   if (
     e.message &&

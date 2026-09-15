@@ -23,6 +23,13 @@
 
 [hidden] { display: none !important; }
 
+.fishing-invite { margin: 52px 0 28px; display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; }
+.fishing-invite p { margin: 0; font-size: 14px; color: var(--ink-soft); }
+.fishing-invite button { display: grid; place-items: center; width: 52px; height: 52px; border: 1px solid #3d514a; border-radius: 50%; background: #1c302a; color: #c6f5b3; cursor: pointer; }
+.fishing-invite button:disabled { opacity: .5; cursor: wait; }
+.fishing-invite button:focus-visible { outline: 2px solid #c6f5b3; outline-offset: 4px; }
+#fishing-load-status { color: var(--ink-soft); font-size: 12px; }
+
 .mode-section { margin-bottom: 24px; }
 .mode-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--mode-gap); width: 100%; max-width: calc(291px + var(--mode-gap) + var(--mode-gap)); margin-inline: auto; padding: 0; }
 .mode-option { display: grid; grid-template-columns: minmax(0, 1fr); gap: 7px; min-width: 0; }
@@ -504,8 +511,8 @@ body {
   flex-direction: row;
   align-items: center;
   justify-content: flex-start;
-  /* Левый край ряда дней + радиус скруглённого торца кнопки высотой 36px. */
-  padding-left: 18px;
+  /* Стандартный отступ от края экрана + 6px. */
+  padding-left: 6px;
   gap: 8px;
   margin-bottom: 0;
 }

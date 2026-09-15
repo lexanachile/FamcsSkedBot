@@ -1,4 +1,4 @@
-import { readStoredJson, writeStoredJson } from './storage.js?v=41';
+import { readStoredJson, writeStoredJson } from './storage.js?v=45';
 
 const RECENT_KEY = 'lessonRecentColors:v1';
 const HEX = /^#[0-9a-f]{6}$/i;
@@ -47,6 +47,7 @@ export function createLessonColorRow(title, scope, { options, getColor, applyCol
   const remember = color => {
     // All shade adjustments in one opening replace the same recent-color slot.
     writeStoredJson(RECENT_KEY, recentColors([color, ...sessionColors], options));
+    window.dispatchEvent(new CustomEvent('lesson-recent-changed', { detail: recentColors([color, ...sessionColors], options) }));
     refresh();
   };
   const plus = document.createElement('button');
