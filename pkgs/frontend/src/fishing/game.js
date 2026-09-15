@@ -3,7 +3,8 @@ import { createFight, advance, strike, displayedProgress, passPosition, REST_MS 
 import { createProgress } from './progress.js?v=69';
 import { setupEnvironment } from './environment.js?v=55';
 import { bindStrikeInput } from './input.js?v=67';
-import { withCatchChoice } from './catch-choice.js?v=71';
+import { bindCatchChoiceInput, withCatchChoice } from './catch-choice.js?v=73';
+import { ownerLine } from './collection.js?v=73';
 import { getLocation, worldMapMarkup } from './locations.js?v=65';
 import { devBaitOptions, devCatchOptions, devRodOptions, optionsMarkup, renderLoadout, renderShop, storeMarkup } from './storefront.js?v=64';
 
@@ -153,15 +154,13 @@ export function mountFishing(host) {
       const copy = document.createElement('div');
       const name = document.createElement('h3'); name.textContent = caught ? (item.name || local?.name || 'Улов') : 'Ещё не пойман';
       const amount = document.createElement('p'); amount.textContent = caught ? `Поймано: ${caught}` : '';
-      const owners = document.createElement('p'); owners.textContent = `Есть у ${item.owners} рыбаков`;
-      const tags = document.createElement('p');
-      if (item.owners > 0 && item.owners < 3) tags.textContent = item.usernames.map(tag => tag ? '@' + tag : 'Рыбак без тега').join(', ');
+      const owners = document.createElement('p'); owners.className = 'fish-trophy-owners'; owners.textContent = ownerLine(item);
       const phrases = document.createElement('ul'); phrases.className = 'fish-trophy-phrases';
       for (const phrase of item.phrases || []) {
         const row = document.createElement('li'); row.className = phrase.locked ? 'is-locked' : '';
         row.textContent = phrase.locked ? '◆ ······' : `«${phrase.text}»`; phrases.append(row);
       }
-      copy.append(name, amount, phrases, owners, tags); card.append(portrait, copy); return card;
+      copy.append(name, amount, phrases, owners); card.append(portrait, copy); return card;
     }));
   }
   const storeMessage = (selector, message = '') => { q(selector).textContent = message; };
@@ -433,10 +432,7 @@ export function mountFishing(host) {
   q('.fish-loadout-back').addEventListener('click', closeLoadout);
   bindStrikeInput(q('.fish-action'), q('.fish-stage'), root, hit, () => state === 'fight');
   q('.fish-again').addEventListener('click', () => retryReveal ? retryReveal() : reset());
-  q('.fish-catch-choices').addEventListener('click', event => {
-    const button = event.target.closest('[data-catch-choice]');
-    if (button) void chooseCatch(button.dataset.catchChoice);
-  });
+  bindCatchChoiceInput(q('.fish-catch-choices'), choice => { void chooseCatch(choice); });
   q('.fish-save').addEventListener('click', async () => { await progress.flush(); await progress.collection().catch(() => {}); });
   const closeHelp = () => { q('.fish-help').hidden = true; q('.fish-help-toggle').setAttribute('aria-expanded', 'false'); };
   q('.fish-help-toggle').addEventListener('click', event => { const help = q('.fish-help'); help.hidden = false; event.currentTarget.setAttribute('aria-expanded', 'true'); q('.fish-help-close').focus(); });

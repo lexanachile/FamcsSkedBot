@@ -40,6 +40,7 @@
 .fish-trophy-phrases { display: grid; gap: 4px; margin: 7px 0; padding: 0; list-style: none; }
 .fish-trophy-phrases li { padding: 8px 10px; border-radius: 11px; color: #48446e; background: #fff9; font: 700 clamp(15px, 3.7vw, 19px)/1.25 Georgia, serif; overflow-wrap: anywhere; }
 .fish-trophy-phrases li.is-locked { color: #8d87aa; background: #79739914; letter-spacing: 2px; }
+.fish-trophy .fish-trophy-owners { display: block; margin-top: 7px; overflow: visible; color: #736d91; font-size: 9px; line-height: 1.45; overflow-wrap: anywhere; -webkit-line-clamp: unset; }
 .fishing-game[data-view="map"] .fish-dev, .fishing-game[data-view="map"] .fish-help-toggle,
 .fishing-game[data-view="home"] .fish-dev, .fishing-game[data-view="home"] .fish-help-toggle,
 .fishing-game[data-view="shop"] .fish-dev, .fishing-game[data-view="shop"] .fish-hud,

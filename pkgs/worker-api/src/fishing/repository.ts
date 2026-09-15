@@ -1,7 +1,7 @@
 import { fishingCatalog } from './catalog';
 import type { Reward } from './tokens';
 import { baitById, rodById, type BaitId, type RodId } from './shop';
-type CastState = { slot: number; baitId: BaitId | null; fish: string | null; readyAt: number; rodId: RodId };
+type CastState = { slot: number; baitId: BaitId | null; fish: string | null; readyAt: number; rodId: RodId; devKey?: string };
 export const emptyGame = () => ({ schemaVersion: 3, savedAt: 0, wallet: { smallFish: 0 }, fish: {} as Record<string, { count: number; firstCaughtAt: number; phrases: number[] }>,
   inventory: { rods: ['twig'] as RodId[], baits: {} as Partial<Record<BaitId, number>> },
   equipped: { rod: 'twig' as RodId, bait: null as BaitId | null }, _cast: null as CastState | null,

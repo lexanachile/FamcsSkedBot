@@ -8,17 +8,21 @@ import { baitById, publicShop, rodById, rods } from '../fishing/shop';
 import { smallFishAmount } from '../fishing/rewards';
 
 // Public aggregate only; personal collections are never shared/cached.
-let stats: { until: number; rows: { fish_id: string; owners: number; usernames: string }[] } | undefined;
+let stats: { until: number; rows: { fish_id: string; owners: number; usernames: (string | null)[] }[] } | undefined;
 let statsRequest: Promise<NonNullable<typeof stats>['rows']> | undefined;
 async function owners(db: D1Database) {
   if (stats && stats.until > Date.now()) return stats.rows;
   return statsRequest ||= (async () => {
-    const result = await db.prepare(`SELECT f.key AS fish_id, COUNT(*) AS owners,
-      CASE WHEN COUNT(*) < 3 THEN json_group_array(p.username) ELSE '[]' END AS usernames
+    const result = await db.prepare(`SELECT f.key AS fish_id, COUNT(*) AS owners
       FROM fishing_players p, json_each(p.game_json, '$.fish') f
       WHERE json_extract(f.value, '$.count') > 0 GROUP BY f.key`)
-      .all<{ fish_id: string; owners: number; usernames: string }>();
-    stats = { until: Date.now() + 300000, rows: result.results };
+      .all<{ fish_id: string; owners: number }>();
+    const rows = await Promise.all(result.results.map(async entry => {
+      const tags = await db.prepare(`SELECT p.username FROM fishing_players p, json_each(p.game_json, '$.fish') f
+        WHERE f.key = ? AND json_extract(f.value, '$.count') > 0 ORDER BY random() LIMIT 5`).bind(entry.fish_id).all<{ username: string | null }>();
+      return { ...entry, usernames: tags.results.map(row => row.username) };
+    }));
+    stats = { until: Date.now() + 300000, rows };
     return stats.rows;
   })().finally(() => { statsRequest = undefined; });
 }
@@ -91,7 +95,7 @@ export function registerFishingRoutes(app: Hono<AppEnvironment>) {
       return { id: fish.id, count: caught, locked: !caught,
         name: caught ? fish.name : null, image: caught ? fish.image : null,
         phrases: fish.phrases.map((text, id) => ({ id, locked: !game.fish[fish.id]?.phrases.includes(id), text: game.fish[fish.id]?.phrases.includes(id) ? text : null })),
-        owners: entry?.owners || 0, usernames: entry ? JSON.parse(entry.usernames) : [] };
+        owners: entry?.owners || 0, usernames: entry?.usernames || [] };
     }) });
   });
   app.post('/api/fishing/cast', async c => {
@@ -107,14 +111,16 @@ export function registerFishingRoutes(app: Hono<AppEnvironment>) {
     const bytes = new Uint8Array(await hmac(c.env.TELEGRAM_BOT_TOKEN!, 'draw:v1:' + user.id + ':' + slot));
     const roll = new DataView(bytes.buffer).getUint32(0) / 4294967296;
     const isDev = String(user.id) === c.env.TEST_TELEGRAM_USER_ID;
+    const devKey = isDev ? [body?.devCatch || '', body?.devRod || '', body?.devBait || ''].join(':') : '';
     await ensurePlayer(c.env.DB, user.id, user.username);
     const draw = await updatePlayerGame(c.env.DB, user.id, game => {
-      if (game._cast?.slot === slot) return { changed: false, value: game._cast };
+      if (game._cast?.slot === slot && (!isDev || game._cast.devKey === devKey)) return { changed: false, value: game._cast };
+      const sameSlot = game._cast?.slot === slot;
       const devRod = isDev ? rodById(body?.devRod) : null;
       const devBait = isDev ? baitById(body?.devBait) : null;
-      const rod = devRod || rodById(game.equipped.rod) || rods[0];
-      let bait = devBait || baitById(game.equipped.bait);
-      if (!devBait && bait) {
+      const rod = devRod || (sameSlot ? rodById(game._cast!.rodId) : null) || rodById(game.equipped.rod) || rods[0];
+      let bait = devBait || (sameSlot ? baitById(game._cast!.baitId) : baitById(game.equipped.bait));
+      if (!sameSlot && !devBait && bait) {
         const count = game.inventory.baits[bait.id] || 0;
         if (count > 0) {
           game.inventory.baits[bait.id] = count - 1;
@@ -123,7 +129,7 @@ export function registerFishingRoutes(app: Hono<AppEnvironment>) {
       }
       const rare = isDev && body?.devCatch === 'rare' ? true : isDev && body?.devCatch === 'small' ? false : roll < Math.min(.95, TEACHER_CHANCE + (bait?.rareBonus || 0));
       const fish = rare && pool.length ? pool[bytes[4] % pool.length] : null;
-      const cast = { slot, baitId: bait?.id || null, fish: fish?.id || null, readyAt: now + (fish ? 9000 : 2500), rodId: rod.id };
+      const cast = { slot, baitId: bait?.id || null, fish: fish?.id || null, readyAt: now + (fish ? 9000 : 2500), rodId: rod.id, devKey };
       game._cast = cast;
       return { changed: true, value: cast };
     });

@@ -70,17 +70,18 @@ test('authenticated casts reserve one slot; receipts deduplicate and reject othe
     const repeated = await (await f.request('fishing/sync', { receipts: [reveal.receipt] })).json();
     assert.equal(repeated.revision, 2);
     assert.equal(f.writes(), writes);
-    // A second device retrieves the same draw in the same slot.
+    // A later cycle may be a new slot; reveal saves it and legacy sync must not save it twice.
     const second = await (await f.request('fishing/cast', { spot: 'deep' })).json();
     now += 10000;
     const otherReceipt = await (await f.request('fishing/reveal', { token: second.token })).json();
+    const afterSecondReveal = f.writes();
     await f.request('fishing/sync', { receipts: [otherReceipt.receipt] });
-    assert.equal(f.writes(), writes);
+    assert.equal(f.writes(), afterSecondReveal);
     assert.equal((await f.request('fishing/cast', { spot: 'deep', location: 'main' })).status, 400);
     now += 86400000;
     const expired = await (await f.request('fishing/sync', { receipts: [reveal.receipt] })).json();
     assert.deepEqual(expired.expired, [reveal.slot]);
-    assert.equal(f.writes(), writes);
+    assert.equal(f.writes(), afterSecondReveal);
   } finally { Date.now = realNow; f.db.close(); }
 });
 test('a completed animation is never held behind the old thirty-second cast window', async () => {
@@ -167,20 +168,23 @@ test('shop purchase, equipment and bait consumption are atomic', async () => {
     now += 30000;
     const rare = await (await f.request('fishing/cast', { spot: 'deep', devCatch: 'rare', devRod: 'auto' })).json();
     assert.equal(rare.traits.challenge, 'fight');
+    const changed = await (await f.request('fishing/cast', { spot: 'deep', devCatch: 'small', devRod: 'auto' })).json();
+    assert.equal(changed.slot, rare.slot);
+    assert.equal(changed.traits.challenge, 'auto');
   } finally { Date.now = realNow; f.db.close(); }
 });
-test('collection hides unknown teachers and shows tags only below three owners', async () => {
+test('collection hides unknown teachers and samples at most five owner tags', async () => {
   const f = fixture();
-  for (let id = 1; id <= 4; id++) await f.request('fishing/profile', undefined, id);
-  for (let id = 1; id <= 3; id++) {
+  for (let id = 1; id <= 8; id++) await f.request('fishing/profile', undefined, id);
+  for (let id = 1; id <= 7; id++) {
     const fish = { kalinin: { count: 10 } };
-    if (id < 3) fish.grekova = { count: 1 };
+    if (id <= 6) fish.grekova = { count: 1 };
     f.db.prepare('UPDATE fishing_players SET game_json = ? WHERE telegram_id = ?').run(JSON.stringify({ schemaVersion: 1, savedAt: 0, wallet: { smallFish: 20 }, fish }), id);
   }
-  const collection = await (await f.request('fishing/collection', undefined, 4)).json();
+  const collection = await (await f.request('fishing/collection', undefined, 8)).json();
   const a = collection.cards.find(f => f.id === 'kalinin'), b = collection.cards.find(f => f.id === 'grekova');
-  assert.equal(a.owners, 3); assert.deepEqual(a.usernames, []);
-  assert.equal(b.owners, 2); assert.deepEqual(b.usernames, ['user1', 'user2']);
+  assert.equal(a.owners, 7); assert.equal(a.usernames.length, 5); assert.equal(a.usernames.every(name => /^user[1-7]$/.test(name)), true);
+  assert.equal(b.owners, 6); assert.equal(b.usernames.length, 5); assert.equal(b.usernames.every(name => /^user[1-6]$/.test(name)), true);
   assert.equal(a.locked, true); assert.equal(a.name, null); assert.equal(a.image, null);
   assert.equal(b.phrases.every(phrase => phrase.locked && phrase.text === null), true);
   f.db.close();
