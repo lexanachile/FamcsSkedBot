@@ -2,7 +2,7 @@ import { lakeScene } from './scene.js?v=66';
 import { createFight, advance, strike, displayedProgress, REST_MS } from './engine.js?v=62';
 import { createProgress } from './progress.js?v=62';
 import { setupEnvironment } from './environment.js?v=55';
-import { bindStrikeInput } from './input.js?v=64';
+import { bindStrikeInput } from './input.js?v=67';
 import { getLocation, worldMapMarkup } from './locations.js?v=65';
 import { devBaitOptions, devCatchOptions, devRodOptions, optionsMarkup, renderLoadout, renderShop, storeMarkup } from './storefront.js?v=64';
 
@@ -287,6 +287,9 @@ export function mountFishing(host) {
     // visible position immediately; do not extrapolate ahead of the display.
     const result = strike(fight);
     strikePulse = result === 'hit' ? 1 : .45;
+    const check = q('.fish-check');
+    check.classList.remove('is-tap-hit', 'is-tap-miss'); void check.offsetWidth;
+    check.classList.add(result === 'hit' ? 'is-tap-hit' : 'is-tap-miss');
     status(result === 'hit' ? (fight.quick ? 'Точно!' : 'Есть контакт!') : 'Чуть мимо', result === 'hit' ? (fight.quick ? 'Маленькая рыбка уже на крючке.' : 'Держите ритм. Можно поймать следующий сектор.') : (fight.quick ? 'Дождитесь светлого сектора и тапните ещё раз.' : 'Ловите светлые участки, не спешите.'));
     [...q('.fish-zones').children].forEach((el, i) => el.classList.toggle('is-hit', fight.zones[i].hit));
     showProgress(); if (fight.outcome) concludeFight();

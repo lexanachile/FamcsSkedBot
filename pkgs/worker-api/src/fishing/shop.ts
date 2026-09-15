@@ -1,8 +1,8 @@
 export const rods = [
-  { id: 'twig', kind: 'rod', name: 'Ивовая ветка', price: 0, description: 'Быстрая проверка: 1,2 секунды и узкий сектор.', reactionMs: 1200, quickZone: .075, zoneScale: .75, divisions: 12, driftScale: 1, shakeScale: 1, autoSmall: false },
-  { id: 'reed', kind: 'rod', name: 'Камышовая удочка', price: 25, description: 'Чуть больше времени и заметнее сектор.', reactionMs: 1700, quickZone: .11, zoneScale: .95, divisions: 9, driftScale: .94, shakeScale: .9, autoSmall: false },
-  { id: 'lake', kind: 'rod', name: 'Озёрная удочка', price: 80, description: 'Спокойная реакция и широкие деления.', reactionMs: 2200, quickZone: .15, zoneScale: 1.15, divisions: 7, driftScale: .84, shakeScale: .78, autoSmall: false },
-  { id: 'moon', kind: 'rod', name: 'Лунная удочка', price: 200, description: 'Широкие сектора и мягкие рывки редкого улова.', reactionMs: 2800, quickZone: .2, zoneScale: 1.4, divisions: 5, driftScale: .68, shakeScale: .58, autoSmall: false },
+  { id: 'twig', kind: 'rod', name: 'Ивовая ветка', price: 0, description: 'Быстрая проверка: 1,4 секунды и небольшой сектор.', reactionMs: 1400, quickZone: .12, zoneScale: .8, divisions: 12, driftScale: 1, shakeScale: 1, autoSmall: false },
+  { id: 'reed', kind: 'rod', name: 'Камышовая удочка', price: 25, description: 'Больше времени и хорошо заметный сектор.', reactionMs: 1800, quickZone: .15, zoneScale: 1, divisions: 9, driftScale: .94, shakeScale: .9, autoSmall: false },
+  { id: 'lake', kind: 'rod', name: 'Озёрная удочка', price: 80, description: 'Спокойная реакция и широкие деления.', reactionMs: 2300, quickZone: .18, zoneScale: 1.2, divisions: 7, driftScale: .84, shakeScale: .78, autoSmall: false },
+  { id: 'moon', kind: 'rod', name: 'Лунная удочка', price: 200, description: 'Широкие сектора и мягкие рывки редкого улова.', reactionMs: 2900, quickZone: .23, zoneScale: 1.45, divisions: 5, driftScale: .68, shakeScale: .58, autoSmall: false },
   { id: 'auto', kind: 'rod', name: 'Тихий автомат', price: 500, description: 'Обычная рыбка ловится сама. Редкий улов остаётся вашей задачей.', reactionMs: 3000, quickZone: .22, zoneScale: 1.5, divisions: 4, driftScale: .58, shakeScale: .48, autoSmall: true },
 ] as const;
 

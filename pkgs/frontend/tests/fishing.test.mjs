@@ -105,6 +105,37 @@ test('screen-wide strike is inactive after the fight result opens', () => {
   handlers.pointerdown(event);
   assert.equal(hits, 1);
 });
+test('touch fallback works in iOS WebViews and cross-API duplicates are ignored', () => {
+  const handlers = {}, options = {};
+  const button = { disabled: false, addEventListener() {} };
+  const surface = { addEventListener(name, handler, value) { handlers[name] = handler; options[name] = value; } };
+  const root = { addEventListener() {} };
+  let hits = 0, clock = 1000;
+  bindStrikeInput(button, surface, root, () => hits++, () => true, () => clock);
+  const event = { target: { closest: () => null }, touches: [{}], cancelable: true, preventDefault() {} };
+  handlers.touchstart(event);
+  assert.equal(hits, 1);
+  clock += 10;
+  handlers.pointerdown({ target: event.target, pointerType: 'touch', isPrimary: true, button: 0, preventDefault() {} });
+  assert.equal(hits, 1);
+  clock += 10;
+  handlers.touchstart(event);
+  assert.equal(hits, 2);
+  handlers.touchstart({ ...event, touches: [{}, {}] });
+  assert.equal(hits, 2);
+  assert.equal(options.pointerdown.capture, true);
+  assert.deepEqual(options.touchstart, { capture: true, passive: false });
+});
+test('pointer contact without mouse-only fields is accepted by the WebView path', () => {
+  const handlers = {};
+  const button = { disabled: false, addEventListener() {} };
+  const surface = { addEventListener(name, handler) { handlers[name] = handler; } };
+  const root = { addEventListener() {} };
+  let hits = 0;
+  bindStrikeInput(button, surface, root, () => hits++);
+  handlers.pointerdown({ target: { closest: () => null }, preventDefault() {} });
+  assert.equal(hits, 1);
+});
 
 test('Space scores on keydown only and held keys do not repeat', () => {
   const handlers = {};

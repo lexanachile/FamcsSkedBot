@@ -335,3 +335,117 @@
 }
 @keyframes fish-toast-in { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
 @keyframes fish-help-in { from { opacity: 0; transform: scale(.96) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+
+/* Skill check: clear hit zones and an immediate visual response to every tap. */
+.fish-check {
+  left: 4.5%;
+  top: 28%;
+  bottom: 11%;
+  width: 62px;
+  gap: 8px;
+  padding: 11px 10px 10px;
+  border: 1px solid #ffffff63;
+  border-radius: 28px;
+  background: linear-gradient(180deg, #4b438fd9, #272968e8);
+  box-shadow: 0 15px 38px #24245658, inset 0 1px #ffffff80, inset 0 -12px 24px #15174722;
+  backdrop-filter: blur(18px) saturate(1.25);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+  pointer-events: none;
+}
+.fish-check::before {
+  content: '';
+  position: absolute;
+  inset: 7px;
+  border: 1px solid #ffffff17;
+  border-radius: 22px;
+}
+.fish-check-label {
+  position: relative;
+  color: #f2edff;
+  font-size: 6px;
+  font-weight: 800;
+  line-height: 1.45;
+  letter-spacing: 1.35px;
+  text-shadow: 0 2px 7px #151642;
+}
+.fish-track {
+  width: 20px;
+  border: 1px solid #ffffff4a;
+  border-radius: 13px;
+  background:
+    linear-gradient(90deg, #ffffff1c, transparent 35% 65%, #120f4438),
+    repeating-linear-gradient(to top, #ffffff2b 0 1px, transparent 1px calc(100% / var(--fish-divisions, 8))),
+    linear-gradient(180deg, #151847cc, #30327cdd);
+  box-shadow: inset 0 2px 9px #11133f99, 0 0 0 3px #ffffff0c;
+}
+.fish-track::after {
+  content: '';
+  position: absolute;
+  inset: 3px auto 3px 4px;
+  z-index: 3;
+  width: 3px;
+  border-radius: 3px;
+  background: linear-gradient(#ffffff4f, transparent 45%);
+  pointer-events: none;
+}
+.fish-zones { inset: 0; overflow: visible; border-radius: 11px; }
+.fish-zones i {
+  left: 3px;
+  right: 3px;
+  z-index: 1;
+  min-height: 9px;
+  border: 1px solid #fffbd2c9;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #fff7ad, #78edc8);
+  box-shadow: 0 0 8px #a8ffd6cc, 0 0 18px #fff5a666, inset 0 1px #fff;
+}
+.fish-zones i.is-hit {
+  border-color: #b8fff1;
+  background: #6bcdbd;
+  box-shadow: 0 0 10px #72f7db80;
+  opacity: .42;
+}
+.fish-cursor {
+  z-index: 4;
+  left: -9px;
+  right: -9px;
+  height: 5px;
+  border: 1px solid #ffffff;
+  border-radius: 8px;
+  background: #ff8ca6;
+  box-shadow: 0 0 0 3px #ffb1c63d, 0 0 15px #ff8fb8, 0 2px 8px #1616418c;
+}
+.fish-cursor::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: -5px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #ff8ca6;
+  transform: translate(50%, -50%);
+  box-shadow: 0 0 10px #ff9dbd;
+}
+.fish-round {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 29px;
+  height: 24px;
+  padding: 0 5px;
+  border: 1px solid #ffffff38;
+  border-radius: 10px;
+  color: #fff7c9;
+  background: #17194c78;
+  font-size: 9px;
+  font-weight: 700;
+  box-shadow: inset 0 1px #ffffff2b;
+}
+.fish-check.is-resting .fish-zones { opacity: .25; filter: saturate(.5); }
+.fish-check.is-tap-hit { animation: fish-check-hit .28s ease-out; }
+.fish-check.is-tap-miss { animation: fish-check-miss .22s ease-out; }
+.fish-check.is-tap-hit .fish-track { box-shadow: inset 0 2px 9px #11133f99, 0 0 0 3px #a7ffe36b, 0 0 24px #7fffd4a3; }
+@keyframes fish-check-hit { 45% { border-color: #b8ffe9; filter: brightness(1.22); } }
+@keyframes fish-check-miss { 45% { border-color: #ff93ae; transform: translateX(2px); filter: saturate(1.35); } }
