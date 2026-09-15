@@ -36,9 +36,9 @@ export function projectedGame(base, pending) {
   return game;
 }
 export function createProgress(onChange) {
-  let uid, base = empty(), pending = [], decisions = [], revision = -1, loading, saving, cards = [], shopCatalog = null, error = '';
+  let uid, base = empty(), pending = [], decisions = [], revision = -1, loading, saving, cards = [], shopCatalog = null, error = '', devEnabled = false;
   const known = new Map();
-  const notify = () => onChange?.({ game: projectedGame(base, pending), pending: pending.length, decision: decisions[0] || null, error, cards, catalog: shopCatalog, savedAt: base.savedAt });
+  const notify = () => onChange?.({ game: projectedGame(base, pending), pending: pending.length, decision: decisions[0] || null, error, cards, catalog: shopCatalog, savedAt: base.savedAt, devEnabled });
   function applyServer(result) {
     if (result.game && result.revision >= revision) { base = result.game; revision = result.revision; }
     error = ''; notify();
@@ -54,7 +54,7 @@ export function createProgress(onChange) {
     if (uid) { if (accountHint() !== uid) throw new Error('Откройте игру заново для другой учётной записи.'); return; }
     return loading ||= (async () => {
       const result = await accountRequest('fishing/profile');
-      uid = String(result.userId); base = result.game; revision = result.revision;
+      uid = String(result.userId); base = result.game; revision = result.revision; devEnabled = result.devEnabled === true;
       await reloadPending(); await reloadDecisions(); notify();
     })().catch(e => { uid = null; loading = null; error = e.message; notify(); throw e; });
   }
@@ -119,7 +119,7 @@ export function createProgress(onChange) {
     if (pending.length) { await flush(); return; }
     const result = await accountRequest('fishing/profile');
     // A flush may have started while GET was in flight; never apply it then.
-    if (!saving && !pending.length && result.revision >= revision) { base = result.game; revision = result.revision; notify(); }
+    if (!saving && !pending.length && result.revision >= revision) { base = result.game; revision = result.revision; devEnabled = result.devEnabled === true; notify(); }
   }
   const safeRefresh = () => { if (!document.hidden) refresh().catch(e => { error = e.message; notify(); }); };
   setInterval(() => { if (uid && pending.length) void flush(); }, 300000);

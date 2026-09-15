@@ -2,9 +2,10 @@ import { fishingCatalog } from './catalog';
 import type { Reward } from './tokens';
 import { baitById, rodById, type BaitId, type RodId } from './shop';
 type CastState = { slot: number; baitId: BaitId | null; fish: string | null; readyAt: number; rodId: RodId; devKey?: string };
-export const emptyGame = () => ({ schemaVersion: 3, savedAt: 0, wallet: { smallFish: 0 }, fish: {} as Record<string, { count: number; firstCaughtAt: number; phrases: number[] }>,
+export const emptyGame = () => ({ schemaVersion: 4, savedAt: 0, wallet: { smallFish: 0 }, fish: {} as Record<string, { count: number; firstCaughtAt: number; phrases: number[] }>,
   inventory: { rods: ['twig'] as RodId[], baits: {} as Partial<Record<BaitId, number>> },
   equipped: { rod: 'twig' as RodId, bait: null as BaitId | null }, _cast: null as CastState | null,
+  _commonCatchStreak: 0,
   _catches: {} as Record<string, { fish: string | null; phrase: number; duplicate: boolean; expiresAt: number; choice?: 'release' | 'eat' }> });
 export type Game = ReturnType<typeof emptyGame>;
 type Row = { revision: number; game_json: string; sync_json: string; username: string | null };
@@ -26,6 +27,7 @@ export function normalizeGame(value: unknown): Game {
   const game = emptyGame();
   game.savedAt = Number(source.savedAt) || 0;
   game.wallet.smallFish = Math.max(0, Math.floor(Number(source.wallet?.smallFish) || 0));
+  game._commonCatchStreak = Math.min(83, Math.max(0, Math.floor(Number(source._commonCatchStreak) || 0)));
   for (const fish of fishingCatalog) {
     const entry = source.fish?.[fish.id];
     if (!entry || !(Number(entry.count) > 0)) continue;
@@ -45,7 +47,7 @@ export function normalizeGame(value: unknown): Game {
   return game;
 }
 export function publicGame(value: unknown) {
-  const { _cast, _catches, ...game } = normalizeGame(value);
+  const { _cast, _catches, _commonCatchStreak, ...game } = normalizeGame(value);
   return game;
 }
 
@@ -77,8 +79,12 @@ export function applyRewards(game: Game, sync: Record<string, number>, rewards: 
       const previous = next.fish[reward.fish];
       const phrase = Number.isInteger(reward.phrase) && reward.phrase! >= 0 && reward.phrase! < fish.phrases.length ? reward.phrase! : 0;
       next.fish[reward.fish] = { count: (previous?.count || 0) + 1, firstCaughtAt: Math.min(previous?.firstCaughtAt || reward.readyAt, reward.readyAt), phrases: [...new Set([...(previous?.phrases || []), phrase])] };
+      next._commonCatchStreak = 0;
       next._catches[id] = { fish: reward.fish, phrase, duplicate: Boolean(previous?.count), expiresAt: reward.expiresAt };
-    } else next.wallet.smallFish += Number.isInteger(reward.amount) && reward.amount! >= 1 && reward.amount! <= 5 ? reward.amount! : 1;
+    } else {
+      next.wallet.smallFish += Number.isInteger(reward.amount) && reward.amount! >= 1 && reward.amount! <= 5 ? reward.amount! : 1;
+      next._commonCatchStreak = Math.min(83, next._commonCatchStreak + 1);
+    }
     added++;
   }
   if (added) next.savedAt = now;

@@ -3,12 +3,13 @@ import assert from 'node:assert/strict';
 import { createFight, advance, strike, displayedProgress, passPosition, PASS_MS, REST_MS } from '../src/fishing/engine.js';
 import { bindStrikeInput } from '../src/fishing/input.js';
 import { minskPeriod } from '../src/fishing/environment.js';
-import { anglerPose, biteFishPosition, rodTip, linePath } from '../src/fishing/game.js';
+import { anglerPose, biteFishPosition, orbitFishPosition, RARE_ORBIT_MS, rodTip, linePath } from '../src/fishing/game.js';
 import { getLocation, worldMapMarkup } from '../src/fishing/locations.js';
 import { lakeScene } from '../src/fishing/scene.js';
 import { readTrophies, writeTrophies, TROPHIES_KEY } from '../src/fishing/trophies.js';
 import { createLocationNotice } from '../src/fishing/location-notice.js';
 import { devBaitOptions, devCatchOptions, devRodOptions, storeMarkup } from '../src/fishing/storefront.js';
+import { bindCatchChoiceInput, catchChoiceKeyframes } from '../src/fishing/catch-choice.js';
 const setIndicator = (fight, position) => { fight.elapsed = Math.pow(position, 1 / 1.65) * fight.passMs; };
 
 test('only home and crossing can be opened from the map', () => {
@@ -36,6 +37,31 @@ test('store and biome loadout expose every dev rod and bait', () => {
   assert.deepEqual(devRodOptions.map(([id]) => id), ['', 'twig', 'reed', 'lake', 'moon', 'auto']);
   assert.deepEqual(devBaitOptions.map(([id]) => id), ['', 'crumbs', 'berries', 'glow']);
   assert.deepEqual(devCatchOptions.map(([id]) => id), ['', 'small', 'rare']);
+});
+
+test('catch choices accept pointer, touch and ordinary click without double activation', () => {
+  const handlers = {}, options = {}; let clock = 1000, choices = 0;
+  const button = { disabled: false, dataset: { catchChoice: 'eat' } };
+  const container = { addEventListener(name, handler, value) { handlers[name] = handler; options[name] = value; } };
+  const event = { target: { closest: () => button }, isPrimary: true, pointerType: 'touch', button: 0, touches: [{}], preventDefault() {} };
+  bindCatchChoiceInput(container, choice => { assert.equal(choice, 'eat'); choices++; }, () => clock);
+  handlers.pointerdown(event); handlers.click({ ...event, detail: 1 });
+  assert.equal(choices, 1);
+  clock += 600; handlers.click({ ...event, detail: 1 });
+  assert.equal(choices, 2);
+  clock += 600; button.disabled = true; handlers.touchstart(event);
+  assert.equal(choices, 2);
+  assert.equal(options.pointerdown.capture, true);
+  assert.deepEqual(options.touchstart, { capture: true, passive: false });
+});
+
+test('eat and release flights end at their requested scene targets', () => {
+  const start = { x: 200, y: 180 }, end = { x: 350, y: 360 };
+  const eat = catchChoiceKeyframes('eat', start, end);
+  const release = catchChoiceKeyframes('release', start, end);
+  assert.match(eat.at(-1).transform, /translate\(150px, 180px\).*scale\(0\.16\)/);
+  assert.match(release.at(-1).transform, /translate\(150px, 180px\).*scale\(0\.52\)/);
+  assert.notEqual(eat[1].transform, release[1].transform);
 });
 
 test('location title holds for three seconds and cancels old navigation timers', () => {
@@ -257,6 +283,20 @@ test('bite drags the whole angler left and a skill-check hit pulls the rod up an
   const hookTip = rodTip(hook.rodAngle, hook.lean, hook.shiftX, hook.shiftY);
   assert.ok(hookTip.x > baseTip.x);
   assert.ok(hookTip.y < baseTip.y);
+});
+
+test('a rare fish completes a one-second lap around the float before pulling left', () => {
+  const point = { x: 160, y: 470 };
+  const start = orbitFishPosition(point, 0), quarter = orbitFishPosition(point, .25);
+  const half = orbitFishPosition(point, .5), end = orbitFishPosition(point, 1);
+  assert.equal(RARE_ORBIT_MS, 1000);
+  const biteStart = biteFishPosition(point, 0);
+  assert.ok(Math.hypot(start.x - biteStart.x, start.y - biteStart.y) < 1e-10);
+  assert.ok(Math.hypot(end.x - start.x, end.y - start.y) < 1e-10);
+  for (const position of [start, quarter, half, end]) assert.ok(Math.abs(Math.hypot(position.x - point.x, position.y - point.y) - Math.hypot(20, 12)) < 1e-10);
+  assert.ok(quarter.x < point.x && quarter.y > point.y);
+  assert.ok(half.x < point.x && half.y < point.y);
+  assert.ok(biteFishPosition(point, 1).x < end.x);
 });
 
 test('world map exposes every destination and trophies persist locally', () => {

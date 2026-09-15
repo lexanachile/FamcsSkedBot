@@ -2,13 +2,18 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { createHmac } from 'node:crypto';
-import { smallFishAmount } from '../src/fishing/rewards.ts';
+import { rareCatchChance, smallFishAmount } from '../src/fishing/rewards.ts';
 import { build } from '../node_modules/esbuild/lib/main.js';
 const bundle = await build({ entryPoints: [new URL('../src/index.ts', import.meta.url).pathname.replace(/^\/(\w:)/, '$1')], bundle: true, write: false, format: 'esm', platform: 'browser' });
 const { default: app } = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
 const secret = 'test-only-bot-token';
 test('small fish reward follows the configured 55/30/10/4/1 percent bands', () => {
   assert.deepEqual([0, .5499, .55, .8499, .85, .9499, .95, .9899, .99, .9999].map(smallFishAmount), [1, 1, 2, 2, 3, 3, 4, 4, 5, 5]);
+});
+test('rare chance gains one percentage point per common catch and stays capped', () => {
+  assert.equal(rareCatchChance(.12, 0, 0), .12);
+  assert.ok(Math.abs(rareCatchChance(.12, .05, 3) - .20) < 1e-12);
+  assert.equal(rareCatchChance(.12, .10, 83), .95);
 });
 function auth(id = 1) {
   const params = new URLSearchParams({ auth_date: String(Math.floor(Date.now() / 1000)), user: JSON.stringify({ id, username: 'user' + id }) });
@@ -36,11 +41,29 @@ function fixture() {
     return wrap([]);
   } };
   const env = { DB, TELEGRAM_BOT_TOKEN: secret, SCHEDULE_KV: new Proxy({}, { get() { throw new Error('Game must not access KV'); } }) };
-  const request = (path, body, id = 1, method = body === undefined ? 'GET' : 'POST') => app.request('http://localhost/api/' + path, {
+  const request = (path, body, id = 1, method = body === undefined ? 'GET' : 'POST', origin = 'http://localhost') => app.request(origin + '/api/' + path, {
     method, headers: { Authorization: auth(id), 'Content-Type': 'application/json' }, ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   }, env);
   return { db, env, request, writes: () => writes };
 }
+test('dev options work locally and stay restricted on the deployed host', async () => {
+  const f = fixture();
+  const localProfile = await (await f.request('fishing/profile')).json();
+  assert.equal(localProfile.devEnabled, true);
+
+  const productionOrigin = 'https://schedule.example';
+  const productionProfile = await (await f.request('fishing/profile', undefined, 1, 'GET', productionOrigin)).json();
+  assert.equal(productionProfile.devEnabled, false);
+  const ignored = await (await f.request('fishing/cast', { spot: 'deep', devCatch: 'small', devRod: 'auto', devBait: 'glow' }, 1, 'POST', productionOrigin)).json();
+  assert.equal(ignored.rod, 'twig');
+  assert.equal(ignored.usedBait, null);
+
+  f.env.TEST_TELEGRAM_USER_ID = '1';
+  const enabled = await (await f.request('fishing/cast', { spot: 'deep', devCatch: 'small', devRod: 'auto', devBait: 'glow' }, 1, 'POST', productionOrigin)).json();
+  assert.equal(enabled.rod, 'auto');
+  assert.equal(enabled.usedBait, 'glow');
+  f.db.close();
+});
 test('authenticated casts reserve one slot; receipts deduplicate and reject other users', async () => {
   const f = fixture();
   const realNow = Date.now; let now = Math.floor(realNow() / 30000) * 30000 + 10;
@@ -82,6 +105,28 @@ test('authenticated casts reserve one slot; receipts deduplicate and reject othe
     const expired = await (await f.request('fishing/sync', { receipts: [reveal.receipt] })).json();
     assert.deepEqual(expired.expired, [reveal.slot]);
     assert.equal(f.writes(), afterSecondReveal);
+  } finally { Date.now = realNow; f.db.close(); }
+});
+test('caught common fish build the rare streak and a caught rare fish resets it', async () => {
+  const f = fixture(); f.env.TEST_TELEGRAM_USER_ID = '1';
+  const realNow = Date.now; let now = Math.floor(realNow() / 4000) * 4000; Date.now = () => now;
+  const stored = () => JSON.parse(f.db.prepare('SELECT game_json FROM fishing_players WHERE telegram_id = 1').get().game_json);
+  try {
+    await f.request('fishing/profile');
+    for (let expected = 1; expected <= 2; expected++) {
+      now += 5000;
+      const cast = await (await f.request('fishing/cast', { spot: 'deep', devCatch: 'small' })).json();
+      now += 3000;
+      await f.request('fishing/reveal', { token: cast.token });
+      assert.equal(stored()._commonCatchStreak, expected);
+    }
+    now += 5000;
+    const rare = await (await f.request('fishing/cast', { spot: 'deep', devCatch: 'rare' })).json();
+    now += 10000;
+    await f.request('fishing/reveal', { token: rare.token });
+    assert.equal(stored()._commonCatchStreak, 0);
+    const profile = await (await f.request('fishing/profile')).json();
+    assert.equal('_commonCatchStreak' in profile.game, false);
   } finally { Date.now = realNow; f.db.close(); }
 });
 test('a completed animation is never held behind the old thirty-second cast window', async () => {

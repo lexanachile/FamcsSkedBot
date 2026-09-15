@@ -1,9 +1,9 @@
 import { lakeScene } from './scene.js?v=69';
 import { createFight, advance, strike, displayedProgress, passPosition, REST_MS } from './engine.js?v=72';
-import { createProgress } from './progress.js?v=69';
+import { createProgress } from './progress.js?v=74';
 import { setupEnvironment } from './environment.js?v=55';
 import { bindStrikeInput } from './input.js?v=67';
-import { bindCatchChoiceInput, withCatchChoice } from './catch-choice.js?v=73';
+import { bindCatchChoiceInput, catchChoiceKeyframes, withCatchChoice } from './catch-choice.js?v=75';
 import { ownerLine } from './collection.js?v=73';
 import { getLocation, worldMapMarkup } from './locations.js?v=65';
 import { devBaitOptions, devCatchOptions, devRodOptions, optionsMarkup, renderLoadout, renderShop, storeMarkup } from './storefront.js?v=64';
@@ -54,6 +54,13 @@ export function biteFishPosition(point, progress) {
   return { x: point.x + 20 - 88 * pull, y: point.y + 12 - 18 * pull + Math.sin(t * Math.PI * 3) * 3 };
 }
 
+export const RARE_ORBIT_MS = 1000;
+export function orbitFishPosition(point, progress) {
+  const t = Math.max(0, Math.min(1, progress));
+  const radius = Math.hypot(20, 12), angle = Math.atan2(12, 20) + t * Math.PI * 2;
+  return { x: point.x + Math.cos(angle) * radius, y: point.y + Math.sin(angle) * radius };
+}
+
 export function mountFishing(host) {
   host.innerHTML = `<section class="fishing-game" aria-label="Рыбалка" tabindex="-1">
     <div class="fish-stage">${lakeScene()}${worldMapMarkup()}${storeMarkup()}
@@ -85,6 +92,7 @@ export function mountFishing(host) {
   const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
   const locationNotice = createLocationNotice(q('.fish-location-name'));
   const environment = setupEnvironment(root);
+  q('.fish-dev').hidden = true;
   q('.fish-dev-toggle').addEventListener('click', e => { const panel = q('.fish-dev-panel'); panel.hidden = !panel.hidden; e.currentTarget.setAttribute('aria-expanded', String(!panel.hidden)); });
   let encounter = null, session = 0, motionTime = 0, environmentTime = 0;
   let state = 'idle', elapsed = 0, fight, point = { ...FISHING_RIG.cast }, fishPosition = { x: 180, y: 482 }, waitMs = 0, strikePulse = 0;
@@ -107,6 +115,11 @@ export function mountFishing(host) {
   }
   const progress = createProgress(value => {
     progressState = value;
+    q('.fish-dev').hidden = !value.devEnabled;
+    if (!value.devEnabled) {
+      q('.fish-dev-panel').hidden = true;
+      q('.fish-dev-toggle').setAttribute('aria-expanded', 'false');
+    }
     q('.fish-count').firstChild.textContent = `${value.game.wallet.smallFish} `;
     q('.fish-store-wallet').textContent = `${value.game.wallet.smallFish} ≈`;
     q('.fish-loadout-wallet').textContent = `${value.game.wallet.smallFish} ≈`;
@@ -277,14 +290,50 @@ export function mountFishing(host) {
     if (!currentCatch) return;
     const caught = currentCatch, version = session;
     await withCatchChoice([...q('.fish-catch-choices').querySelectorAll('button')], async () => {
-      try { await progress.resolveCatch(caught, choice); if (version === session) reset(); }
-      catch (error) { if (version === session) q('.fish-result p').textContent = error.message; }
+      try {
+        await progress.resolveCatch(caught, choice);
+        if (version !== session) return;
+        await playCatchChoice(choice);
+        if (version === session) reset();
+      } catch (error) {
+        q('.fish-result').classList.remove('is-choosing');
+        if (version === session) q('.fish-result p').textContent = error.message;
+      }
     });
+  }
+
+  async function playCatchChoice(choice) {
+    const stage = q('.fish-stage'), stageRect = stage.getBoundingClientRect();
+    const portraitRect = q('.fish-portrait').getBoundingClientRect();
+    const sceneRect = q('.fish-scene').getBoundingClientRect();
+    const startPoint = { x: portraitRect.left - stageRect.left + portraitRect.width / 2, y: portraitRect.top - stageRect.top + portraitRect.height / 2 };
+    const targetSvg = choice === 'eat' ? { x: 367, y: 361 } : { x: 118, y: 475 };
+    const endPoint = { x: sceneRect.left - stageRect.left + sceneRect.width * targetSvg.x / 450, y: sceneRect.top - stageRect.top + sceneRect.height * targetSvg.y / 600 };
+    const flight = document.createElement('div');
+    flight.className = `fish-choice-flight is-${choice}`;
+    flight.setAttribute('aria-hidden', 'true');
+    flight.style.left = `${startPoint.x - 27}px`; flight.style.top = `${startPoint.y - 17}px`;
+    flight.innerHTML = '<svg viewBox="0 0 72 42"><path class="fish-choice-tail" d="M17 21 2 8v26z"/><path class="fish-choice-body" d="M14 21C25 5 53 4 68 21 53 38 25 37 14 21Z"/><circle cx="55" cy="17" r="2.3"/><path d="M29 11q7 10 0 20" fill="none" stroke="currentColor" stroke-width="2" opacity=".5"/></svg>';
+    stage.append(flight); q('.fish-result').classList.add('is-choosing');
+    const duration = motionPreference.matches ? 220 : choice === 'eat' ? 720 : 880;
+    if (typeof flight.animate === 'function') {
+      const animation = flight.animate(catchChoiceKeyframes(choice, startPoint, endPoint), { duration, easing: 'cubic-bezier(.25,.75,.25,1)', fill: 'forwards' });
+      await animation.finished.catch(() => {});
+    } else await new Promise(resolve => setTimeout(resolve, duration));
+    if (choice === 'release') {
+      const splash = document.createElement('i'); splash.className = 'fish-choice-splash'; splash.setAttribute('aria-hidden', 'true');
+      splash.style.left = `${endPoint.x}px`; splash.style.top = `${endPoint.y}px`; stage.append(splash);
+      await new Promise(resolve => setTimeout(resolve, motionPreference.matches ? 120 : 360)); splash.remove();
+    } else {
+      root.classList.add('is-chewing');
+      await new Promise(resolve => setTimeout(resolve, motionPreference.matches ? 80 : 220)); root.classList.remove('is-chewing');
+    }
+    flight.remove(); q('.fish-result').classList.remove('is-choosing');
   }
 
   function reset() {
     q('.fish-catch-choices').querySelectorAll('button').forEach(button => { button.disabled = false; });
-    session++; encounter = null; retryReveal = null; currentCatch = null; strikePulse = 0; q('.fish-again').disabled = false; q('.fish-again').hidden = false; q('.fish-catch-choices').hidden = true; delete root.dataset.pull;
+    session++; encounter = null; retryReveal = null; currentCatch = null; strikePulse = 0; q('.fish-again').disabled = false; q('.fish-again').hidden = false; q('.fish-catch-choices').hidden = true; q('.fish-result').classList.remove('is-choosing'); root.classList.remove('is-chewing'); delete root.dataset.pull;
     setState('idle'); q('.fish-result').hidden = true; q('.fish-check').hidden = true; q('.fish-tension').hidden = true;
     q('.fish-spots').hidden = root.dataset.view !== 'fishing';
     for (const selector of ['.fish-float', '.fish-line', '.fish-bubbles', '.fish-approach', '.fish-pull-wake', '.fish-broken-hook']) q(selector).style.opacity = '0';
@@ -342,14 +391,20 @@ export function mountFishing(host) {
       if (t === 1) { q('.fish-line').style.opacity = '.7'; setState('waiting'); action('', true); }
     } else if (state === 'waiting' && elapsed >= waitMs) {
       setState('approach'); fishPosition = { x: point.x + 20, y: point.y + 12 }; root.dataset.pull = 'bite';
-      q('.fish-float').style.opacity = '0'; q('.fish-bubbles').setAttribute('transform', `translate(${fishPosition.x} ${fishPosition.y})`); q('.fish-bubbles').style.opacity = '1';
+      q('.fish-float').style.opacity = encounter.traits.challenge === 'fight' ? '1' : '0'; q('.fish-bubbles').setAttribute('transform', `translate(${fishPosition.x} ${fishPosition.y})`); q('.fish-bubbles').style.opacity = '1';
     } else if (state === 'approach') {
-      const t = Math.min(1, elapsed / 2200);
+      const rare = encounter.traits.challenge === 'fight';
+      const circling = rare && elapsed < RARE_ORBIT_MS;
+      const orbit = rare ? Math.min(1, elapsed / RARE_ORBIT_MS) : 1;
+      const t = Math.min(1, Math.max(0, elapsed - (rare ? RARE_ORBIT_MS : 0)) / 2200);
       const pull = 1 - Math.pow(1 - t, 3);
-      fishPosition = biteFishPosition(point, t);
-      q('.fish-approach').style.opacity = String(Math.min(1, t * 5)); q('.fish-approach').setAttribute('transform', `translate(${fishPosition.x} ${fishPosition.y})`);
-      q('.fish-pull-wake').style.opacity = String(.75 * pull); q('.fish-pull-wake').setAttribute('transform', `translate(${fishPosition.x} ${fishPosition.y})`);
+      fishPosition = circling ? orbitFishPosition(point, orbit) : biteFishPosition(point, t);
+      const orbitRotation = circling ? orbit * 360 : 0;
+      const fishTransform = `translate(${fishPosition.x} ${fishPosition.y}) rotate(${orbitRotation})`;
+      q('.fish-approach').style.opacity = String(circling ? Math.min(1, orbit * 8) : Math.min(1, t * 5)); q('.fish-approach').setAttribute('transform', fishTransform);
+      q('.fish-pull-wake').style.opacity = String(circling ? .58 : .75 * pull); q('.fish-pull-wake').setAttribute('transform', fishTransform);
       q('.fish-bubbles').setAttribute('transform', `translate(${fishPosition.x + 18} ${fishPosition.y + 5})`);
+      if (!circling) { root.dataset.pull = 'bite'; q('.fish-float').style.opacity = '0'; }
       if (t === 1) {
         if (encounter.traits.challenge === 'auto') { fight = { outcome: 'caught' }; q('.fish-bubbles').style.opacity = '0'; void finish(); }
         else { fight = createFight(Math.random, encounter.traits); q('.fish-track').style.setProperty('--fish-divisions', fight.divisions); zones(); showProgress(); setState('fight'); root.dataset.pull = 'fight'; q('.fish-check').hidden = false; q('.fish-tension').hidden = false; q('.fish-bubbles').style.opacity = '0'; action('', false); }
@@ -398,7 +453,9 @@ export function mountFishing(host) {
     strikePulse = Math.max(0, strikePulse - dt / 430);
     const t = motionTime;
     const reduced = motionPreference.matches;
-    const targetPose = anglerPose(state, elapsed, fight, t, reduced, strikePulse);
+    const rareOrbit = state === 'approach' && encounter?.traits.challenge === 'fight' && elapsed < RARE_ORBIT_MS;
+    const poseElapsed = state === 'approach' && encounter?.traits.challenge === 'fight' ? Math.max(0, elapsed - RARE_ORBIT_MS) : elapsed;
+    const targetPose = anglerPose(state, poseElapsed, fight, t, reduced, strikePulse);
     const blend = reduced ? 1 : 1 - Math.exp(-dt / (strikePulse ? 55 : 95));
     for (const key of ['shiftX', 'shiftY', 'lean', 'rodAngle']) displayedPose[key] += (targetPose[key] - displayedPose[key]) * blend;
     const { shiftX, shiftY, lean, rodAngle } = displayedPose;
@@ -406,7 +463,7 @@ export function mountFishing(host) {
     q('.fish-rod').setAttribute('transform', `rotate(${rodAngle} ${FISHING_RIG.hand.x} ${FISHING_RIG.hand.y})`);
     if (state === 'waiting' || state === 'approach' || state === 'fight' || state === 'landing' || state === 'escaping') {
       const tip = rodTip(rodAngle, lean, shiftX, shiftY);
-      let end = state === 'waiting' ? point : { x: fishPosition.x - 22, y: fishPosition.y };
+      let end = state === 'waiting' || rareOrbit ? point : { x: fishPosition.x - 22, y: fishPosition.y };
       if (state === 'escaping') {
         const snap = Math.min(1, elapsed / 720), recoil = 1 - Math.pow(1 - snap, 2);
         end = { x: landingStart.x - 22 + (tip.x + 26 - (landingStart.x - 22)) * recoil, y: landingStart.y + (tip.y + 48 - landingStart.y) * recoil };
@@ -414,7 +471,7 @@ export function mountFishing(host) {
         q('.fish-broken-hook').style.opacity = String(1 - snap);
       }
       q('.fish-line').style.opacity = state === 'waiting' ? '.7' : state === 'escaping' ? String(Math.max(0, 1 - elapsed / 720)) : '.92';
-      q('.fish-line').setAttribute('d', linePath(tip, end, targetPose.pulling ? .96 : .55));
+      q('.fish-line').setAttribute('d', linePath(tip, end, rareOrbit ? .55 : targetPose.pulling ? .96 : .55));
     }
   }
   function syncPause() {

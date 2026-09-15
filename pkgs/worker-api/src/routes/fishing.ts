@@ -5,7 +5,8 @@ import { authenticate, authError, hmac, readBody } from '../miniapp/auth';
 import { seal, unseal, SLOT_MS, RECEIPT_TTL, type Reward } from '../fishing/tokens';
 import { ensurePlayer, normalizeGame, publicGame, saveRewards, updatePlayerGame } from '../fishing/repository';
 import { baitById, publicShop, rodById, rods } from '../fishing/shop';
-import { smallFishAmount } from '../fishing/rewards';
+import { rareCatchChance, smallFishAmount } from '../fishing/rewards';
+import { fishingDevEnabled } from '../fishing/dev';
 
 // Public aggregate only; personal collections are never shared/cached.
 let stats: { until: number; rows: { fish_id: string; owners: number; usernames: (string | null)[] }[] } | undefined;
@@ -31,7 +32,8 @@ export function registerFishingRoutes(app: Hono<AppEnvironment>) {
   app.get('/api/fishing/profile', async c => {
     let user; try { user = await authenticate(c); } catch (error) { return authError(c, error); }
     const row = await ensurePlayer(c.env.DB, user.id, user.username);
-    return c.json({ success: true, userId: user.id, revision: row.revision, game: publicGame(JSON.parse(row.game_json)) });
+    return c.json({ success: true, userId: user.id, revision: row.revision, game: publicGame(JSON.parse(row.game_json)),
+      devEnabled: fishingDevEnabled(c.req.url, user.id, c.env) });
   });
   app.get('/api/fishing/shop', async c => {
     let user; try { user = await authenticate(c); } catch (error) { return authError(c, error); }
@@ -110,7 +112,7 @@ export function registerFishingRoutes(app: Hono<AppEnvironment>) {
     const pool = fishingCatalog.filter(f => f.spots.includes('deep') && f.periods.includes(period) && f.rain === null);
     const bytes = new Uint8Array(await hmac(c.env.TELEGRAM_BOT_TOKEN!, 'draw:v1:' + user.id + ':' + slot));
     const roll = new DataView(bytes.buffer).getUint32(0) / 4294967296;
-    const isDev = String(user.id) === c.env.TEST_TELEGRAM_USER_ID;
+    const isDev = fishingDevEnabled(c.req.url, user.id, c.env);
     const devKey = isDev ? [body?.devCatch || '', body?.devRod || '', body?.devBait || ''].join(':') : '';
     await ensurePlayer(c.env.DB, user.id, user.username);
     const draw = await updatePlayerGame(c.env.DB, user.id, game => {
@@ -127,7 +129,8 @@ export function registerFishingRoutes(app: Hono<AppEnvironment>) {
           if (count === 1) game.equipped.bait = null;
         } else { game.equipped.bait = null; bait = undefined; }
       }
-      const rare = isDev && body?.devCatch === 'rare' ? true : isDev && body?.devCatch === 'small' ? false : roll < Math.min(.95, TEACHER_CHANCE + (bait?.rareBonus || 0));
+      const rare = isDev && body?.devCatch === 'rare' ? true : isDev && body?.devCatch === 'small' ? false
+        : roll < rareCatchChance(TEACHER_CHANCE, bait?.rareBonus || 0, game._commonCatchStreak);
       const unseen = pool.filter(fish => !(game.fish[fish.id]?.count > 0));
       const candidates = unseen.length ? unseen : pool;
       const fish = rare && candidates.length ? candidates[bytes[4] % candidates.length] : null;
