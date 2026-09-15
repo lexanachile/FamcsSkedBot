@@ -1,15 +1,15 @@
-import { lakeScene } from './scene.js?v=84';
-import { createFight, advance, strike, displayedProgress, passPosition, REST_MS } from './engine.js?v=84';
-import { createProgress } from './progress.js?v=84';
-import { setupEnvironment } from './environment.js?v=84';
-import { bindStrikeInput } from './input.js?v=84';
-import { bindCatchChoiceInput, catchChoiceKeyframes, withCatchChoice } from './catch-choice.js?v=84';
-import { ownerLine } from './collection.js?v=84';
-import { getLocation, worldMapMarkup } from './locations.js?v=84';
-import { devBaitOptions, devCatchOptions, devRodOptions, optionsMarkup, renderLoadout, renderShop, storeMarkup } from './storefront.js?v=84';
+import { lakeScene } from './scene.js?v=85';
+import { createFight, advance, strike, displayedProgress, passPosition, REST_MS } from './engine.js?v=85';
+import { createProgress } from './progress.js?v=85';
+import { setupEnvironment } from './environment.js?v=85';
+import { bindStrikeInput } from './input.js?v=85';
+import { bindCatchChoiceInput, catchChoiceKeyframes, withCatchChoice } from './catch-choice.js?v=85';
+import { ownerLine } from './collection.js?v=85';
+import { getLocation, worldMapMarkup } from './locations.js?v=85';
+import { devBaitOptions, devCatchOptions, devRodOptions, optionsMarkup, renderLoadout, renderShop, storeMarkup } from './storefront.js?v=85';
 
-import { createLocationNotice } from './location-notice.js?v=84';
-import { FISHING_RIG } from './rig.js?v=84';
+import { createLocationNotice } from './location-notice.js?v=85';
+import { FISHING_RIG } from './rig.js?v=85';
 
 export function anglerPose(state, elapsed, fight, motionTime, reduced = false, strikePulse = 0) {
   const bite = state === 'approach' ? 1 - Math.pow(1 - Math.min(1, elapsed / 2200), 3) : 0;

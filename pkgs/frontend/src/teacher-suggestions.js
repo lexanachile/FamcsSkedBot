@@ -1,4 +1,4 @@
-import { requestJson } from './request.js?v=84';
+import { requestJson } from './request.js?v=85';
 
 const normalize = value => value.trim().toLocaleLowerCase('ru').replaceAll('ё', 'е');
 

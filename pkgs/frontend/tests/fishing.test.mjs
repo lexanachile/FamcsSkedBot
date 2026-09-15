@@ -29,7 +29,9 @@ test('lake scene is drawn in a native portrait coordinate system', () => {
   assert.ok(scene.includes('preserveAspectRatio="xMidYMid meet"'));
   assert.ok(!scene.includes('slice'));
   assert.ok(scene.includes('class="fish-raccoon"'));
-  assert.match(scene, /class="fish-arm-sleeve"[^>]*322 370/);
+  assert.match(scene, /class="fish-arm-sleeve"[^>]*322 378/);
+  assert.ok(scene.includes('class="fish-arm-free"'));
+  assert.ok(scene.includes('class="fish-arm-holding"'));
   assert.match(scene, /class="fish-grip-hand"[^>]*rotate\(-32 322 370\)/);
 });
 test('store and biome loadout expose every dev rod and bait', () => {

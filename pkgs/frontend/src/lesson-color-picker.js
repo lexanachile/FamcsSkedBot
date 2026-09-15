@@ -1,4 +1,4 @@
-import { readStoredJson, writeStoredJson } from './storage.js?v=84';
+import { readStoredJson, writeStoredJson } from './storage.js?v=85';
 
 const RECENT_KEY = 'lessonRecentColors:v1';
 const HEX = /^#[0-9a-f]{6}$/i;

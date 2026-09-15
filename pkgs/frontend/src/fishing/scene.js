@@ -1,4 +1,4 @@
-import { FISHING_RIG } from './rig.js?v=84';
+import { FISHING_RIG } from './rig.js?v=85';
 
 export function lakeScene() {
   const { hand, tip, cast } = FISHING_RIG;
@@ -32,15 +32,38 @@ export function lakeScene() {
   <ellipse cx="160" cy="489" rx="92" ry="31" fill="#153c72" opacity=".18"/>
   <g fill="#8ed9a9" stroke="#397c84" stroke-width="2"><path d="M59 414c-22-14-34 11-7 16 17 3 25-7 16-13l-11 7z"/><path d="M102 442c-18-11-27 10-5 13 14 2 19-6 12-10l-9 6z"/><path d="M28 476c-23-14-33 12-6 17 16 3 23-8 15-14l-10 8z"/></g>
   <g class="fish-reeds" fill="none" stroke-linecap="round"><path d="M4 511Q22 427 18 365M24 520Q50 440 46 391M0 500Q8 438 1 405M45 534Q61 474 77 432" stroke="#328ca0" stroke-width="5"/><path d="M18 370v-27m29 52 2-26m27 67 5-19" stroke="#ff9b9c" stroke-width="8"/><path d="M12 491q14-47 28-58m-9 73q16-34 34-39" stroke="#d6f8b1" stroke-width="4"/></g>
-  <path d="M298 443 450 409v93l-152 39z" fill="#65539b"/><path d="m298 443 152-34v27l-152 38z" fill="#f0afa9"/><path d="m310 459 140-34m-102 25 5 11m26-18 5 11m27-18 5 10" fill="none" stroke="#b3759a" stroke-width="2"/><path d="M319 468v85m105-111v73" stroke="#5e4b8e" stroke-width="12"/>
+  <g class="fish-pier">
+    <ellipse cx="365" cy="548" rx="80" ry="20" fill="#153c72" opacity=".15"/>
+    <g class="fish-pier-posts" stroke-linecap="round">
+      <path d="M313 510v55m112-84v54" stroke="#655084" stroke-width="13"/>
+      <path d="M310 511v46m112-75v45" stroke="#b78496" stroke-width="3"/>
+    </g>
+    <g fill="none" stroke="var(--water-light)" stroke-width="2" opacity=".5">
+      <path d="M300 565q13 6 27 0m85-29q13 5 27-1"/>
+    </g>
+    <path class="fish-pier-edge" d="M294 522 450 485v12l-156 38z" fill="#9a6888"/>
+    <path class="fish-pier-deck" d="M294 466 450 430v55l-156 37z" fill="#efb69f" stroke="#c58a93" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M321 460v55m29-62v56m29-63v56m29-62v55m29-62v56" fill="none" stroke="#b9808e" stroke-width="2"/>
+    <path d="m299 470 145-34m-145 82 145-34" fill="none" stroke="#ffe1b8" stroke-width="3" stroke-linecap="round"/>
+    <ellipse cx="368" cy="477" rx="40" ry="9" fill="#81577d" opacity=".2"/>
+  </g>
   <g class="fish-art-particles" fill="#fff4c9">${Array.from({ length: 20 }, (_, i) => `<circle cx="${24 + (i * 71) % 406}" cy="${78 + (i * 89) % 452}" r="${i % 4 === 0 ? 2.4 : 1.3}" style="--i:${i}"/>`).join('')}</g>
   <g class="fish-angler"><g class="fish-raccoon">
     <path d="M389 431q45 3 35-33-4-14-18-12" fill="#b5a6df" stroke="#514b83" stroke-width="3"/><path d="m407 390 12 11m-17 1 19 13m-20 0 15 15" stroke="#615487" stroke-width="9"/>
     <path class="fish-boot-left" d="m343 446-4 28q14 9 28 0l-2-29" fill="#48427b"/><path class="fish-boot-right" d="m376 445 2 27q13 7 23-1l-9-33" fill="#48427b"/>
     <path d="M340 371q-15 28-10 76 31 17 68-3l-11-75z" fill="url(#fish-coat)" stroke="#efa561" stroke-width="2"/><path d="m367 383 3 66m-29-31 17-2v15h-16" fill="none" stroke="#e99662" stroke-width="2"/><circle cx="375" cy="409" r="2" fill="#fff0b1"/>
-    <path class="fish-arm-sleeve" d="M347 386Q336 383 330 397Q320 390 ${hand.x} ${hand.y}" fill="none" stroke="#ffd06d" stroke-width="19" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M345 393Q336 389 330 401" fill="none" stroke="#e99a62" stroke-width="2.5" stroke-linecap="round" opacity=".72"/>
-    <path class="fish-arm-cuff" d="M327 378Q322 376 318 373" fill="none" stroke="#f5e6ff" stroke-width="11" stroke-linecap="round"/>
+    <g class="fish-arm-free">
+      <path d="M383 384Q397 387 401 401Q405 411 389 419" fill="none" stroke="#e99a62" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M383 384Q397 387 401 401Q405 411 389 419" fill="none" stroke="#ffc86a" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="m386 413 8 9" stroke="#f5e6ff" stroke-width="6" stroke-linecap="round"/>
+      <ellipse cx="383" cy="424" rx="8" ry="7" transform="rotate(-35 383 424)" fill="url(#fish-fur)" stroke="#655b8f" stroke-width="1.5"/>
+      <path d="m379 421 5 5m-2-8 5 5" stroke="#8a7bb1" stroke-width="1.2" stroke-linecap="round"/>
+    </g>
+    <g class="fish-arm-holding">
+      <path class="fish-arm-sleeve" d="M343 385Q332 389 330 404Q329 411 325 401Q319 389 ${hand.x} ${hand.y + 8}" fill="none" stroke="#e99a62" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M343 385Q332 389 330 404Q329 411 325 401Q319 389 ${hand.x} ${hand.y + 8}" fill="none" stroke="#ffd06d" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+      <path class="fish-arm-cuff" d="M${hand.x - 5} ${hand.y + 8}h10" fill="none" stroke="#f5e6ff" stroke-width="6" stroke-linecap="round"/>
+    </g>
     <path d="m339 341-5-34q15-8 28 14m14 0 18-21q14 9 7 37" fill="#c9baed" stroke="#4d4b77" stroke-width="3"/><path d="m340 323 1-10 12 12m28 0 10-16 3 18" fill="#62678b"/>
     <path d="M334 340q26-27 58-4 23 24-8 40-27 14-47-8-12-13-3-28" fill="url(#fish-fur)"/>
     <path d="M337 347q10-14 27-2l-6 16q-19 5-21-14m31-3q16-15 26 2-2 18-20 14z" fill="#494277"/>
