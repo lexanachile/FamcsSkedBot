@@ -1,5 +1,9 @@
 export const PASS_MS = 3200;
-export const REST_MS = 5000;
+export const REST_MS = 2500;
+export function passPosition(fight) {
+  const time = Math.max(0, Math.min(1, fight.elapsed / fight.passMs));
+  return Math.pow(time, 1.65);
+}
 export function makeZones(random = Math.random, scale = 1) {
   const width = Math.min(.2, .105 * Math.max(.6, Number(scale) || 1));
   return [0.18 + random() * 0.08, 0.46 + random() * 0.06, 0.74 + random() * 0.07].map(start => ({ start, end: Math.min(.98, start + width), hit: false }));
@@ -20,7 +24,7 @@ export function displayedProgress(fight) {
 }
 export function strike(fight) {
   if (fight.phase !== 'pass' || fight.outcome) return 'inactive';
-  const position = fight.elapsed / fight.passMs;
+  const position = passPosition(fight);
   const zone = fight.zones.find(item => !item.hit && position >= item.start && position <= item.end);
   fight.attempts++;
   if (zone) { zone.hit = true; fight.hits++; fight.progress = fight.quick ? 100 : Math.min(100, fight.progress + 14); }

@@ -5,6 +5,7 @@ import { authenticate, authError, hmac, readBody } from '../miniapp/auth';
 import { seal, unseal, SLOT_MS, RECEIPT_TTL, type Reward } from '../fishing/tokens';
 import { ensurePlayer, normalizeGame, publicGame, saveRewards, updatePlayerGame } from '../fishing/repository';
 import { baitById, publicShop, rodById, rods } from '../fishing/shop';
+import { smallFishAmount } from '../fishing/rewards';
 
 // Public aggregate only; personal collections are never shared/cached.
 let stats: { until: number; rows: { fish_id: string; owners: number; usernames: string }[] } | undefined;
@@ -129,7 +130,8 @@ export function registerFishingRoutes(app: Hono<AppEnvironment>) {
     const cast = draw.value;
     const fish = fishingCatalog.find(item => item.id === cast.fish);
     const rod = rodById(cast.rodId) || rods[0], bait = baitById(cast.baitId);
-    const payload: Reward = { kind: 'cast', uid: user.id, slot, fish: fish?.id || null, readyAt: cast.readyAt, expiresAt: slot * SLOT_MS + 600000 };
+    const amount = fish ? undefined : smallFishAmount(new DataView(bytes.buffer).getUint32(8) / 4294967296);
+    const payload: Reward = { kind: 'cast', uid: user.id, slot, fish: fish?.id || null, readyAt: cast.readyAt, expiresAt: slot * SLOT_MS + 600000, amount };
     return c.json({ success: true, token: await seal(c.env.TELEGRAM_BOT_TOKEN!, payload), slot, nextCastAt: (slot + 1) * SLOT_MS,
       revision: draw.revision, game: publicGame(draw.game), usedBait: bait?.id || null, rod: rod.id,
       traits: fish ? { challenge: 'fight', passMs: Math.round(3200 * Math.max(.8, rod.reactionMs / 2200)), zoneScale: rod.zoneScale, divisions: rod.divisions, waitScale: bait?.waitScale || 1,
@@ -154,7 +156,7 @@ export function registerFishingRoutes(app: Hono<AppEnvironment>) {
     return c.json({ success: true, receipt: await seal(c.env.TELEGRAM_BOT_TOKEN!, receipt), slot: reward.slot, expiresAt: receipt.expiresAt,
       revision: saved.revision, game: publicGame(saved.game), duplicate: record?.duplicate || false, choice: record?.choice || null,
       catch: fish ? { kind: 'teacher', id: fish.id, name: fish.name, image: fish.image, phraseId: phrase, caption: fish.phrases[phrase] || '' }
-        : { kind: 'small', id: 'smallFish', name: 'Маленькая рыбка', image: null, caption: '+1 рыбка в карман' } });
+        : { kind: 'small', id: 'smallFish', name: 'Маленькая рыбка', image: null, amount: reward.amount || 1, caption: `+${reward.amount || 1} рыбок` } });
   });
   app.post('/api/fishing/resolve', async c => {
     let user; try { user = await authenticate(c); } catch (error) { return authError(c, error); }

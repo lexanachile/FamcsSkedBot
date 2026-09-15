@@ -2,10 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { createHmac } from 'node:crypto';
+import { smallFishAmount } from '../src/fishing/rewards.ts';
 import { build } from '../node_modules/esbuild/lib/main.js';
 const bundle = await build({ entryPoints: [new URL('../src/index.ts', import.meta.url).pathname.replace(/^\/(\w:)/, '$1')], bundle: true, write: false, format: 'esm', platform: 'browser' });
 const { default: app } = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
 const secret = 'test-only-bot-token';
+test('small fish reward follows the configured 55/30/10/4/1 percent bands', () => {
+  assert.deepEqual([0, .5499, .55, .8499, .85, .9499, .95, .9899, .99, .9999].map(smallFishAmount), [1, 1, 2, 2, 3, 3, 4, 4, 5, 5]);
+});
 function auth(id = 1) {
   const params = new URLSearchParams({ auth_date: String(Math.floor(Date.now() / 1000)), user: JSON.stringify({ id, username: 'user' + id }) });
   const check = [...params].sort(([a], [b]) => a.localeCompare(b)).map(([k,v]) => k + '=' + v).join('\n');
@@ -61,7 +65,7 @@ test('authenticated casts reserve one slot; receipts deduplicate and reject othe
     const saved = await (await f.request('fishing/sync', { receipts: [reveal.receipt], game: { wallet: { smallFish: 1000000 } } })).json();
     assert.equal(saved.revision, 2);
     const total = saved.game.wallet.smallFish + Object.values(saved.game.fish).reduce((sum, fish) => sum + fish.count, 0);
-    assert.equal(total, 1);
+    assert.equal(total, reveal.catch.kind === 'small' ? reveal.catch.amount : 1);
     const writes = f.writes();
     const repeated = await (await f.request('fishing/sync', { receipts: [reveal.receipt] })).json();
     assert.equal(repeated.revision, 2);
@@ -111,17 +115,18 @@ test('concurrent reward batches merge instead of overwriting', async () => {
   const f = fixture(); const realNow = Date.now; let now = realNow(); Date.now = () => now;
   try {
     await f.request('fishing/profile');
-    const receipts = [];
+    const receipts = []; let expectedReward = 0;
     for (let i = 0; i < 2; i++) {
       now += 30000;
       const cast = await (await f.request('fishing/cast', { spot: 'deep' })).json();
       now += 10000;
-      receipts.push((await (await f.request('fishing/reveal', { token: cast.token })).json()).receipt);
+      const revealed = await (await f.request('fishing/reveal', { token: cast.token })).json();
+      receipts.push(revealed.receipt); expectedReward += revealed.catch.kind === 'small' ? revealed.catch.amount : 1;
     }
     await Promise.all(receipts.map(receipt => f.request('fishing/sync', { receipts: [receipt] })));
     const profile = await (await f.request('fishing/profile')).json();
     assert.equal(profile.revision, 4);
-    assert.equal(profile.game.wallet.smallFish + Object.values(profile.game.fish).reduce((s, f) => s + f.count, 0), 2);
+    assert.equal(profile.game.wallet.smallFish + Object.values(profile.game.fish).reduce((s, f) => s + f.count, 0), expectedReward);
   } finally { Date.now = realNow; f.db.close(); }
 });
 test('shop purchase, equipment and bait consumption are atomic', async () => {
@@ -179,6 +184,32 @@ test('collection hides unknown teachers and shows tags only below three owners',
   assert.equal(a.locked, true); assert.equal(a.name, null); assert.equal(a.image, null);
   assert.equal(b.phrases.every(phrase => phrase.locked && phrase.text === null), true);
   f.db.close();
+});
+
+test('a full collection still randomly draws teachers and accepts successive release/eat choices', async () => {
+  const f = fixture(); f.env.TEST_TELEGRAM_USER_ID = '1';
+  const realNow = Date.now; let now = realNow(); Date.now = () => now;
+  try {
+    await f.request('fishing/profile');
+    f.db.prepare('UPDATE fishing_players SET game_json = ? WHERE telegram_id = 1').run(JSON.stringify({ wallet: { smallFish: 0 }, fish: {
+      kalinin: { count: 1, firstCaughtAt: now, phrases: [0] },
+      grekova: { count: 1, firstCaughtAt: now, phrases: [0, 1] },
+    } }));
+    const drawn = new Set();
+    for (let i = 0; i < 40; i++) {
+      now += 12000;
+      const cast = await (await f.request('fishing/cast', { spot: 'deep', devCatch: 'rare' })).json();
+      now += 10000;
+      const revealed = await (await f.request('fishing/reveal', { token: cast.token })).json();
+      assert.equal(revealed.duplicate, true); drawn.add(revealed.catch.id);
+      const response = await f.request('fishing/resolve', { receipt: revealed.receipt, choice: i % 2 ? 'eat' : 'release' });
+      assert.equal(response.status, 200);
+      const saved = await response.json();
+      assert.equal(saved.game.wallet.smallFish, Math.floor((i + 1) / 2));
+      assert.deepEqual(saved.game.fish.grekova.phrases.sort(), [0, 1]);
+    }
+    assert.deepEqual([...drawn].sort(), ['grekova', 'kalinin']);
+  } finally { Date.now = realNow; f.db.close(); }
 });
 
 test('teacher phrases unlock separately and repeated catches require one permanent choice', async () => {

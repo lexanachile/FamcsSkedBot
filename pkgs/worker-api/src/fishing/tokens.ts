@@ -15,4 +15,4 @@ export async function unseal<T>(secret: string, token: string): Promise<T> {
   const bytes = Uint8Array.from(atob(token.replace(/-/g, '+').replace(/_/g, '/')), ch => ch.charCodeAt(0));
   return JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: bytes.slice(0, 12) }, await key(secret), bytes.slice(12))));
 }
-export type Reward = { kind: 'receipt' | 'cast'; uid: number; slot: number; fish: string | null; readyAt: number; expiresAt: number; phrase?: number };
+export type Reward = { kind: 'receipt' | 'cast'; uid: number; slot: number; fish: string | null; readyAt: number; expiresAt: number; phrase?: number; amount?: number };

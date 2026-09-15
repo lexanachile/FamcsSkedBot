@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createFight, advance, strike, displayedProgress, PASS_MS, REST_MS } from '../src/fishing/engine.js';
+import { createFight, advance, strike, displayedProgress, passPosition, PASS_MS, REST_MS } from '../src/fishing/engine.js';
 import { bindStrikeInput } from '../src/fishing/input.js';
 import { minskPeriod } from '../src/fishing/environment.js';
 import { anglerPose, biteFishPosition, rodTip, linePath } from '../src/fishing/game.js';
@@ -9,6 +9,7 @@ import { lakeScene } from '../src/fishing/scene.js';
 import { readTrophies, writeTrophies, TROPHIES_KEY } from '../src/fishing/trophies.js';
 import { createLocationNotice } from '../src/fishing/location-notice.js';
 import { devBaitOptions, devCatchOptions, devRodOptions, storeMarkup } from '../src/fishing/storefront.js';
+const setIndicator = (fight, position) => { fight.elapsed = Math.pow(position, 1 / 1.65) * fight.passMs; };
 
 test('only home and crossing can be opened from the map', () => {
   const map = worldMapMarkup();
@@ -64,12 +65,12 @@ test('touch scores on contact at the displayed position, release does not score 
   const surface = { addEventListener(name, handler) { surfaceHandlers[name] = handler; } };
   const root = { addEventListener() {} };
   const fight = createFight(() => 0);
-  fight.elapsed = .2 * PASS_MS;
+  setIndicator(fight, .2);
   bindStrikeInput(button, surface, root, () => strike(fight));
   const target = { closest: () => null };
   surfaceHandlers.pointerdown({ isPrimary: true, button: 0, target, preventDefault() {} });
   assert.equal(fight.hits, 1);
-  fight.elapsed = .4 * PASS_MS; // finger is released after the sector has passed
+  setIndicator(fight, .4); // finger is released after the sector has passed
   buttonHandlers.click({ detail: 1 });
   assert.equal(fight.attempts, 1);
   assert.equal(fight.progress, 49);
@@ -168,7 +169,7 @@ test('small fish is caught by one correctly timed tap and escapes after its only
   assert.equal(caught.zones.length, 1);
   advance(caught, 100);
   assert.equal(caught.outcome, null);
-  caught.elapsed = .5 * PASS_MS;
+  setIndicator(caught, .5);
   assert.equal(strike(caught), 'hit');
   assert.equal(caught.progress, 100);
   assert.equal(caught.outcome, 'caught');
@@ -185,8 +186,10 @@ test('better rods slow the reaction pass and widen its target', () => {
   assert.ok(starter.divisions > moon.divisions);
 });
 
-test('a missed pass loses progress and gives exactly five seconds of recovery', () => {
+test('the indicator accelerates and a missed pass gives exactly 2.5 seconds of recovery', () => {
   const fight = createFight(() => 0);
+  fight.elapsed = fight.passMs * .25; assert.ok(passPosition(fight) < .25);
+  fight.elapsed = fight.passMs * .75; assert.ok(passPosition(fight) > .5);
   advance(fight, PASS_MS);
   assert.equal(fight.progress, 19);
   assert.equal(fight.phase, 'rest');
@@ -200,12 +203,12 @@ test('a missed pass loses progress and gives exactly five seconds of recovery', 
 });
 test('several sectors can be caught per pass but each sector only once', () => {
   const fight = createFight(() => 0);
-  fight.elapsed = .2 * PASS_MS;
+  setIndicator(fight, .2);
   assert.equal(strike(fight), 'hit');
   assert.equal(strike(fight), 'miss');
-  fight.elapsed = .5 * PASS_MS;
+  setIndicator(fight, .5);
   assert.equal(strike(fight), 'hit');
-  fight.elapsed = .8 * PASS_MS;
+  setIndicator(fight, .8);
   assert.equal(strike(fight), 'hit');
   advance(fight, PASS_MS);
   assert.equal(fight.progress, 68);
@@ -213,7 +216,7 @@ test('several sectors can be caught per pass but each sector only once', () => {
 test('successful play reaches a catch, a completed fight cannot be changed', () => {
   const fight = createFight(() => 0);
   for (let pass = 0; pass < 2; pass++) {
-    for (const pos of [.2, .5, .8]) { fight.elapsed = pos * PASS_MS; strike(fight); }
+    for (const pos of [.2, .5, .8]) { setIndicator(fight, pos); strike(fight); }
     if (!fight.outcome) { advance(fight, PASS_MS); advance(fight, REST_MS, () => 0); }
   }
   assert.equal(fight.outcome, 'caught');

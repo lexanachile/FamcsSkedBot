@@ -1,8 +1,9 @@
 import { lakeScene } from './scene.js?v=69';
-import { createFight, advance, strike, displayedProgress, REST_MS } from './engine.js?v=62';
+import { createFight, advance, strike, displayedProgress, passPosition, REST_MS } from './engine.js?v=72';
 import { createProgress } from './progress.js?v=69';
 import { setupEnvironment } from './environment.js?v=55';
 import { bindStrikeInput } from './input.js?v=67';
+import { withCatchChoice } from './catch-choice.js?v=71';
 import { getLocation, worldMapMarkup } from './locations.js?v=65';
 import { devBaitOptions, devCatchOptions, devRodOptions, optionsMarkup, renderLoadout, renderShop, storeMarkup } from './storefront.js?v=64';
 
@@ -15,12 +16,13 @@ export function anglerPose(state, elapsed, fight, motionTime, reduced = false, s
   const recovering = fighting && fight?.phase === 'rest';
   const effort = recovering ? Math.sin(Math.PI * Math.min(1, fight.elapsed / REST_MS)) : 0;
   const tug = fighting ? .5 + .5 * Math.sin((fight?.motionTime ?? motionTime) * (recovering ? 3.2 : 7.2)) : 0;
+  const step = recovering && !reduced ? Math.sin((fight?.motionTime ?? motionTime) * 11) : 0;
   const pulse = reduced ? 0 : Math.max(0, Math.min(1, strikePulse));
   return {
     pulling: fighting || state === 'approach',
-    shiftX: reduced ? (bite ? -5 : fighting ? -3 : 0) : -bite * 8 - (fighting ? 4 + tug * 2 : 0) + pulse * 1.5,
-    shiftY: reduced ? 0 : bite * 2 + (fighting ? tug * 1.2 : 0),
-    lean: reduced ? 0 : -bite * 1.8 - (fighting ? 1 + tug * .8 : 0) + effort * 3 + pulse * 2.2 + Math.sin(motionTime * 1.6) * .25,
+    shiftX: reduced ? (bite ? -5 : fighting ? -3 : 0) : -bite * 8 - (fighting ? 4 + tug * (recovering ? 5 : 2) : 0) + step * .7 + pulse * 1.5,
+    shiftY: reduced ? 0 : bite * 2 + (fighting ? tug * 1.2 : 0) + Math.abs(step) * 1.5,
+    lean: reduced ? 0 : -bite * 1.8 - (fighting ? 1 + tug * (recovering ? 1.5 : .8) : 0) + effort * 3 + pulse * 2.2 + Math.sin(motionTime * 1.6) * .25,
     rodAngle: reduced ? (bite ? 3 : fighting ? 4 : 0) : effort * 8 + bite * 3 + (fighting ? 2.5 + tug * 2 : 0) + pulse * 15 + (state === 'casting' ? -14 * Math.sin(elapsed / 1100 * Math.PI) : 0),
   };
 }
@@ -117,7 +119,12 @@ export function mountFishing(host) {
   function setState(next) { state = next; elapsed = 0; root.dataset.state = next; }
   function zones() {
     q('.fish-zones').replaceChildren(...fight.zones.map(zone => {
-      const el = document.createElement('i'); el.style.bottom = `${zone.start * 100}%`; el.style.height = `${(zone.end - zone.start) * 100}%`; return el;
+      const el = document.createElement('i'); el.style.bottom = `${zone.start * 100}%`; el.style.height = `${(zone.end - zone.start) * 100}%`;
+      el.style.setProperty('--zone-a', `${(-1 - Math.random() * 2).toFixed(1)}px`);
+      el.style.setProperty('--zone-b', `${(1 + Math.random() * 2).toFixed(1)}px`);
+      el.style.setProperty('--zone-drop', `${(3 + Math.random() * 3).toFixed(1)}px`);
+      el.style.setProperty('--zone-time', `${(1.7 + Math.random() * .9).toFixed(2)}s`);
+      el.style.setProperty('--zone-delay', `${(-Math.random() * 2).toFixed(2)}s`); return el;
     }));
     savedRound = fight.round;
   }
@@ -223,6 +230,7 @@ export function mountFishing(host) {
   }
   function showCatch(result) {
     currentCatch = result;
+    q('.fish-catch-choices').querySelectorAll('button').forEach(button => { button.disabled = false; });
     const item = result.catch, portrait = q('.fish-portrait');
     portrait.replaceChildren();
     portrait.textContent = item.kind === 'small' ? '🐟' : '◆';
@@ -232,9 +240,9 @@ export function mountFishing(host) {
     q('.fish-catch-choices').hidden = !result.duplicate || Boolean(result.choice);
     q('.fish-again').hidden = result.duplicate && !result.choice;
   }
-  function showSmallReward() {
+  function showSmallReward(amount = 1) {
     clearTimeout(rewardTimer);
-    const reward = q('.fish-catch-plus'); reward.hidden = false; reward.classList.remove('is-rising'); void reward.offsetWidth; reward.classList.add('is-rising');
+    const reward = q('.fish-catch-plus'); reward.innerHTML = `+${amount} <span>≈</span>`; reward.hidden = false; reward.classList.remove('is-rising'); void reward.offsetWidth; reward.classList.add('is-rising');
     rewardTimer = setTimeout(() => { reward.hidden = true; reward.classList.remove('is-rising'); }, 1050);
   }
   async function finish() {
@@ -256,7 +264,7 @@ export function mountFishing(host) {
           const result = await progress.reveal(token);
           if (version !== session || state !== 'resolving') return;
           retryReveal = null;
-          if (result.catch.kind === 'small') { reset(); showSmallReward(); return; }
+          if (result.catch.kind === 'small') { reset(); showSmallReward(result.catch.amount); return; }
           setState('result'); q('.fish-result').hidden = false; showCatch(result);
         } catch (error) {
           if (version === session) { setState('result'); q('.fish-result').hidden = false; q('.fish-result p').textContent = error.message; retryReveal = reveal; q('.fish-again').hidden = false; }
@@ -268,12 +276,15 @@ export function mountFishing(host) {
 
   async function chooseCatch(choice) {
     if (!currentCatch) return;
-    q('.fish-catch-choices').querySelectorAll('button').forEach(button => { button.disabled = true; });
-    try { await progress.resolveCatch(currentCatch, choice); reset(); }
-    catch (error) { q('.fish-result p').textContent = error.message; q('.fish-catch-choices').querySelectorAll('button').forEach(button => { button.disabled = false; }); }
+    const caught = currentCatch, version = session;
+    await withCatchChoice([...q('.fish-catch-choices').querySelectorAll('button')], async () => {
+      try { await progress.resolveCatch(caught, choice); if (version === session) reset(); }
+      catch (error) { if (version === session) q('.fish-result p').textContent = error.message; }
+    });
   }
 
   function reset() {
+    q('.fish-catch-choices').querySelectorAll('button').forEach(button => { button.disabled = false; });
     session++; encounter = null; retryReveal = null; currentCatch = null; strikePulse = 0; q('.fish-again').disabled = false; q('.fish-again').hidden = false; q('.fish-catch-choices').hidden = true; delete root.dataset.pull;
     setState('idle'); q('.fish-result').hidden = true; q('.fish-check').hidden = true; q('.fish-tension').hidden = true;
     q('.fish-spots').hidden = root.dataset.view !== 'fishing';
@@ -352,13 +363,13 @@ export function mountFishing(host) {
       const resting = fight.phase === 'rest';
       root.dataset.pull = resting ? 'recover' : 'fight';
       const fishTug = .5 + .5 * Math.sin(fight.motionTime * (resting ? 3.2 : 7.2));
-      const fishTarget = { x: (resting ? 101 : 92) - fishTug * (resting ? 4 : 10), y: 454 + Math.sin(fight.motionTime * 4.6) * (resting ? 2 : 5) };
+      const fishTarget = { x: (resting ? 91 : 92) - fishTug * (resting ? 14 : 10), y: 454 + Math.sin(fight.motionTime * (resting ? 7 : 4.6)) * (resting ? 4 : 5) };
       const fishBlend = 1 - Math.exp(-dt / 110);
       fishPosition.x += (fishTarget.x - fishPosition.x) * fishBlend; fishPosition.y += (fishTarget.y - fishPosition.y) * fishBlend;
       q('.fish-approach').style.opacity = '.82'; q('.fish-approach').setAttribute('transform', `translate(${fishPosition.x} ${fishPosition.y})`);
-      q('.fish-pull-wake').style.opacity = resting ? '.28' : '.7'; q('.fish-pull-wake').setAttribute('transform', `translate(${fishPosition.x} ${fishPosition.y})`);
+      q('.fish-pull-wake').style.opacity = resting ? '.52' : '.7'; q('.fish-pull-wake').setAttribute('transform', `translate(${fishPosition.x} ${fishPosition.y})`);
       q('.fish-check').classList.toggle('is-resting', resting);
-      q('.fish-cursor').style.bottom = `${Math.min(100, fight.elapsed / fight.passMs * 100)}%`;
+      q('.fish-cursor').style.bottom = `${passPosition(fight) * 100}%`;
       q('.fish-round').textContent = resting ? `${Math.ceil((REST_MS - fight.elapsed) / 1000)} с` : `0${fight.round}`;
       if (previousPhase !== fight.phase) action('', resting);
     } else if (state === 'landing') {

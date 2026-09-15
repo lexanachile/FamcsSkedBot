@@ -466,3 +466,18 @@
 .fish-check.is-tap-hit .fish-track { box-shadow: inset 0 2px 9px #11133f99, 0 0 0 3px #a7ffe36b, 0 0 24px #7fffd4a3; }
 @keyframes fish-check-hit { 45% { border-color: #b8ffe9; filter: brightness(1.22); } }
 @keyframes fish-check-miss { 45% { border-color: #ff93ae; transform: translateX(2px); filter: saturate(1.35); } }
+
+/* Compact skill check: motion carries the hierarchy instead of a heavy panel. */
+.fish-check { left: 5%; top: 31%; bottom: 15%; width: 42px; gap: 5px; padding: 7px 6px; border: 1px solid #ffffff42; border-radius: 21px; background: #2928608f; box-shadow: 0 8px 22px #2020502e, inset 0 1px #ffffff4f; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.fish-check::before, .fish-check-mark { display: none; }
+.fish-track { width: 12px; border: 0; border-radius: 8px; background: repeating-linear-gradient(to top, #ffffff20 0 1px, transparent 1px calc(100% / var(--fish-divisions, 8))), #171846a8; box-shadow: inset 0 1px 5px #1011368f; }
+.fish-track::after { display: none; }
+.fish-zones i { left: 1px; right: 1px; min-height: 7px; border: 0; border-radius: 5px; background: linear-gradient(180deg, #fff1a4, #83ebd1); box-shadow: 0 0 9px #9ff5d788; animation: fish-zone-drift var(--zone-time, 2s) ease-in-out var(--zone-delay, 0s) infinite; }
+.fish-cursor { left: -6px; right: -6px; height: 3px; border: 0; border-radius: 4px; background: #ff9aae; box-shadow: 0 0 10px #ff91adba; }
+.fish-cursor::before { right: -2px; width: 5px; height: 5px; border-width: 1px; box-shadow: 0 0 7px #ff9dbd; }
+.fish-round { min-width: 0; height: 15px; padding: 0; border: 0; border-radius: 0; color: #fff3bd; background: transparent; font-size: 8px; box-shadow: none; }
+.fishing-game[data-pull="recover"] .fish-boot-left { transform-box: fill-box; transform-origin: center bottom; animation: fish-step-left .34s ease-in-out infinite alternate; }
+.fishing-game[data-pull="recover"] .fish-boot-right { transform-box: fill-box; transform-origin: center bottom; animation: fish-step-right .34s ease-in-out infinite alternate; }
+@keyframes fish-zone-drift { 0%, 100% { transform: translateY(var(--zone-a, -2px)); } 58% { transform: translateY(var(--zone-b, 2px)); } 61% { transform: translateY(var(--zone-drop, 5px)); } 69% { transform: translateY(0); } }
+@keyframes fish-step-left { to { transform: translateY(-3px) rotate(-2deg); } }
+@keyframes fish-step-right { from { transform: translateY(-3px) rotate(2deg); } }

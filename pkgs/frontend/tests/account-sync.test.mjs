@@ -36,3 +36,7 @@ test('ordinary fish add currency; teachers replace them without adding currency'
   assert.deepEqual(result.fish.kalinin, { count: 1, firstCaughtAt: 10, phrases: [] });
   assert.deepEqual(base, { wallet: { smallFish: 5 }, fish: {} });
 });
+test('offline projection keeps a multi-fish catch amount', () => {
+  const result = projectedGame({ wallet: { smallFish: 4 }, fish: {} }, [{ catch: { kind: 'small', amount: 5 } }]);
+  assert.equal(result.wallet.smallFish, 9);
+});

@@ -26,7 +26,7 @@ export function projectedGame(base, pending) {
   game.inventory.rods ||= ['twig']; game.inventory.baits ||= {};
   game.equipped ||= { rod: 'twig', bait: null };
   for (const entry of pending) {
-    if (entry.catch.kind === 'small') game.wallet.smallFish++;
+    if (entry.catch.kind === 'small') game.wallet.smallFish += entry.catch.amount || 1;
     else {
       const previous = game.fish[entry.catch.id];
       game.fish[entry.catch.id] = { ...previous, count: (previous?.count || 0) + 1, firstCaughtAt: previous?.firstCaughtAt || entry.caughtAt,

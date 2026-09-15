@@ -78,7 +78,7 @@ export function applyRewards(game: Game, sync: Record<string, number>, rewards: 
       const phrase = Number.isInteger(reward.phrase) && reward.phrase! >= 0 && reward.phrase! < fish.phrases.length ? reward.phrase! : 0;
       next.fish[reward.fish] = { count: (previous?.count || 0) + 1, firstCaughtAt: Math.min(previous?.firstCaughtAt || reward.readyAt, reward.readyAt), phrases: [...new Set([...(previous?.phrases || []), phrase])] };
       next._catches[id] = { fish: reward.fish, phrase, duplicate: Boolean(previous?.count), expiresAt: reward.expiresAt };
-    } else next.wallet.smallFish++;
+    } else next.wallet.smallFish += Number.isInteger(reward.amount) && reward.amount! >= 1 && reward.amount! <= 5 ? reward.amount! : 1;
     added++;
   }
   if (added) next.savedAt = now;

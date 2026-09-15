@@ -10,7 +10,7 @@ import { initializeTelegramWebApp, triggerTelegramHaptic } from "./src/telegram.
 import { setStaleNotice, showToast } from "./src/feedback.js?v=55";
 import { setupScheduleModes, filterSubgroup, teacherSchedule } from "./src/schedule-modes.js?v=55";
 import { requestJson } from "./src/request.js?v=55";
-import { setupFishingLauncher } from "./src/fishing-loader.js?v=69";
+import { setupFishingLauncher } from "./src/fishing-loader.js?v=72";
 import { setupCloudColors } from "./src/cloud-colors.js?v=60";
 
 let scheduleMode = null;
