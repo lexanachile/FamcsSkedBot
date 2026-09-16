@@ -53,7 +53,7 @@ export function registerFishingSocket(app: Hono<AppEnvironment>) {
         }), c.env);
         const data = await response.json();
         if (!closed) server.send(JSON.stringify({ id: message.id, status: response.status, data }));
-      }).catch(() => stop(1011, 'Command failed')).finally(() => { queued--; });
+      }).catch(error => { console.error('Fishing socket command failed', error); stop(1011, 'Command failed'); }).finally(() => { queued--; });
     });
     return new Response(null, { status: 101, webSocket: client });
   });

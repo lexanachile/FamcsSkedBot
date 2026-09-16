@@ -134,8 +134,11 @@ export function registerFishingRoutes(app: Hono<AppEnvironment>) {
       }
       const rare = isDev && body?.devCatch === 'rare' ? true : isDev && body?.devCatch === 'small' ? false
         : roll < rareCatchChance(TEACHER_CHANCE, bait?.rareBonus || 0, game._commonCatchStreak);
-      const unseen = pool.filter(fish => !(game.fish[fish.id]?.count > 0));
-      const candidates = unseen.length ? unseen : pool;
+      const incomplete = pool.filter(fish => {
+        const unlocked = game.fish[fish.id]?.phrases || [];
+        return fish.phrases.some((_, phraseId) => !unlocked.includes(phraseId));
+      });
+      const candidates = incomplete.length ? incomplete : pool;
       const fishRoll = new DataView(bytes.buffer).getUint32(4) / 4294967296;
       const fish = rare ? pickFishingCandidate(candidates, fishRoll) : null;
       const cast = { slot, baitId: bait?.id || null, fish: fish?.id || null, readyAt: now + (fish ? 9000 : 2500), rodId: rod.id, devKey };
@@ -161,10 +164,15 @@ export function registerFishingRoutes(app: Hono<AppEnvironment>) {
     if (reward.uid !== user.id || reward.kind !== 'cast' || reward.expiresAt <= Date.now()) return c.json({ success: false, error: 'Заброс истёк.' }, 400);
     if (Date.now() < reward.readyAt) return c.json({ success: false, error: 'Улов ещё не готов.' }, 409);
     const fish = fishingCatalog.find(f => f.id === reward.fish);
-    const phraseBytes = new Uint8Array(await hmac(c.env.TELEGRAM_BOT_TOKEN!, 'phrase:v1:' + user.id + ':' + reward.slot));
-    const phrase = fish ? phraseBytes[0] % fish.phrases.length : 0;
-    const receipt = { ...reward, kind: 'receipt' as const, phrase, expiresAt: reward.slot * SLOT_MS + RECEIPT_TTL };
     const initialRow = await ensurePlayer(c.env.DB, user.id, user.username);
+    const game = normalizeGame(JSON.parse(initialRow.game_json));
+    const phraseBytes = new Uint8Array(await hmac(c.env.TELEGRAM_BOT_TOKEN!, 'phrase:v1:' + user.id + ':' + reward.slot));
+    const phrasePool = fish
+      ? fish.phrases.map((_, id) => id).filter(id => !game.fish[fish.id]?.phrases.includes(id))
+      : [];
+    const availablePhrases = fish && phrasePool.length ? phrasePool : fish?.phrases.map((_, id) => id) || [0];
+    const phrase = availablePhrases[phraseBytes[0] % availablePhrases.length];
+    const receipt = { ...reward, kind: 'receipt' as const, phrase, expiresAt: reward.slot * SLOT_MS + RECEIPT_TTL };
     const saved = await saveRewards(c.env.DB, user.id, [receipt], initialRow);
     const record = saved.game._catches[String(reward.slot)];
     return c.json({ success: true, receipt: await seal(c.env.TELEGRAM_BOT_TOKEN!, receipt), slot: reward.slot, expiresAt: receipt.expiresAt,

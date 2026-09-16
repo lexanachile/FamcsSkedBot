@@ -306,29 +306,54 @@ test('collection counts owners and samples tags separately for every phrase', as
   f.db.close();
 });
 
-test('rare catches prioritize unseen teachers before returning to the full random pool', async () => {
+test('rare catches prioritize unopened teacher phrases before returning to the full random pool', async () => {
   const f = fixture(); f.env.TEST_TELEGRAM_USER_ID = '1';
   const realNow = Date.now; let now = realNow(); Date.now = () => now;
   try {
     await f.request('fishing/profile');
     const caught = [];
-    const uniqueCount = fishingCatalog.length;
-    for (let i = 0; i < uniqueCount + 1; i++) {
+    const phraseCount = fishingCatalog.reduce((sum, fish) => sum + fish.phrases.length, 0);
+    for (let i = 0; i < phraseCount + 1; i++) {
       now += 12000;
       const cast = await (await f.request('fishing/cast', { spot: 'deep', devCatch: 'rare' })).json();
       now += 10000;
       const revealed = await (await f.request('fishing/reveal', { token: cast.token })).json();
       caught.push({ ...revealed, traits: cast.traits });
     }
-    assert.equal(new Set(caught.slice(0, uniqueCount).map(result => result.catch.id)).size, uniqueCount);
-    assert.equal(caught.slice(0, uniqueCount).every(result => !result.duplicate), true);
-    const vaskovsky = caught.slice(0, uniqueCount).find(result => result.catch.id === 'vaskovsky');
-    const others = caught.slice(0, uniqueCount).filter(result => result.catch.id !== 'vaskovsky');
+    const prioritized = caught.slice(0, phraseCount);
+    assert.equal(new Set(prioritized.map(result => result.catch.id)).size, fishingCatalog.length);
+    assert.equal(new Set(prioritized.map(result => `${result.catch.id}:${result.catch.phraseId}`)).size, phraseCount);
+    assert.equal(prioritized.filter(result => result.duplicate).length, phraseCount - fishingCatalog.length);
+    const vaskovsky = prioritized.find(result => result.catch.id === 'vaskovsky');
+    const others = prioritized.filter(result => result.catch.id !== 'vaskovsky');
     assert.ok(vaskovsky.traits.passMs < Math.min(...others.map(result => result.traits.passMs)));
     assert.ok(vaskovsky.traits.zoneScale < Math.min(...others.map(result => result.traits.zoneScale)));
     assert.ok(vaskovsky.traits.drift > Math.max(...others.map(result => result.traits.drift)));
-    assert.equal(caught[uniqueCount].duplicate, true);
-    assert.ok(fishingCatalog.some(fish => fish.id === caught[uniqueCount].catch.id));
+    assert.equal(caught[phraseCount].duplicate, true);
+    assert.ok(fishingCatalog.some(fish => fish.id === caught[phraseCount].catch.id));
+  } finally { Date.now = realNow; f.db.close(); }
+});
+
+test('a teacher with one missing phrase is selected and reveals that phrase next', async () => {
+  const f = fixture(); f.env.TEST_TELEGRAM_USER_ID = '1';
+  const realNow = Date.now; let now = realNow(); Date.now = () => now;
+  try {
+    await f.request('fishing/profile');
+    f.db.prepare('UPDATE fishing_players SET game_json = ? WHERE telegram_id = 1').run(JSON.stringify({ wallet: { smallFish: 0 }, fish: {
+      kalinin: { count: 1, firstCaughtAt: now, phrases: [0] },
+      grekova: { count: 1, firstCaughtAt: now, phrases: [0] },
+      kastrica: { count: 1, firstCaughtAt: now, phrases: [0] },
+      orlovich: { count: 1, firstCaughtAt: now, phrases: [0] },
+      vaskovsky: { count: 1, firstCaughtAt: now, phrases: [0, 1] },
+    } }));
+    now += 12000;
+    const cast = await (await f.request('fishing/cast', { spot: 'deep', devCatch: 'rare' })).json();
+    now += 10000;
+    const revealed = await (await f.request('fishing/reveal', { token: cast.token })).json();
+    assert.equal(revealed.catch.id, 'grekova');
+    assert.equal(revealed.catch.phraseId, 1);
+    assert.equal(revealed.duplicate, true);
+    assert.deepEqual(revealed.game.fish.grekova.phrases.sort(), [0, 1]);
   } finally { Date.now = realNow; f.db.close(); }
 });
 

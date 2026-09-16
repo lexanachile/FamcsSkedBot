@@ -1,7 +1,18 @@
-import { accountRequest as httpRequest, accountHint, API_ROOT } from '../account-api.js?v=85';
-import { createGameTransport } from './transport.js?v=85';
+import { accountRequest as httpRequest, accountHint, API_ROOT } from '../account-api.js?v=92';
+import { createGameTransport } from './transport.js?v=92';
 const RARE_CATCH_SMALL_FISH_BONUS = 30;
 const empty = () => ({ schemaVersion: 5, savedAt: 0, wallet: { smallFish: 0 }, stats: { totalCaught: 0 }, fish: {}, inventory: { rods: ['twig'], baits: {} }, equipped: { rod: 'twig', bait: null } });
+export async function requestRevealWithRetry(request, wait = delay => new Promise(resolve => setTimeout(resolve, delay))) {
+  const delays = [250, 500, 1000];
+  for (let attempt = 0; ; attempt++) {
+    try { return await request(); }
+    catch (error) {
+      const temporary = !Number.isInteger(error?.status) || error.status === 409 || error.status >= 500;
+      if (!temporary || attempt >= delays.length) throw error;
+      await wait(delays[attempt]);
+    }
+  }
+}
 let database;
 function db() {
   return database ||= new Promise((resolve, reject) => {
@@ -87,7 +98,9 @@ export function createProgress(onChange) {
     // Keep a recoverable cast until the receipt is durably in IndexedDB.
     const recoveryKey = `${uid}:${token}`;
     await pendingOperation('readwrite', store => store.put({ key: recoveryKey, uid, token }), 'unrevealed');
-    const result = await accountRequest('fishing/reveal', { token });
+    // Reveal is idempotent by user and cast slot, so retrying a transient failure
+    // cannot award the same catch twice.
+    const result = await requestRevealWithRetry(() => accountRequest('fishing/reveal', { token }));
     if (result.catch?.kind === 'teacher') reads.delete('fishing/collection');
     if (result.game) applyServer(result);
     else {
