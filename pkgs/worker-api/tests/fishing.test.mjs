@@ -268,6 +268,7 @@ test('shop purchase, equipment and bait consumption are atomic', async () => {
     const shop = await (await f.request('fishing/shop')).json();
     assert.equal(shop.catalog.rods.some(item => item.id === 'auto' && item.price === 500), true);
     assert.deepEqual(shop.catalog.rods.map(item => item.effects.rarePercent), [0, 1, 2, 4, 6]);
+    assert.deepEqual(shop.catalog.rods.map(item => item.effects.waitPercent), [-20, 0, 22, 45, 65]);
     assert.equal(shop.catalog.baits.find(item => item.id === 'crumbs').effects.rarePercent, 2);
     const rod = await (await f.request('fishing/shop/buy', { itemId: 'reed' })).json();
     assert.equal(rod.game.wallet.smallFish, 75);
@@ -298,9 +299,11 @@ test('shop purchase, equipment and bait consumption are atomic', async () => {
     assert.equal(dev.usedBait, 'glow');
     assert.equal(dev.game.inventory.baits.glow || 0, 0);
     assert.equal(dev.traits.challenge, 'auto');
+    assert.ok(Math.abs(dev.traits.waitScale - .175) < 1e-12);
     now += 30000;
     const rare = await (await f.request('fishing/cast', { spot: 'deep', devCatch: 'rare', devRod: 'auto' })).json();
     assert.equal(rare.traits.challenge, 'fight');
+    assert.equal(rare.traits.waitScale, .35);
     const changed = await (await f.request('fishing/cast', { spot: 'deep', devCatch: 'small', devRod: 'auto' })).json();
     assert.equal(changed.slot, rare.slot);
     assert.equal(changed.traits.challenge, 'auto');

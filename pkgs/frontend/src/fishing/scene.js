@@ -64,7 +64,12 @@ export function lakeScene() {
       <path d="M343 385Q332 389 330 404Q329 411 325 401Q319 389 ${hand.x} ${hand.y + 8}" fill="none" stroke="#ffd06d" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
       <path class="fish-arm-cuff" d="M${hand.x - 5} ${hand.y + 8}h10" fill="none" stroke="#f5e6ff" stroke-width="6" stroke-linecap="round"/>
     </g>
-    <path d="m339 341-5-34q15-8 28 14m14 0 18-21q14 9 7 37" fill="#c9baed" stroke="#4d4b77" stroke-width="3"/><path d="m340 323 1-10 12 12m28 0 10-16 3 18" fill="#62678b"/>
+    <g class="fish-raccoon-ears">
+      <path d="M338 347 333 307Q348 296 363 320L360 348Z" fill="#c9baed" stroke="#4d4b77" stroke-width="3"/>
+      <path d="M376 322 395 299Q410 302 404 338L393 350Z" fill="#c9baed" stroke="#4d4b77" stroke-width="3"/>
+      <path d="M338 311Q348 303 357 320L355 333Z" fill="#62678b" stroke="none"/>
+      <path d="M394 306Q403 308 401 331L393 341Z" fill="#62678b" stroke="none"/>
+    </g>
     <path d="M334 340q26-27 58-4 23 24-8 40-27 14-47-8-12-13-3-28" fill="url(#fish-fur)"/>
     <path d="M337 347q10-14 27-2l-6 16q-19 5-21-14m31-3q16-15 26 2-2 18-20 14z" fill="#494277"/>
     <g class="fish-eyes"><ellipse cx="352" cy="349" rx="4" ry="5" fill="#fff7dc"/><ellipse cx="381" cy="347" rx="4" ry="5" fill="#fff7dc"/><circle cx="353" cy="350" r="2.4" fill="#253e4b"/><circle cx="380" cy="348" r="2.4" fill="#253e4b"/></g>

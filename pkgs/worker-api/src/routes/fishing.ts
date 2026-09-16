@@ -155,14 +155,15 @@ export function registerFishingRoutes(app: Hono<AppEnvironment>) {
     const fish = fishingCatalog.find(item => item.id === cast.fish);
     const phraseSettings = fish?.phrases[Number.isInteger(cast.phrase) ? cast.phrase! : 0];
     const rod = rodById(cast.rodId) || rods[0], bait = baitById(cast.baitId);
+    const waitScale = rod.waitScale * (bait?.waitScale || 1);
     const amount = fish ? undefined : smallFishAmount(new DataView(bytes.buffer).getUint32(8) / 4294967296);
     const payload: Reward = { kind: 'cast', uid: user.id, slot, fish: fish?.id || null, phrase: fish ? cast.phrase : undefined,
       readyAt: cast.readyAt, expiresAt: slot * SLOT_MS + 600000, amount };
     return c.json({ success: true, token: await seal(c.env.TELEGRAM_BOT_TOKEN!, payload), slot, nextCastAt: (slot + 1) * SLOT_MS,
       revision: draw.revision, game: publicGame(draw.game), usedBait: bait?.id || null, rod: rod.id,
-      traits: fish && phraseSettings ? { challenge: 'fight', passMs: Math.round(3200 * Math.max(.8, rod.reactionMs / 2200) * phraseSettings.fight.passScale), zoneScale: rod.zoneScale * phraseSettings.fight.zoneScale, divisions: rod.divisions, waitScale: bait?.waitScale || 1,
+      traits: fish && phraseSettings ? { challenge: 'fight', passMs: Math.round(3200 * Math.max(.8, rod.reactionMs / 2200) * phraseSettings.fight.passScale), zoneScale: rod.zoneScale * phraseSettings.fight.zoneScale, divisions: rod.divisions, waitScale,
         drift: phraseSettings.fight.drift * rod.driftScale, shake: phraseSettings.fight.shake * rod.shakeScale, shakeSpeed: phraseSettings.fight.shakeSpeed }
-        : { challenge: rod.autoSmall ? 'auto' : 'quick', passMs: rod.reactionMs, quickZone: rod.quickZone, divisions: rod.divisions, waitScale: bait?.waitScale || 1, drift: 0, shake: 1.5, shakeSpeed: 1 } });
+        : { challenge: rod.autoSmall ? 'auto' : 'quick', passMs: rod.reactionMs, quickZone: rod.quickZone, divisions: rod.divisions, waitScale, drift: 0, shake: 1.5, shakeSpeed: 1 } });
   });
   app.post('/api/fishing/reveal', async c => {
     let user; try { user = await authenticate(c); } catch (error) { return authError(c, error); }

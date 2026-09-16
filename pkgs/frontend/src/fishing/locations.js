@@ -1,8 +1,8 @@
 export const FISHING_LOCATIONS = [
-  { id: 'crossing', name: 'Переправа', locked: false, x: 22, y: 48, icon: '≈' },
-  { id: 'main', name: 'Главка', locked: true, x: 54, y: 16, icon: 'Г' },
-  { id: 'zhdany', name: 'Жданы', locked: true, x: 80, y: 36, icon: 'Ж' },
-  { id: 'passage', name: 'Переход', locked: true, x: 55, y: 63, icon: 'П' },
+  { id: 'crossing', name: 'Переправа', locked: false, x: 22, y: 59, icon: '≈' },
+  { id: 'main', name: 'Главка', locked: true, x: 54, y: 27, icon: 'Г' },
+  { id: 'zhdany', name: 'Кефас', locked: true, x: 80, y: 47, icon: 'К' },
+  { id: 'passage', name: 'Жанчик', locked: true, x: 55, y: 74, icon: 'Ж' },
 ];
 
 export function getLocation(id) {
@@ -11,7 +11,7 @@ export function getLocation(id) {
 
 export function worldMapMarkup() {
   const points = [
-    { id: 'home', name: 'Дом', locked: false, x: 18, y: 12.5, icon: '⌂' },
+    { id: 'home', name: 'Дом', locked: false, x: 18, y: 23.5, icon: '⌂' },
     ...FISHING_LOCATIONS,
   ];
   return `<section class="fish-world-map" aria-label="Карта рыболовного клуба">
@@ -36,13 +36,34 @@ export function worldMapMarkup() {
         <path d="M185 433Q225 388 290 425T311 507Q251 536 194 495Z" fill="url(#fish-map-peach)"/>
       </g>
       <g fill="none" stroke="#fff2c0" stroke-width="2" stroke-linecap="round" stroke-dasharray="3 10" class="fish-map-route"><path d="M269 205Q333 205 360 298M337 337Q287 355 251 464M133 405Q171 449 221 472"/></g>
-      <g class="fish-map-house" stroke="#604f64" stroke-width="2" stroke-linejoin="round">
-        <path d="M62 141h43v38H62z" fill="#fff0cf"/>
-        <path d="M95 119h8v23h-8z" fill="#d07969"/>
-        <path d="m55 144 28-30 29 30z" fill="#bb625a"/>
-        <path d="M78 157h12v22H78z" fill="#73606c"/>
-        <path d="M66 150h8v10h-8zm28 0h7v10h-7z" fill="#fbd77f"/>
-        <path d="M58 180h51" fill="none" stroke="#b77968"/>
+      <g class="fish-map-hut" stroke="#543b55" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <ellipse cx="83" cy="184" rx="37" ry="7" fill="#6b4961" opacity=".22" stroke="none"/>
+        <g class="fish-map-hut-smoke" fill="none" stroke="#fff0dc" opacity=".7">
+          <path d="M99 106c-9-7 7-11-1-19"/>
+          <path d="M105 103c7-7-3-10 3-17" opacity=".55"/>
+        </g>
+        <path d="m94 119 2-22 11 1 2 25z" fill="#9d5b67"/>
+        <path d="m96 97 12 1-1 5-12-1z" fill="#ffd391"/>
+        <path d="m56 143 49-3 5 40-53 3z" fill="#c87a55"/>
+        <path d="M58 151l49-3M58 160l50-3M59 169l50-3M59 178l50-3" fill="none" stroke="#8b4f4d" opacity=".8"/>
+        <path d="M57 147 79 112l37 29-8 10-29-24-17 25z" fill="#684765"/>
+        <path d="m51 148 27-42 44 34-7 7-36-27-20 33z" fill="#ed8b69"/>
+        <path d="m57 143 22-31 37 29" fill="none" stroke="#ffd18d" stroke-width="3" opacity=".8"/>
+        <path d="m75 116 5-7 40 30-5 7z" fill="#ffb36f" stroke="none" opacity=".5"/>
+        <path d="M78 151h17v30H78z" fill="#60485a"/>
+        <path d="M82 157h9v24h-9z" fill="#7d5a62" stroke="#efb46f"/>
+        <circle cx="88" cy="169" r="1.4" fill="#ffd475" stroke="none"/>
+        <path d="M62 151h11v11H62z" fill="#ffd96f"/>
+        <path d="M67.5 151v11M62 156.5h11" fill="none" stroke="#fff4c5" stroke-width="1"/>
+        <path d="m96 151 10-1 1 10-11 1z" fill="#86e4c0"/>
+        <path d="m101 151 .5 9M96 156l11-1" fill="none" stroke="#e9ffbe" stroke-width="1"/>
+        <path d="M73 181h27l7 6H67z" fill="#ffcb78"/>
+        <path d="M70 187h35M74 187l-2 4m29-4 3 4" fill="none" stroke="#76515a"/>
+        <g class="fish-map-hut-sign">
+          <path d="M47 154v29" fill="none" stroke="#76515a"/>
+          <path d="m40 153 16-2 2 11-18 2z" fill="#ffe09a"/>
+          <path d="M44 158c3-4 7-4 10 0-3 4-7 4-10 0Zm0 0-3-3v6z" fill="#4fb5aa" stroke-width="1"/>
+        </g>
       </g>
       <g><use href="#fish-map-tree" transform="translate(42 163) rotate(-12) scale(.75)"/><use href="#fish-map-tree" transform="translate(116 162) scale(.62)"/><use href="#fish-map-tree" transform="translate(205 195) scale(.7)"/><use href="#fish-map-tree" transform="translate(280 188) scale(.75)"/><use href="#fish-map-tree" transform="translate(326 312) rotate(-8) scale(.8)"/><use href="#fish-map-tree" transform="translate(395 302) scale(.7)"/><use href="#fish-map-tree" transform="translate(68 397) scale(.86)"/><use href="#fish-map-tree" transform="translate(137 384) scale(.7)"/><use href="#fish-map-tree" transform="translate(213 486) scale(.78)"/><use href="#fish-map-tree" transform="translate(287 470) scale(.65)"/></g>
       <g fill="none" stroke="#fff4c5" stroke-width="5" stroke-linecap="round" opacity=".65"><path d="m42 187 13-4m48-57 9 3m82 91 12 4m52-79 9 5m65 169 13 3m49-44 8-3M62 415l16 4m48-72 11 4m72 153 12 5m61-67 9 3"/></g>

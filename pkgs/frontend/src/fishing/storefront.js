@@ -1,5 +1,5 @@
 export function storeMarkup() {
-  return `<button type="button" class="fish-shop-open">Магазин</button>
+  return `<button type="button" class="fish-shop-open">Жданы</button>
     <section class="fish-store fish-shop" aria-label="Магазин улучшений" hidden>
       <header><button type="button" class="fish-store-back" aria-label="Вернуться на карту">←</button><div><h2>Магазин</h2></div><strong class="fish-store-wallet">0 ≈</strong></header>
       <p class="fish-store-intro">Удочки остаются навсегда. Одна порция прикормки расходуется на следующий заброс.</p>

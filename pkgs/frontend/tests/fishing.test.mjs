@@ -4,7 +4,7 @@ import { createFight, advance, strike, displayedProgress, passPosition, PASS_MS,
 import { bindStrikeInput } from '../src/fishing/input.js';
 import { minskPeriod } from '../src/fishing/environment.js';
 import { anglerPose, biteFishPosition, castFloatPosition, CAST_MS, orbitFishPose, orbitFishPosition, RARE_ORBIT_MS, rodTip, linePath } from '../src/fishing/game.js';
-import { getLocation, worldMapMarkup } from '../src/fishing/locations.js';
+import { FISHING_LOCATIONS, getLocation, worldMapMarkup } from '../src/fishing/locations.js';
 import { lakeScene } from '../src/fishing/scene.js';
 import { readTrophies, writeTrophies, TROPHIES_KEY } from '../src/fishing/trophies.js';
 import { createLocationNotice } from '../src/fishing/location-notice.js';
@@ -33,11 +33,21 @@ test('lake scene is drawn in a native portrait coordinate system', () => {
   assert.ok(scene.includes('class="fish-arm-free"'));
   assert.ok(scene.includes('class="fish-arm-holding"'));
   assert.match(scene, /class="fish-grip-hand"[^>]*rotate\(-32 322 370\)/);
+  assert.ok(scene.includes('class="fish-raccoon-ears"'));
+  assert.equal((scene.match(/class="fish-raccoon-ears"/g) || []).length, 1);
+});
+test('world map home is a detailed fishing hut', () => {
+  const map = worldMapMarkup();
+  assert.ok(map.includes('class="fish-map-hut"'));
+  assert.ok(map.includes('class="fish-map-hut-smoke"'));
+  assert.ok(map.includes('class="fish-map-hut-sign"'));
+  assert.ok(!map.includes('class="fish-map-house"'));
 });
 test('store and biome loadout expose every dev rod and bait', () => {
   const markup = storeMarkup();
   assert.ok(markup.includes('fish-shop'));
   assert.ok(markup.includes('fish-loadout'));
+  assert.ok(markup.includes('class="fish-shop-open">Жданы</button>'));
   assert.deepEqual(devRodOptions.map(([id]) => id), ['', 'twig', 'reed', 'lake', 'moon', 'auto']);
   assert.deepEqual(devBaitOptions.map(([id]) => id), ['', 'crumbs', 'berries', 'glow']);
   assert.deepEqual(devCatchOptions.map(([id]) => id), ['', 'small', 'rare']);
@@ -323,8 +333,9 @@ test('a rare fish swims around the float with lake perspective before pulling le
 
 test('world map exposes every destination and trophies persist locally', () => {
   const map = worldMapMarkup();
-  for (const location of ['Дом', 'Главка', 'Жданы', 'Переход', 'Переправа']) assert.ok(map.includes(location));
+  for (const location of ['Дом', 'Главка', 'Кефас', 'Жанчик', 'Переправа']) assert.ok(map.includes(location));
   assert.equal(getLocation('crossing').name, 'Переправа');
+  assert.deepEqual(FISHING_LOCATIONS.map(location => location.y), [59, 27, 47, 74]);
   const values = new Map();
   const storage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) };
   const trophies = [{ id: 'kalinin', name: 'Калинин А.И.', image: '/kalinin.webp', caption: 'Улов', location: 'crossing', caughtAt: 1 }];
