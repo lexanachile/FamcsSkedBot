@@ -1,11 +1,3 @@
-const mapIcons = {
-  home: '<path d="m5 12 11-9 11 9M8 11v16h16V11M14 27v-9h5v9"/>',
-  crossing: '<path d="M4 23q6-5 12 0t12 0M7 18V8m18 10V8M7 11q9 6 18 0M11 14v5m10-5v5"/>',
-  main: '<path d="M5 27h22M8 27V12h16v15M5 12l11-8 11 8M13 17v3m6-3v3m-6 4v3m6-3v3"/>',
-  zhdany: '<path d="M4 15h24L24 7H8zM7 16v11h18V16M12 27v-8h8v8M12 7l-2 8m10-8 2 8"/>',
-  passage: '<path d="M6 27V14a10 10 0 0 1 20 0v13M12 27V15a4 4 0 0 1 8 0v12M4 27h24"/>',
-};
-
 export const FISHING_LOCATIONS = [
   { id: 'crossing', name: 'Переправа', locked: false, x: 22, y: 65, icon: '≈' },
   { id: 'main', name: 'Главка', locked: true, x: 54, y: 32, icon: 'Г' },
@@ -49,6 +41,6 @@ export function worldMapMarkup() {
       <g class="fish-map-boat"><path d="m205 334 36-3-10 13h-15z" fill="#ffe7ab"/><path d="M223 304v30m-3-27-14 23h14" fill="#ff9caf" stroke="#ffe7ab" stroke-width="2"/></g>
       <g class="fish-art-particles" fill="#fff3c5">${Array.from({ length: 18 }, (_, i) => `<circle cx="${22 + (i * 109) % 407}" cy="${28 + (i * 97) % 542}" r="${i % 3 === 0 ? 2.5 : 1.5}" style="--i:${i}"/>`).join('')}</g>
     </svg>
-    <div class="fish-map-points">${points.map(point => `<button type="button" class="fish-map-point" data-location="${point.id}" style="--map-x:${point.x}%;--map-y:${point.y}%" aria-label="${point.name}${point.locked ? ': закрыто' : ''}"${point.locked ? ' disabled' : ''}><span aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${mapIcons[point.id]}</svg>${point.locked ? '<i class="fish-map-lock">?</i>' : ''}</span><strong>${point.name}</strong></button>`).join('')}</div></div>
+    <div class="fish-map-points">${points.map(point => `<button type="button" class="fish-map-point" data-location="${point.id}" style="--map-x:${point.x}%;--map-y:${point.y}%" aria-label="${point.name}${point.locked ? ': закрыто' : ''}"${point.locked ? ' disabled' : ''}><strong>${point.name}${point.locked ? "<small>Закрыто</small>" : ""}</strong></button>`).join('')}</div></div>
   </section>`;
 }

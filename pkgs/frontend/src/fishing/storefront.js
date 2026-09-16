@@ -1,18 +1,13 @@
-const icons = {
-  twig: '╱', reed: '⌁', lake: '◜', moon: '☾', auto: '✦',
-  crumbs: '·', berries: '●', glow: '✺',
-};
-
 export function storeMarkup() {
-  return `<button type="button" class="fish-shop-open"><span>◇</span> Магазин</button>
+  return `<button type="button" class="fish-shop-open">Магазин</button>
     <section class="fish-store fish-shop" aria-label="Магазин улучшений" hidden>
-      <header><button type="button" class="fish-store-back" aria-label="Вернуться на карту">←</button><div><small>ЛАВКА У ПЕРЕПРАВЫ</small><h2>Магазин</h2></div><strong class="fish-store-wallet">0 ≈</strong></header>
+      <header><button type="button" class="fish-store-back" aria-label="Вернуться на карту">←</button><div><h2>Магазин</h2></div><strong class="fish-store-wallet">0 ≈</strong></header>
       <p class="fish-store-intro">Удочки остаются навсегда. Одна порция прикормки расходуется на следующий заброс.</p>
       <p class="fish-store-message" role="status"></p>
       <div class="fish-store-content"><p class="fish-store-loading">Загружаем товары…</p></div>
     </section>
     <section class="fish-store fish-loadout" aria-label="Снаряжение" hidden>
-      <header><button type="button" class="fish-loadout-back" aria-label="Вернуться к водоёму">←</button><div><small>ПЕРЕД ЗАБРОСОМ</small><h2>Снаряжение</h2></div><strong class="fish-loadout-wallet">0 ≈</strong></header>
+      <header><button type="button" class="fish-loadout-back" aria-label="Вернуться к водоёму">←</button><div><h2>Снаряжение</h2></div><strong class="fish-loadout-wallet">0 ≈</strong></header>
       <p class="fish-store-intro">Выберите удочку и прикормку. Прикормка останется активной, пока не закончатся порции.</p>
       <p class="fish-store-message" role="status"></p>
       <div class="fish-loadout-content"><p class="fish-store-loading">Проверяем рюкзак…</p></div>
@@ -22,7 +17,6 @@ export function storeMarkup() {
 function itemCard(item, meta, action, label, disabled = false) {
   const card = document.createElement('article');
   card.className = `fish-store-card fish-store-${item.kind}`;
-  const icon = document.createElement('span'); icon.className = 'fish-store-icon'; icon.textContent = icons[item.id] || '◇';
   const copy = document.createElement('div');
   const name = document.createElement('h3'); name.textContent = item.name;
   const description = document.createElement('p'); description.textContent = item.description;
@@ -33,7 +27,7 @@ function itemCard(item, meta, action, label, disabled = false) {
     button.disabled = true;
     try { await action(item.id); } finally { if (button.isConnected) button.disabled = disabled; }
   });
-  card.append(icon, copy, button); return card;
+  card.append(copy, button); return card;
 }
 
 export function renderShop(container, catalog, game, buy) {

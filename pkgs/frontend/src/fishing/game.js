@@ -5,8 +5,8 @@ import { setupEnvironment } from './environment.js?v=85';
 import { bindStrikeInput } from './input.js?v=85';
 import { bindCatchChoiceInput, catchChoiceKeyframes, withCatchChoice } from './catch-choice.js?v=85';
 import { ownerLine } from './collection.js?v=85';
-import { getLocation, worldMapMarkup } from './locations.js?v=85';
-import { devBaitOptions, devCatchOptions, devRodOptions, optionsMarkup, renderLoadout, renderShop, storeMarkup } from './storefront.js?v=85';
+import { getLocation, worldMapMarkup } from './locations.js?v=86';
+import { devBaitOptions, devCatchOptions, devRodOptions, optionsMarkup, renderLoadout, renderShop, storeMarkup } from './storefront.js?v=86';
 
 import { createLocationNotice } from './location-notice.js?v=85';
 import { FISHING_RIG } from './rig.js?v=85';
@@ -92,14 +92,14 @@ export function mountFishing(host) {
         <p class="fish-trophy-empty">Здесь появятся карточки пойманных преподавателей.</p>
         <div class="fish-trophy-list"></div>
       </section>
-      <section class="fish-leaderboard" aria-label="Топ рыбаков" hidden><header><button type="button" class="fish-leaderboard-back" aria-label="Вернуться на карту">←</button><div><small>ОБЩИЙ УЛОВ</small><h2>Топ рыбаков</h2></div></header><p class="fish-leaderboard-me"></p><ol class="fish-leaderboard-list"><li class="fish-leaderboard-loading">Считаем улов…</li></ol></section>
-      <div class="fish-hud"><div class="fish-wallet-stack"><span class="fish-count" title="Обычные рыбки в кармане">0 <small>РЫБОК</small></span><button type="button" class="fish-leaderboard-open">Топ рыбаков</button></div><div class="fish-hud-buttons"><button type="button" class="fish-loadout-open" aria-label="Открыть снаряжение">◇</button><button type="button" class="fish-help-toggle" aria-label="Как играть" aria-expanded="false">?</button></div></div>
+      <section class="fish-leaderboard" aria-label="Топ рыбаков" hidden><header><button type="button" class="fish-leaderboard-back" aria-label="Вернуться на карту">←</button><div><h2>Топ рыбаков</h2></div></header><p class="fish-leaderboard-me"></p><ol class="fish-leaderboard-list"><li class="fish-leaderboard-loading">Считаем улов…</li></ol></section>
+      <div class="fish-hud"><div class="fish-wallet-stack"><span class="fish-count" title="Обычные рыбки в кармане">0 <small>РЫБОК</small></span><button type="button" class="fish-leaderboard-open">Топ рыбаков</button></div><div class="fish-hud-buttons"><button type="button" class="fish-loadout-open" aria-label="Открыть снаряжение">Снасти</button><button type="button" class="fish-help-toggle" aria-label="Как играть" aria-expanded="false">?</button></div></div>
       <button type="button" class="fish-map-return" aria-label="Вернуться на карту" hidden><span>←</span> Карта</button>
       <div class="fish-location-name" hidden></div>
       <div class="fish-dev"><button type="button" class="fish-dev-toggle" aria-label="Настройки разработчика" aria-expanded="false"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m8 6-6 6 6 6m8-12 6 6-6 6m-3-16-2 20"/></svg></button><div class="fish-dev-panel" hidden><label>Время<select name="fish-period"><option value="">Минск · авто</option><option value="morning">Утро</option><option value="day">День</option><option value="evening">Вечер</option><option value="night">Ночь</option></select></label><label>Погода<select name="fish-rain"><option value="">Минск · авто</option><option value="rain">Дождь</option><option value="dry">Без дождя</option></select></label><label>Улов<select name="fish-dev-catch">${optionsMarkup(devCatchOptions)}</select></label><label>Удочка<select name="fish-dev-rod">${optionsMarkup(devRodOptions)}</select></label><label>Прикормка<select name="fish-dev-bait">${optionsMarkup(devBaitOptions)}</select></label><small>Dev-предметы не покупаются и не расходуются.</small><small class="fish-weather-error">Погода недоступна; сохранено последнее состояние.</small></div></div>
       <div class="fish-spots" aria-label="Место заброса"><button data-spot="deep" class="fish-spot fish-spot-deep" aria-label="Забросить на глубину"><span>+</span></button></div><div class="fish-catch-plus" hidden aria-hidden="true">+1 <span>≈</span></div>
       <div class="fish-check" hidden><span class="fish-check-mark" aria-hidden="true">⌁</span><div class="fish-track"><div class="fish-zones"></div><div class="fish-cursor"></div></div><span class="fish-round"></span></div>
-      <div class="fish-result" hidden><div class="fish-portrait"><span class="fish-result-loader"></span></div><h3></h3><p></p><div class="fish-catch-choices" hidden><button type="button" data-catch-choice="release">Выпустить</button><button type="button" data-catch-choice="eat">Съесть</button></div><button type="button" class="fish-again" aria-label="Ещё заброс">↗</button></div>
+      <div class="fish-result" hidden><div class="fish-portrait"><span class="fish-result-loader"></span></div><h3></h3><p></p><div class="fish-catch-choices" hidden><button type="button" data-catch-choice="release">Выпустить</button><button type="button" data-catch-choice="eat">Съесть</button></div><button type="button" class="fish-again" aria-label="Ещё заброс">Ещё заброс</button></div>
       <div class="fish-pause" hidden><span class="fish-pause-ring" aria-hidden="true"></span></div>
       <div class="fish-play-hud"><div class="fish-tension" hidden><span aria-hidden="true">≈</span><div role="progressbar" aria-label="Прогресс вываживания" aria-valuemin="0" aria-valuemax="100"><i></i></div><span aria-hidden="true">◆</span></div></div>
       <button class="fish-action" type="button" disabled aria-label="Подсечь"><span aria-hidden="true">⌁</span></button>
@@ -183,7 +183,7 @@ export function mountFishing(host) {
       const local = progress.pendingCard(item.id);
       const card = document.createElement('article');
       card.className = 'fish-trophy' + (caught ? '' : ' is-locked');
-      const portrait = document.createElement('div'); portrait.className = 'fish-trophy-portrait'; portrait.textContent = caught ? '≈' : '🔒';
+      const portrait = document.createElement('div'); portrait.className = 'fish-trophy-portrait'; portrait.textContent = caught ? '≈' : '?';
       const image = item.image || local?.image;
       if (caught && image) {
         const img = document.createElement('img'); img.src = image; img.alt = item.name || local?.name || ''; img.loading = 'lazy'; portrait.replaceChildren(img);
@@ -194,7 +194,7 @@ export function mountFishing(host) {
       const phrases = document.createElement('ul'); phrases.className = 'fish-trophy-phrases';
       for (const phrase of item.phrases || []) {
         const row = document.createElement('li'); row.className = phrase.locked ? 'is-locked' : '';
-        const quote = document.createElement('span'); quote.textContent = phrase.locked ? '◆ ······' : `«${phrase.text}»`; row.append(quote);
+        const quote = document.createElement('span'); quote.textContent = phrase.locked ? 'Ещё не открыто' : `«${phrase.text}»`; row.append(quote);
         if (!phrase.locked) { const owners = document.createElement('small'); owners.className = 'fish-phrase-owners'; owners.textContent = ownerLine(phrase); row.append(owners); }
         phrases.append(row);
       }
