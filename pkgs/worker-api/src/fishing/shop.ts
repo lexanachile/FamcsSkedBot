@@ -1,9 +1,9 @@
 export const rods = [
-  { id: 'twig', kind: 'rod', name: 'Ивовая ветка', price: 0, description: 'Быстрая проверка: 1,4 секунды и небольшой сектор.', reactionMs: 1400, quickZone: .12, zoneScale: .8, divisions: 12, driftScale: 1, shakeScale: 1, autoSmall: false },
-  { id: 'reed', kind: 'rod', name: 'Камышовая удочка', price: 25, description: 'Больше времени и хорошо заметный сектор.', reactionMs: 1800, quickZone: .15, zoneScale: 1, divisions: 9, driftScale: .94, shakeScale: .9, autoSmall: false },
-  { id: 'lake', kind: 'rod', name: 'Озёрная удочка', price: 80, description: 'Спокойная реакция и широкие деления.', reactionMs: 2300, quickZone: .18, zoneScale: 1.2, divisions: 7, driftScale: .84, shakeScale: .78, autoSmall: false },
-  { id: 'moon', kind: 'rod', name: 'Лунная удочка', price: 200, description: 'Широкие сектора и мягкие рывки редкого улова.', reactionMs: 2900, quickZone: .23, zoneScale: 1.45, divisions: 5, driftScale: .68, shakeScale: .58, autoSmall: false },
-  { id: 'auto', kind: 'rod', name: 'Тихий автомат', price: 500, description: 'Обычная рыбка ловится сама. Редкий улов остаётся вашей задачей.', reactionMs: 3000, quickZone: .22, zoneScale: 1.5, divisions: 4, driftScale: .58, shakeScale: .48, autoSmall: true },
+  { id: 'twig', kind: 'rod', name: 'Ивовая ветка', price: 0, description: 'Быстрая проверка: 1,4 секунды и небольшой сектор. Без бонуса к редкому улову.', reactionMs: 1400, quickZone: .12, zoneScale: .8, divisions: 12, driftScale: 1, shakeScale: 1, rareBonus: 0, autoSmall: false },
+  { id: 'reed', kind: 'rod', name: 'Камышовая удочка', price: 25, description: 'Больше времени, заметный сектор и +1% к редкому улову.', reactionMs: 1800, quickZone: .15, zoneScale: 1, divisions: 9, driftScale: .94, shakeScale: .9, rareBonus: .01, autoSmall: false },
+  { id: 'lake', kind: 'rod', name: 'Озёрная удочка', price: 80, description: 'Спокойная реакция, широкие деления и +2% к редкому улову.', reactionMs: 2300, quickZone: .18, zoneScale: 1.2, divisions: 7, driftScale: .84, shakeScale: .78, rareBonus: .02, autoSmall: false },
+  { id: 'moon', kind: 'rod', name: 'Лунная удочка', price: 200, description: 'Широкие сектора, мягкие рывки и +4% к редкому улову.', reactionMs: 2900, quickZone: .23, zoneScale: 1.45, divisions: 5, driftScale: .68, shakeScale: .58, rareBonus: .04, autoSmall: false },
+  { id: 'auto', kind: 'rod', name: 'Тихий автомат', price: 500, description: 'Обычная рыбка ловится сама, +6% к редкому улову.', reactionMs: 3000, quickZone: .22, zoneScale: 1.5, divisions: 4, driftScale: .58, shakeScale: .48, rareBonus: .06, autoSmall: true },
 ] as const;
 
 export const baits = [
@@ -19,7 +19,7 @@ export const baitById = (id: unknown) => baits.find(item => item.id === id);
 
 export function publicShop() {
   return {
-    rods: rods.map(({ reactionMs, quickZone, zoneScale, divisions, driftScale, shakeScale, autoSmall, ...item }) => item),
+    rods: rods.map(({ reactionMs, quickZone, zoneScale, divisions, driftScale, shakeScale, rareBonus, autoSmall, ...item }) => ({ ...item, effects: { rarePercent: Math.round(rareBonus * 100) } })),
     baits: baits.map(({ waitScale, rareBonus, ...item }) => ({ ...item, effects: { waitPercent: Math.round((1 - waitScale) * 100), rarePercent: Math.round(rareBonus * 100) } })),
   };
 }

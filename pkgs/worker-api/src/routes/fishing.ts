@@ -1,6 +1,6 @@
 import type { Hono } from 'hono';
 import type { AppEnvironment } from '../types';
-import { fishingCatalog, pickFishingCandidate, TEACHER_CHANCE } from '../fishing/catalog';
+import { fishingCatalog, fishingVariants, pickFishingVariant, TEACHER_CHANCE } from '../fishing/catalog';
 import { authenticate, authError, hmac, readBody } from '../miniapp/auth';
 import { seal, unseal, SLOT_MS, RECEIPT_TTL, type Reward } from '../fishing/tokens';
 import { ensurePlayer, normalizeGame, publicGame, saveRewards, updatePlayerGame } from '../fishing/repository';
@@ -15,8 +15,12 @@ export function registerFishingRoutes(app: Hono<AppEnvironment>) {
   app.get('/api/fishing/profile', async c => {
     let user; try { user = await authenticate(c); } catch (error) { return authError(c, error); }
     const row = await ensurePlayer(c.env.DB, user.id, user.username);
+    const devEnabled = fishingDevEnabled(c.req.url, user.id, c.env);
     return c.json({ success: true, userId: user.id, revision: row.revision, game: publicGame(JSON.parse(row.game_json)),
-      devEnabled: fishingDevEnabled(c.req.url, user.id, c.env) });
+      devEnabled,
+      devCatalog: devEnabled ? fishingVariants().map(({ fish, phrase, phraseId }) => ({
+        value: `${fish.id}:${phraseId}`, label: `${fish.name} — ${phrase.text}`,
+      })) : undefined });
   });
   app.get('/api/fishing/leaderboard', async c => {
     let user; try { user = await authenticate(c); } catch (error) { return authError(c, error); }
@@ -95,10 +99,10 @@ export function registerFishingRoutes(app: Hono<AppEnvironment>) {
       const caught = game.fish[fish.id]?.count || 0;
       return { id: fish.id, count: caught, locked: !caught,
         name: caught ? fish.name : null, image: caught ? fish.image : null,
-        phrases: fish.phrases.map((text, id) => {
+        phrases: fish.phrases.map((phrase, id) => {
           const unlocked = Boolean(game.fish[fish.id]?.phrases.includes(id));
           const entry = counts.find(item => item.fish_id === fish.id && item.phrase_id === id);
-          return { id, locked: !unlocked, text: unlocked ? text : null,
+          return { id, locked: !unlocked, text: unlocked ? phrase.text : null,
             owners: unlocked ? entry?.owners || 0 : 0, usernames: unlocked ? entry?.usernames || [] : [] };
         }) };
     }) });
@@ -113,10 +117,14 @@ export function registerFishingRoutes(app: Hono<AppEnvironment>) {
     // One deterministic draw per short slot, so transport retries cannot reroll.
     // Rain-specific encounters stay disabled until authoritative weather is supplied.
     const pool = fishingCatalog.filter(f => f.spots.includes('deep') && f.periods.includes(period) && f.rain === null);
+    const variants = fishingVariants(pool);
     const bytes = new Uint8Array(await hmac(c.env.TELEGRAM_BOT_TOKEN!, 'draw:v1:' + user.id + ':' + slot));
     const roll = new DataView(bytes.buffer).getUint32(0) / 4294967296;
     const isDev = fishingDevEnabled(c.req.url, user.id, c.env);
-    const devKey = isDev ? [body?.devCatch || '', body?.devRod || '', body?.devBait || ''].join(':') : '';
+    const forcedVariant = isDev && typeof body?.devFish === 'string'
+      ? variants.find(candidate => `${candidate.fish.id}:${candidate.phraseId}` === body.devFish)
+      : undefined;
+    const devKey = isDev ? [body?.devCatch || '', body?.devFish || '', body?.devRod || '', body?.devBait || ''].join(':') : '';
     const initialRow = await ensurePlayer(c.env.DB, user.id, user.username);
     const draw = await updatePlayerGame(c.env.DB, user.id, game => {
       if (game._cast?.slot === slot && (!isDev || game._cast.devKey === devKey)) return { changed: false, value: game._cast };
@@ -132,28 +140,28 @@ export function registerFishingRoutes(app: Hono<AppEnvironment>) {
           if (count === 1) game.equipped.bait = null;
         } else { game.equipped.bait = null; bait = undefined; }
       }
-      const rare = isDev && body?.devCatch === 'rare' ? true : isDev && body?.devCatch === 'small' ? false
-        : roll < rareCatchChance(TEACHER_CHANCE, bait?.rareBonus || 0, game._commonCatchStreak);
-      const incomplete = pool.filter(fish => {
-        const unlocked = game.fish[fish.id]?.phrases || [];
-        return fish.phrases.some((_, phraseId) => !unlocked.includes(phraseId));
-      });
-      const candidates = incomplete.length ? incomplete : pool;
+      const rare = Boolean(forcedVariant) || (isDev && body?.devCatch === 'rare') ? true : isDev && body?.devCatch === 'small' ? false
+        : roll < rareCatchChance(TEACHER_CHANCE, rod.rareBonus, bait?.rareBonus || 0, game._commonCatchStreak);
+      const incomplete = variants.filter(candidate => !game.fish[candidate.fish.id]?.phrases.includes(candidate.phraseId));
+      const candidates = incomplete.length ? incomplete : variants;
       const fishRoll = new DataView(bytes.buffer).getUint32(4) / 4294967296;
-      const fish = rare ? pickFishingCandidate(candidates, fishRoll) : null;
-      const cast = { slot, baitId: bait?.id || null, fish: fish?.id || null, readyAt: now + (fish ? 9000 : 2500), rodId: rod.id, devKey };
+      const variant = forcedVariant || (rare ? pickFishingVariant(candidates, fishRoll) : null);
+      const cast = { slot, baitId: bait?.id || null, fish: variant?.fish.id || null, phrase: variant?.phraseId,
+        readyAt: now + (variant ? 9000 : 2500), rodId: rod.id, devKey };
       game._cast = cast;
       return { changed: true, value: cast };
     }, initialRow);
     const cast = draw.value;
     const fish = fishingCatalog.find(item => item.id === cast.fish);
+    const phraseSettings = fish?.phrases[Number.isInteger(cast.phrase) ? cast.phrase! : 0];
     const rod = rodById(cast.rodId) || rods[0], bait = baitById(cast.baitId);
     const amount = fish ? undefined : smallFishAmount(new DataView(bytes.buffer).getUint32(8) / 4294967296);
-    const payload: Reward = { kind: 'cast', uid: user.id, slot, fish: fish?.id || null, readyAt: cast.readyAt, expiresAt: slot * SLOT_MS + 600000, amount };
+    const payload: Reward = { kind: 'cast', uid: user.id, slot, fish: fish?.id || null, phrase: fish ? cast.phrase : undefined,
+      readyAt: cast.readyAt, expiresAt: slot * SLOT_MS + 600000, amount };
     return c.json({ success: true, token: await seal(c.env.TELEGRAM_BOT_TOKEN!, payload), slot, nextCastAt: (slot + 1) * SLOT_MS,
       revision: draw.revision, game: publicGame(draw.game), usedBait: bait?.id || null, rod: rod.id,
-      traits: fish ? { challenge: 'fight', passMs: Math.round(3200 * Math.max(.8, rod.reactionMs / 2200) * fish.fightPassScale), zoneScale: rod.zoneScale * fish.fightZoneScale, divisions: rod.divisions, waitScale: bait?.waitScale || 1,
-        drift: fish.drift * rod.driftScale, shake: fish.shake * rod.shakeScale, shakeSpeed: fish.shakeSpeed }
+      traits: fish && phraseSettings ? { challenge: 'fight', passMs: Math.round(3200 * Math.max(.8, rod.reactionMs / 2200) * phraseSettings.fight.passScale), zoneScale: rod.zoneScale * phraseSettings.fight.zoneScale, divisions: rod.divisions, waitScale: bait?.waitScale || 1,
+        drift: phraseSettings.fight.drift * rod.driftScale, shake: phraseSettings.fight.shake * rod.shakeScale, shakeSpeed: phraseSettings.fight.shakeSpeed }
         : { challenge: rod.autoSmall ? 'auto' : 'quick', passMs: rod.reactionMs, quickZone: rod.quickZone, divisions: rod.divisions, waitScale: bait?.waitScale || 1, drift: 0, shake: 1.5, shakeSpeed: 1 } });
   });
   app.post('/api/fishing/reveal', async c => {
@@ -166,18 +174,21 @@ export function registerFishingRoutes(app: Hono<AppEnvironment>) {
     const fish = fishingCatalog.find(f => f.id === reward.fish);
     const initialRow = await ensurePlayer(c.env.DB, user.id, user.username);
     const game = normalizeGame(JSON.parse(initialRow.game_json));
-    const phraseBytes = new Uint8Array(await hmac(c.env.TELEGRAM_BOT_TOKEN!, 'phrase:v1:' + user.id + ':' + reward.slot));
-    const phrasePool = fish
-      ? fish.phrases.map((_, id) => id).filter(id => !game.fish[fish.id]?.phrases.includes(id))
-      : [];
-    const availablePhrases = fish && phrasePool.length ? phrasePool : fish?.phrases.map((_, id) => id) || [0];
-    const phrase = availablePhrases[phraseBytes[0] % availablePhrases.length];
+    let phrase = Number.isInteger(reward.phrase) && reward.phrase! >= 0 && reward.phrase! < (fish?.phrases.length || 0) ? reward.phrase! : -1;
+    if (fish && phrase < 0) {
+      // Compatibility for cast tokens created before phrases were selected at cast time.
+      const phraseBytes = new Uint8Array(await hmac(c.env.TELEGRAM_BOT_TOKEN!, 'phrase:v1:' + user.id + ':' + reward.slot));
+      const missing = fish.phrases.map((_, id) => id).filter(id => !game.fish[fish.id]?.phrases.includes(id));
+      const available = missing.length ? missing : fish.phrases.map((_, id) => id);
+      phrase = available[phraseBytes[0] % available.length];
+    }
+    if (phrase < 0) phrase = 0;
     const receipt = { ...reward, kind: 'receipt' as const, phrase, expiresAt: reward.slot * SLOT_MS + RECEIPT_TTL };
     const saved = await saveRewards(c.env.DB, user.id, [receipt], initialRow);
     const record = saved.game._catches[String(reward.slot)];
     return c.json({ success: true, receipt: await seal(c.env.TELEGRAM_BOT_TOKEN!, receipt), slot: reward.slot, expiresAt: receipt.expiresAt,
       revision: saved.revision, game: publicGame(saved.game), duplicate: record?.duplicate || false, choice: record?.choice || null,
-      catch: fish ? { kind: 'teacher', id: fish.id, name: fish.name, image: fish.image, phraseId: phrase, caption: fish.phrases[phrase] || '' }
+      catch: fish ? { kind: 'teacher', id: fish.id, name: fish.name, image: fish.image, phraseId: phrase, caption: fish.phrases[phrase]?.text || '' }
         : { kind: 'small', id: 'smallFish', name: 'Маленькая рыбка', image: null, amount: reward.amount || 1, caption: `+${reward.amount || 1} рыбок` } });
   });
   app.post('/api/fishing/resolve', async c => {

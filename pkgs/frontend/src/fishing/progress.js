@@ -68,9 +68,9 @@ export function createProgress(onChange) {
     }).catch(error => { if (reads.get(path) === entry) reads.delete(path); throw error; });
     reads.set(path, entry); return entry.promise;
   }
-  let uid, base = empty(), pending = [], decisions = [], revision = -1, loading, saving, cards = [], shopCatalog = null, error = '', devEnabled = false;
+  let uid, base = empty(), pending = [], decisions = [], revision = -1, loading, saving, cards = [], shopCatalog = null, error = '', devEnabled = false, devCatalog = [];
   const known = new Map();
-  const notify = () => onChange?.({ game: projectedGame(base, pending), pending: pending.length, decision: decisions[0] || null, error, cards, catalog: shopCatalog, savedAt: base.savedAt, devEnabled });
+  const notify = () => onChange?.({ game: projectedGame(base, pending), pending: pending.length, decision: decisions[0] || null, error, cards, catalog: shopCatalog, savedAt: base.savedAt, devEnabled, devCatalog });
   function applyServer(result) {
     if (result.game && result.revision >= revision) {
       if (JSON.stringify(base.fish) !== JSON.stringify(result.game.fish)) reads.delete('fishing/collection');
@@ -90,6 +90,7 @@ export function createProgress(onChange) {
     return loading ||= (async () => {
       const result = await accountRequest('fishing/profile');
       uid = String(result.userId); lastProfileAt = Date.now(); base = result.game; revision = result.revision; devEnabled = result.devEnabled === true;
+      devCatalog = Array.isArray(result.devCatalog) ? result.devCatalog : [];
       await reloadPending(); await reloadDecisions(); notify();
     })().catch(e => { uid = null; loading = null; error = e.message; notify(); throw e; });
   }

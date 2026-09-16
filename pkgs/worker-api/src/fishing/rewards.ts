@@ -6,7 +6,7 @@ export function smallFishAmount(roll: number) {
   return 5;
 }
 
-export function rareCatchChance(baseChance: number, baitBonus: number, commonCatchStreak: number) {
+export function rareCatchChance(baseChance: number, rodBonus: number, baitBonus: number, commonCatchStreak: number) {
   const streakBonus = Math.max(0, Math.floor(Number(commonCatchStreak) || 0)) * .01;
-  return Math.min(.95, Math.max(0, baseChance) + Math.max(0, baitBonus) + streakBonus);
+  return Math.min(.95, Math.max(0, baseChance) + Math.max(0, rodBonus) + Math.max(0, baitBonus) + streakBonus);
 }

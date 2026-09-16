@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { createHmac } from 'node:crypto';
 import { rareCatchChance, smallFishAmount } from '../src/fishing/rewards.ts';
-import { fishingCatalog, pickFishingCandidate } from '../src/fishing/catalog.ts';
+import { fishingCatalog, fishingVariants, pickFishingVariant } from '../src/fishing/catalog.ts';
 import { build } from '../node_modules/esbuild/lib/main.js';
 const bundle = await build({ entryPoints: [new URL('../src/index.ts', import.meta.url).pathname.replace(/^\/(\w:)/, '$1')], bundle: true, write: false, format: 'esm', platform: 'browser' });
 const { default: app } = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
@@ -18,25 +18,28 @@ test('socket rejects ordinary HTTP and untrusted origins before upgrade', async 
 test('small fish reward follows the configured 55/30/10/4/1 percent bands', () => {
   assert.deepEqual([0, .5499, .55, .8499, .85, .9499, .95, .9899, .99, .9999].map(smallFishAmount), [1, 1, 2, 2, 3, 3, 4, 4, 5, 5]);
 });
-test('rare chance gains one percentage point per common catch and stays capped', () => {
-  assert.equal(rareCatchChance(.12, 0, 0), .12);
-  assert.ok(Math.abs(rareCatchChance(.12, .05, 3) - .20) < 1e-12);
-  assert.equal(rareCatchChance(.12, .10, 83), .95);
+test('rare chance starts lower, increases with the rod and gains one point per common catch', () => {
+  assert.equal(rareCatchChance(.04, 0, 0, 0), .04);
+  assert.ok(Math.abs(rareCatchChance(.04, .04, .05, 3) - .16) < 1e-12);
+  assert.equal(rareCatchChance(.04, .06, .10, 83), .95);
 });
 test('Vaskovsky is the rarest and hardest teacher fish', () => {
   const byId = Object.fromEntries(fishingCatalog.map(fish => [fish.id, fish]));
+  const variants = fishingVariants();
+  const vaskovsky = variants.filter(variant => variant.fish.id === 'vaskovsky');
+  const others = variants.filter(variant => variant.fish.id !== 'vaskovsky');
   assert.deepEqual(fishingCatalog.map(fish => fish.id), ['kalinin', 'grekova', 'kastrica', 'orlovich', 'vaskovsky']);
   assert.equal(byId.vaskovsky.name, 'Васьковский М.М.');
-  assert.deepEqual(byId.vaskovsky.phrases, ['Неочевидно', 'ИСУ жил, жив и будет жить.']);
-  assert.deepEqual(byId.kastrica.phrases, ['Вы опустились до уровня ваших штанов']);
+  assert.deepEqual(byId.vaskovsky.phrases.map(phrase => phrase.text), ['Неочевидно', 'ИСУ жил, жив и будет жить.']);
+  assert.deepEqual(byId.kastrica.phrases.map(phrase => phrase.text), ['Вы опустились до уровня ваших штанов']);
   assert.equal(byId.orlovich.name, 'Орлович Ю.Л.');
-  assert.deepEqual(byId.orlovich.phrases, ['Граф.']);
-  assert.ok(byId.vaskovsky.rarityWeight < Math.min(...fishingCatalog.filter(fish => fish.id !== 'vaskovsky').map(fish => fish.rarityWeight)));
-  assert.ok(byId.vaskovsky.fightPassScale < Math.min(...fishingCatalog.filter(fish => fish.id !== 'vaskovsky').map(fish => fish.fightPassScale)));
-  assert.ok(byId.vaskovsky.fightZoneScale < Math.min(...fishingCatalog.filter(fish => fish.id !== 'vaskovsky').map(fish => fish.fightZoneScale)));
-  assert.ok(byId.vaskovsky.drift > Math.max(...fishingCatalog.filter(fish => fish.id !== 'vaskovsky').map(fish => fish.drift)));
-  assert.equal(pickFishingCandidate(fishingCatalog, 0)?.id, 'kalinin');
-  assert.equal(pickFishingCandidate(fishingCatalog, 1)?.id, 'vaskovsky');
+  assert.deepEqual(byId.orlovich.phrases.map(phrase => phrase.text), ['Граф.']);
+  assert.ok(Math.max(...vaskovsky.map(variant => variant.phrase.weight)) < Math.min(...others.map(variant => variant.phrase.weight)));
+  assert.ok(Math.max(...vaskovsky.map(variant => variant.phrase.fight.passScale)) < Math.min(...others.map(variant => variant.phrase.fight.passScale)));
+  assert.ok(Math.max(...vaskovsky.map(variant => variant.phrase.fight.zoneScale)) < Math.min(...others.map(variant => variant.phrase.fight.zoneScale)));
+  assert.ok(Math.min(...vaskovsky.map(variant => variant.phrase.fight.drift)) > Math.max(...others.map(variant => variant.phrase.fight.drift)));
+  assert.equal(pickFishingVariant(variants, 0)?.fish.id, 'kalinin');
+  assert.equal(pickFishingVariant(variants, 1)?.phrase.text, 'ИСУ жил, жив и будет жить.');
 });
 function auth(id = 1) {
   const params = new URLSearchParams({ auth_date: String(Math.floor(Date.now() / 1000)), user: JSON.stringify({ id, username: 'user' + id }) });
@@ -94,10 +97,13 @@ test('dev options work locally and stay restricted on the deployed host', async 
   const f = fixture();
   const localProfile = await (await f.request('fishing/profile')).json();
   assert.equal(localProfile.devEnabled, true);
+  assert.equal(localProfile.devCatalog.length, fishingVariants().length);
+  assert.ok(localProfile.devCatalog.some(item => item.value === 'grekova:1' && item.label.includes('Мальчик думает')));
 
   const productionOrigin = 'https://schedule.example';
   const productionProfile = await (await f.request('fishing/profile', undefined, 1, 'GET', productionOrigin)).json();
   assert.equal(productionProfile.devEnabled, false);
+  assert.equal(productionProfile.devCatalog, undefined);
   const ignored = await (await f.request('fishing/cast', { spot: 'deep', devCatch: 'small', devRod: 'auto', devBait: 'glow' }, 1, 'POST', productionOrigin)).json();
   assert.equal(ignored.rod, 'twig');
   assert.equal(ignored.usedBait, null);
@@ -107,6 +113,24 @@ test('dev options work locally and stay restricted on the deployed host', async 
   assert.equal(enabled.rod, 'auto');
   assert.equal(enabled.usedBait, 'glow');
   f.db.close();
+});
+test('dev options force the exact teacher phrase on the next cast', async () => {
+  const f = fixture();
+  const realNow = Date.now; let now = Math.floor(realNow() / 30000) * 30000 + 10;
+  Date.now = () => now;
+  try {
+    const selected = fishingCatalog.find(fish => fish.id === 'grekova').phrases[1];
+    const cast = await (await f.request('fishing/cast', { spot: 'deep', devFish: 'grekova:1' })).json();
+    assert.equal(cast.traits.challenge, 'fight');
+    assert.equal(cast.traits.passMs, Math.round(3200 * .8 * selected.fight.passScale));
+    assert.equal(cast.traits.zoneScale, .8 * selected.fight.zoneScale);
+    assert.equal(cast.traits.drift, selected.fight.drift);
+    now += 10000;
+    const revealed = await (await f.request('fishing/reveal', { token: cast.token })).json();
+    assert.equal(revealed.catch.id, 'grekova');
+    assert.equal(revealed.catch.phraseId, 1);
+    assert.equal(revealed.catch.caption, selected.text);
+  } finally { Date.now = realNow; f.db.close(); }
 });
 test('authenticated casts reserve one slot; receipts deduplicate and reject other users', async () => {
   const f = fixture();
@@ -243,6 +267,7 @@ test('shop purchase, equipment and bait consumption are atomic', async () => {
     f.db.prepare('UPDATE fishing_players SET game_json = ? WHERE telegram_id = 1').run(JSON.stringify({ schemaVersion: 1, savedAt: 0, wallet: { smallFish: 100 }, fish: {} }));
     const shop = await (await f.request('fishing/shop')).json();
     assert.equal(shop.catalog.rods.some(item => item.id === 'auto' && item.price === 500), true);
+    assert.deepEqual(shop.catalog.rods.map(item => item.effects.rarePercent), [0, 1, 2, 4, 6]);
     assert.equal(shop.catalog.baits.find(item => item.id === 'crumbs').effects.rarePercent, 2);
     const rod = await (await f.request('fishing/shop/buy', { itemId: 'reed' })).json();
     assert.equal(rod.game.wallet.smallFish, 75);
@@ -348,6 +373,10 @@ test('a teacher with one missing phrase is selected and reveals that phrase next
     } }));
     now += 12000;
     const cast = await (await f.request('fishing/cast', { spot: 'deep', devCatch: 'rare' })).json();
+    const expectedFight = fishingCatalog.find(fish => fish.id === 'grekova').phrases[1].fight;
+    assert.equal(cast.traits.passMs, Math.round(3200 * .8 * expectedFight.passScale));
+    assert.equal(cast.traits.zoneScale, .8 * expectedFight.zoneScale);
+    assert.equal(cast.traits.drift, expectedFight.drift);
     now += 10000;
     const revealed = await (await f.request('fishing/reveal', { token: cast.token })).json();
     assert.equal(revealed.catch.id, 'grekova');

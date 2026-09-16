@@ -105,7 +105,7 @@ export function mountFishing(host) {
       <div class="fish-hud"><div class="fish-wallet-stack"><span class="fish-count" title="Обычные рыбки в кармане">0 <small>РЫБОК</small></span><button type="button" class="fish-leaderboard-open">Топ рыбаков</button></div><div class="fish-hud-buttons"><button type="button" class="fish-loadout-open" aria-label="Открыть снаряжение">Снасти</button><button type="button" class="fish-help-toggle" aria-label="Как играть" aria-expanded="false">?</button></div></div>
       <button type="button" class="fish-map-return" aria-label="Вернуться на карту" hidden><span>←</span> Карта</button>
       <div class="fish-location-name" hidden></div>
-      <div class="fish-dev"><button type="button" class="fish-dev-toggle" aria-label="Настройки разработчика" aria-expanded="false"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m8 6-6 6 6 6m8-12 6 6-6 6m-3-16-2 20"/></svg></button><div class="fish-dev-panel" hidden><label>Время<select name="fish-period"><option value="">Минск · авто</option><option value="morning">Утро</option><option value="day">День</option><option value="evening">Вечер</option><option value="night">Ночь</option></select></label><label>Погода<select name="fish-rain"><option value="">Минск · авто</option><option value="rain">Дождь</option><option value="dry">Без дождя</option></select></label><label>Улов<select name="fish-dev-catch">${optionsMarkup(devCatchOptions)}</select></label><label>Удочка<select name="fish-dev-rod">${optionsMarkup(devRodOptions)}</select></label><label>Прикормка<select name="fish-dev-bait">${optionsMarkup(devBaitOptions)}</select></label><small>Dev-предметы не покупаются и не расходуются.</small><small class="fish-weather-error">Погода недоступна; сохранено последнее состояние.</small></div></div>
+      <div class="fish-dev"><button type="button" class="fish-dev-toggle" aria-label="Настройки разработчика" aria-expanded="false"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m8 6-6 6 6 6m8-12 6 6-6 6m-3-16-2 20"/></svg></button><div class="fish-dev-panel" hidden><label>Время<select name="fish-period"><option value="">Минск · авто</option><option value="morning">Утро</option><option value="day">День</option><option value="evening">Вечер</option><option value="night">Ночь</option></select></label><label>Погода<select name="fish-rain"><option value="">Минск · авто</option><option value="rain">Дождь</option><option value="dry">Без дождя</option></select></label><label>Улов<select name="fish-dev-catch">${optionsMarkup(devCatchOptions)}</select></label><label>Редкий улов<select name="fish-dev-fish"><option value="">Авто по коллекции</option></select></label><label>Удочка<select name="fish-dev-rod">${optionsMarkup(devRodOptions)}</select></label><label>Прикормка<select name="fish-dev-bait">${optionsMarkup(devBaitOptions)}</select></label><small>Выбранный редкий улов гарантирован на следующем забросе.</small><small>Dev-предметы не покупаются и не расходуются.</small><small class="fish-weather-error">Погода недоступна; сохранено последнее состояние.</small></div></div>
       <div class="fish-spots" aria-label="Место заброса"><button data-spot="deep" class="fish-spot fish-spot-deep" aria-label="Забросить на глубину"><span>+</span></button></div><div class="fish-catch-plus" hidden aria-hidden="true">+1 <span>≈</span></div>
       <div class="fish-check" hidden><span class="fish-check-mark" aria-hidden="true">⌁</span><div class="fish-track"><div class="fish-zones"></div><div class="fish-cursor"></div></div><span class="fish-round"></span></div>
       <div class="fish-result" hidden><div class="fish-portrait"><span class="fish-result-loader"></span></div><h3></h3><p></p><div class="fish-catch-choices" hidden><button type="button" data-catch-choice="release">Выпустить</button><button type="button" data-catch-choice="eat">Съесть</button></div><button type="button" class="fish-again" aria-label="Ещё заброс">Ещё заброс</button></div>
@@ -113,7 +113,7 @@ export function mountFishing(host) {
       <div class="fish-play-hud"><div class="fish-tension" hidden><span aria-hidden="true">≈</span><div role="progressbar" aria-label="Прогресс вываживания" aria-valuemin="0" aria-valuemax="100"><i></i></div><span aria-hidden="true">◆</span></div></div>
       <button class="fish-action" type="button" disabled aria-label="Подсечь"><span aria-hidden="true">⌁</span></button>
       <div class="fish-game-toast" role="status" aria-live="polite" hidden></div>
-      <section class="fish-help" role="dialog" aria-modal="true" aria-label="Как играть" hidden><button type="button" class="fish-help-close" aria-label="Закрыть помощь">×</button><h2>Как играть</h2><p>Выберите локацию, снаряжение и забросьте на глубину. Маленькой рыбке нужен один точный тап в любом месте сцены.</p><p>Редкий улов требует нескольких попаданий. Удочки замедляют индикатор, расширяют сектора и смягчают рывки. Прикормка расходуется по одной порции, ускоряет клёв и повышает шанс редкой встречи.</p></section>
+      <section class="fish-help" role="dialog" aria-modal="true" aria-label="Как играть" hidden><button type="button" class="fish-help-close" aria-label="Закрыть помощь">×</button><h2>Как играть</h2><p>Выберите локацию, снаряжение и забросьте на глубину. Маленькой рыбке нужен один точный тап в любом месте сцены.</p><p>Редкий улов требует нескольких попаданий. Улучшенные удочки замедляют индикатор, расширяют сектора, смягчают рывки и повышают шанс редкой встречи. Прикормка расходуется по одной порции и дополнительно ускоряет клёв и повышает этот шанс.</p></section>
     </div>
   </section>`;
   const root = host.firstElementChild;
@@ -133,7 +133,7 @@ export function mountFishing(host) {
   let landingStart = { x: 92, y: 454 };
   let selectedSpot = 'deep', currentLocation = 'crossing';
   let open = true, visible = true, raf = 0, last = 0, savedRound = 0;
-  let progressState = { game: { wallet: { smallFish: 0 }, fish: {}, inventory: { rods: ['twig'], baits: {} }, equipped: { rod: 'twig', bait: null } }, pending: 0, decision: null, cards: [], catalog: null, error: '' };
+  let progressState = { game: { wallet: { smallFish: 0 }, fish: {}, inventory: { rods: ['twig'], baits: {} }, equipped: { rod: 'twig', bait: null } }, pending: 0, decision: null, cards: [], catalog: null, error: '', devCatalog: [] };
   let retryReveal = null, currentCatch = null, toastTimer = 0, rewardTimer = 0, lastSyncMessage = '';
   function toast(message, duration = 2800) {
     clearTimeout(toastTimer);
@@ -149,6 +149,19 @@ export function mountFishing(host) {
   const progress = createProgress(value => {
     progressState = value;
     q('.fish-dev').hidden = !value.devEnabled;
+    const devFish = q('[name="fish-dev-fish"]');
+    const devCatalogKey = JSON.stringify(value.devCatalog || []);
+    if (devFish.dataset.catalog !== devCatalogKey) {
+      const selected = devFish.value;
+      const options = [{ value: '', label: 'Авто по коллекции' }, ...(value.devCatalog || [])].map(item => {
+        const option = document.createElement('option');
+        option.value = item.value; option.textContent = item.label;
+        return option;
+      });
+      devFish.replaceChildren(...options);
+      if (options.some(option => option.value === selected)) devFish.value = selected;
+      devFish.dataset.catalog = devCatalogKey;
+    }
     if (!value.devEnabled) {
       q('.fish-dev-panel').hidden = true;
       q('.fish-dev-toggle').setAttribute('aria-expanded', 'false');
@@ -405,10 +418,12 @@ export function mountFishing(host) {
     selectedSpot = spot;
     setState('preparing'); q('.fish-spots').hidden = true;
     const version = ++session;
+    const selectedDevFish = q('[name="fish-dev-fish"]').value || undefined;
     try {
-      encounter = await progress.cast(selectedSpot, currentLocation, { devCatch: q('[name="fish-dev-catch"]').value || undefined, devRod: q('[name="fish-dev-rod"]').value || undefined, devBait: q('[name="fish-dev-bait"]').value || undefined });
+      encounter = await progress.cast(selectedSpot, currentLocation, { devCatch: q('[name="fish-dev-catch"]').value || undefined, devFish: selectedDevFish, devRod: q('[name="fish-dev-rod"]').value || undefined, devBait: q('[name="fish-dev-bait"]').value || undefined });
       if (version !== session) return;
       if (!encounter.success) throw new Error('No encounter');
+      if (selectedDevFish && q('[name="fish-dev-fish"]').value === selectedDevFish) q('[name="fish-dev-fish"]').value = '';
     } catch (error) { if (version === session) { reset(); toast(error.message, 4500); } return; }
     point = { ...FISHING_RIG.cast };
     floatPosition = { ...FISHING_RIG.tip };
