@@ -20,14 +20,14 @@
 .fish-home-heading p { margin: 0; color: var(--fish-muted); font-size: 12px; line-height: 1.45; }
 .fish-map-points { position: absolute; inset: 0; z-index: 2; }
 .fish-map-point { position: absolute; left: var(--map-x); top: var(--map-y); display: grid; justify-items: center; width: auto; min-width: 72px; padding: 0; border: 0; color: var(--fish-ink); background: transparent; transform: translate(-50%, -50%); min-height: 44px; }
-.fish-map-point strong { padding: 12px 14px; font-weight: 600; display: block; border: 0; border-radius: 6px; background: var(--fish-paper); color: var(--fish-ink); font-size: 12px; }
-.fish-map-point strong { font-size: 12px; display: block; padding: 12px 14px; border: 0; border-radius: 6px; background: var(--fish-paper); color: var(--fish-ink); font-weight: 600; }
-.fish-map-return { position: absolute; z-index: 6; left: 14px; top: 64px; min-height: 44px; padding: 8px 12px; border: 0; border-radius: 6px; color: var(--fish-ink); background: var(--fish-paper); font-size: 12px; backdrop-filter: none; transform: none; -webkit-backdrop-filter: none; }
+.fish-map-point strong { display: block; padding: 0; border: 0; border-radius: 0; background: transparent; color: #fff; font-size: 14px; font-weight: 600; line-height: 1.3; text-shadow: 0 1px 3px #23335b99; }
+.fish-map-point strong { display: block; padding: 0; border: 0; border-radius: 0; background: transparent; color: #fff; font-size: 14px; font-weight: 600; line-height: 1.3; text-shadow: 0 1px 3px #23335b99; }
+.fish-map-return { position: absolute; z-index: 6; left: 14px; top: 64px; min-height: 44px; padding: 8px 12px; border: 0; border-radius: 10px; color: var(--fish-ink); background: var(--fish-paper); font-size: 12px; backdrop-filter: none; transform: none; -webkit-backdrop-filter: none; }
 .fish-map-return span { margin-right: 4px; font-size: 14px; }
 .fish-location-name { position: absolute; z-index: 5; top: 65px; left: 0; right: 0; padding: 0 16px; color: var(--fish-ink); font: 700 clamp(18px, 4vw, 24px)/1.15 var(--font-condensed); letter-spacing: normal; text-align: center; pointer-events: none; opacity: 1; transition: opacity .7s ease; }
 .fish-location-name.is-fading { opacity: 0; }
 .fish-trophy.is-locked .fish-trophy-portrait { filter: grayscale(1); opacity: .65; }
-.fish-save { margin-top: 10px; padding: 8px 12px; border: 1px solid var(--fish-divider); border-radius: 6px; background: transparent; color: var(--fish-accent); min-height: 44px; font-size: 12px; }
+.fish-save { margin-top: 10px; padding: 8px 12px; border: 1px solid var(--fish-divider); border-radius: 10px; background: transparent; color: var(--fish-accent); min-height: 44px; font-size: 12px; }
 .fish-home { padding: 112px 20px 24px; overflow-y: auto; color: var(--fish-ink); background: var(--fish-paper); }
 .fish-home-heading { text-align: left; }
 .fish-trophy-empty { margin: 80px auto 0; max-width: 240px; color: #698077; font-size: 11px; line-height: 1.5; text-align: center; }
@@ -68,10 +68,10 @@
 .fish-portrait img { width: 100%; height: 100%; object-fit: cover; }
 .fish-result h3 { margin: 3px 0 7px; color: var(--fish-ink); font-family: var(--font-condensed); font-size: clamp(19px, 4vw, 27px); font-weight: 700; line-height: 1.12; letter-spacing: normal; font: 600 clamp(19px, 4vw, 25px)/1.25 var(--font-sans); }
 .fish-result p { max-width: 230px; font-size: 10px; line-height: 1.5; margin: 0 0 16px; color: var(--fish-ink); font: 400 clamp(15px, 4vw, 19px)/1.5 var(--font-sans); }
-.fish-again { width: auto; min-height: 44px; justify-content: center; padding: 9px 22px; border: 0; border-radius: 6px; color: #fff; background: var(--fish-accent); font-size: 13px; }
-.fish-again { border: 0; border-radius: 6px; color: #fff; background: var(--fish-accent); font-size: 13px; min-height: 44px; }
+.fish-again { width: auto; min-height: 44px; justify-content: center; padding: 9px 22px; border: 0; border-radius: 10px; color: #fff; background: var(--fish-accent); font-size: 13px; }
+.fish-again { border: 0; border-radius: 10px; color: #fff; background: var(--fish-accent); font-size: 13px; min-height: 44px; }
 .fish-catch-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; width: min(100%, 260px); }
-.fish-catch-choices button { min-height: 44px; padding: 9px 13px; border: 1px solid var(--fish-accent); border-radius: 6px; color: #fff; background: var(--fish-accent); font-size: 13px; }
+.fish-catch-choices button { min-height: 44px; padding: 9px 13px; border: 1px solid var(--fish-accent); border-radius: 10px; color: #fff; background: var(--fish-accent); font-size: 13px; }
 .fish-catch-choices button:last-child { color: var(--fish-accent); background: transparent; }
 .fish-catch-choices button:disabled { transform: scale(.97); filter: saturate(.7); opacity: .72; }
 .fish-result.is-choosing { opacity: .3; transform: scale(.97); transition: opacity .24s ease, transform .24s ease; pointer-events: none; }
@@ -91,13 +91,13 @@
 .fish-wallet-stack { display: grid; justify-items: stretch; gap: 5px; pointer-events: auto; }
 .fish-count { padding: 8px 10px; background: var(--fish-paper); color: var(--fish-ink); border: 0; border-radius: 6px; font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
 .fish-count small { font-family: var(--font-sans); font-size: 9px; letter-spacing: normal; margin-left: 3px; }
-.fish-leaderboard-open { display: none; min-height: 44px; padding: 8px 12px; border: 0; border-radius: 6px; color: var(--fish-ink); background: var(--fish-paper); box-shadow: none; font-size: 12px; font-weight: 700; backdrop-filter: none; }
+.fish-leaderboard-open { display: none; min-height: 44px; padding: 8px 12px; border: 0; border-radius: 10px; color: var(--fish-ink); background: var(--fish-paper); box-shadow: none; font-size: 12px; font-weight: 700; backdrop-filter: none; }
 .fishing-game[data-view="map"] .fish-leaderboard-open { display: block; }
 .fish-leaderboard { position: absolute; inset: 0; z-index: 9; overflow-y: auto; padding: 18px 16px 28px; color: var(--fish-ink); background: var(--fish-paper); animation: fish-reveal .45s ease-out both; }
 .fish-leaderboard header { position: sticky; top: -18px; z-index: 2; display: grid; grid-template-columns: 42px 1fr; align-items: center; gap: 8px; margin: -2px -2px 12px; padding: 12px 0; background: var(--fish-paper); backdrop-filter: none; border-bottom: 1px solid var(--fish-divider); }
 .fish-leaderboard header small { display: none; color: #8179a2; font-family: var(--font-sans); font-size: 8px; font-weight: 700; letter-spacing: normal; }
 .fish-leaderboard h2 { margin: 1px 0 0; color: var(--fish-ink); font: 600 clamp(21px, 5vw, 28px)/1.2 var(--font-sans); letter-spacing: normal; }
-.fish-leaderboard-back { width: 44px; height: 44px; border: 0; border-radius: 6px; color: var(--fish-ink); background: transparent; font-size: 23px; }
+.fish-leaderboard-back { width: 44px; height: 44px; border: 0; border-radius: 10px; color: var(--fish-ink); background: transparent; font-size: 23px; }
 .fish-leaderboard-me { margin: 16px 0; padding: 0; border-radius: 0; color: var(--fish-muted); background: transparent; font-size: 12px; text-align: left; }
 .fish-leaderboard-list { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; counter-reset: none; }
 .fish-leaderboard-list li { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 12px; min-height: 56px; padding: 12px 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; border-bottom: 1px solid var(--fish-divider); }
@@ -108,7 +108,7 @@
 .fish-leaderboard-list strong { min-width: 0; overflow-wrap: anywhere; color: var(--fish-ink); font-size: 14px; font-weight: 600; }
 .fish-leaderboard-score { color: var(--fish-muted); font: 600 13px/1 var(--font-sans); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .fish-leaderboard-list .fish-leaderboard-loading { display: block; padding: 28px 12px; color: #746e91; text-align: center; font-size: 10px; }
-.fish-help-toggle { pointer-events: auto; width: 44px; height: 44px; border-radius: 6px; border: 0; color: var(--fish-ink); background: var(--fish-paper); font-size: 20px; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.fish-help-toggle { pointer-events: auto; width: 44px; height: 44px; border-radius: 10px; border: 0; color: var(--fish-ink); background: var(--fish-paper); font-size: 20px; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
 .fish-play-hud { position: absolute; bottom: 5%; left: 24%; right: 27%; pointer-events: none; text-align: center; }
 .fish-status { font-size: 12px; font-weight: 600; color: #f0ffd8; text-shadow: 0 1px 6px #092f49; }
 .fish-tension { display: flex; align-items: center; gap: 5px; margin-top: 8px; font-family: var(--font-sans); font-size: 8px; font-weight: 700; color: #eaffd3; }
@@ -152,7 +152,7 @@
 @media (max-width: 430px) {
 .fish-map-heading { margin-top: 58px; inset: 18px auto auto 20px; margin: 0; padding: 0; text-align: left; }
 .fish-map-point { min-width: 72px; width: auto; min-height: 44px; padding: 0; color: var(--fish-ink); }
-.fish-map-point strong { font-size: 12px; display: block; padding: 12px 14px; border: 0; border-radius: 6px; background: var(--fish-paper); color: var(--fish-ink); font-weight: 600; }
+.fish-map-point strong { display: block; padding: 0; border: 0; border-radius: 0; background: transparent; color: #fff; font-size: 14px; font-weight: 600; line-height: 1.3; text-shadow: 0 1px 3px #23335b99; }
 .fish-trophy-list { grid-template-columns: 1fr; gap: 0; margin-top: 24px; }
 }
 .fishing-game { --sky-top: #c7c7b2; --sky-mid: #ddd4ba; --sky-bottom: #e5d9bc; --water-top: #8ca69a; --water-mid: #6d8c89; --water-bottom: #506d78; --water-light: #d8d4b6; --cloud: #ece3cc;   }
@@ -178,10 +178,10 @@
 [data-rain="true"] .fish-rain { display: block; animation: fish-rain-fall .55s linear infinite; }
 [data-rain="true"] .fish-rain-rings { display: block; animation: fish-shimmer .8s infinite alternate; }
 .fish-hud-buttons { display: flex; gap: 8px; pointer-events: auto; }
-.fish-dev-toggle { display: grid; place-items: center; width: 38px; height: 38px; color: var(--fish-ink); background: var(--fish-paper); border: 0; border-radius: 6px; font-size: 24px; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.fish-dev-toggle { display: grid; place-items: center; width: 38px; height: 38px; color: var(--fish-ink); background: var(--fish-paper); border: 0; border-radius: 10px; font-size: 24px; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
 .fish-dev { position: absolute; left: 12px; bottom: 12px; z-index: 6; display: flex; align-items: flex-end; gap: 8px; max-width: calc(100% - 24px); }
 .fish-dev[hidden] { display: none; }
-.fish-dev-toggle { flex: 0 0 32px; width: 32px; height: 32px; color: var(--fish-ink); background: var(--fish-paper); border: 0; border-radius: 6px; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.fish-dev-toggle { flex: 0 0 32px; width: 32px; height: 32px; color: var(--fish-ink); background: var(--fish-paper); border: 0; border-radius: 10px; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
 .fish-dev-panel { padding: 10px; max-width: 230px; border: 1px solid #fff4; border-radius: 12px; color: #e6edf0; background: #303d49ee; animation: fish-dev-slide .2s ease-out; }
 .fish-dev-panel label { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 11px; }
 .fish-dev-panel label + label { margin-top: 6px; }
@@ -213,12 +213,12 @@
 .fish-map-heading h2 { color: #fff1dc; font-size: clamp(26px, 6vw, 38px); letter-spacing: normal; font: 600 24px/1.2 var(--font-sans); }
 .fish-map-landscape { flex: 1 0 100%; min-height: 100%; }
 .fish-map-point { color: var(--fish-ink); width: auto; min-width: 72px; min-height: 44px; padding: 0; }
-.fish-map-point strong { border: 0; border-radius: 6px; padding: 12px 14px; background: var(--fish-paper); color: var(--fish-ink); font-size: 12px; font-weight: 600; display: block; }
+.fish-map-point strong { display: block; padding: 0; border: 0; border-radius: 0; background: transparent; color: #fff; font-size: 14px; font-weight: 600; line-height: 1.3; text-shadow: 0 1px 3px #23335b99; }
 .fish-map-point:disabled { opacity: 1; }
-.fish-map-return { top: 64px; left: 14px; transform: none; min-height: 44px; padding: 8px 12px; color: var(--fish-ink); background: var(--fish-paper); border: 0; font-size: 12px; backdrop-filter: none; -webkit-backdrop-filter: none; border-radius: 6px; }
+.fish-map-return { top: 64px; left: 14px; transform: none; min-height: 44px; padding: 8px 12px; color: var(--fish-ink); background: var(--fish-paper); border: 0; font-size: 12px; backdrop-filter: none; -webkit-backdrop-filter: none; border-radius: 10px; }
 .fish-count { color: var(--fish-ink); background: var(--fish-paper); border: 0; border-radius: 6px; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; padding: 8px 10px; font-size: 14px; }
-.fish-help-toggle { color: var(--fish-ink); background: var(--fish-paper); border: 0; border-radius: 6px; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; width: 44px; height: 44px; }
-.fish-dev-toggle { color: var(--fish-ink); background: var(--fish-paper); border: 0; border-radius: 6px; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.fish-help-toggle { color: var(--fish-ink); background: var(--fish-paper); border: 0; border-radius: 10px; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; width: 44px; height: 44px; }
+.fish-dev-toggle { color: var(--fish-ink); background: var(--fish-paper); border: 0; border-radius: 10px; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
 .fish-location-name { color: #fff4e4; text-shadow: 0 2px 12px #47317270; }
 .fish-home { background: var(--fish-paper); color: var(--fish-ink); padding: 112px 20px 24px; }
 .fish-home-heading h2 { color: var(--fish-ink); font: 600 clamp(21px, 5vw, 28px)/1.2 var(--font-sans); }
@@ -232,7 +232,7 @@
 .fish-trophy p { color: var(--fish-muted); font-size: 11px; }
 .fish-result .fish-portrait { width: clamp(120px, 34vw, 158px); height: clamp(120px, 34vw, 158px); margin: 10px 0 14px; }
 .fish-result p { max-width: 300px; margin-bottom: 20px; color: var(--fish-ink); font: 400 clamp(15px, 4vw, 19px)/1.5 var(--font-sans); letter-spacing: normal; }
-.fish-again { background: var(--fish-accent); border: 0; border-radius: 6px; color: #fff; min-height: 44px; font-size: 13px; }
+.fish-again { background: var(--fish-accent); border: 0; border-radius: 10px; color: #fff; min-height: 44px; font-size: 13px; }
 .fish-spot span { border-color: #f9e8ac; background: #263832cc; box-shadow: none; animation: none; }
 .fish-check { background: #263832e8; border: 1px solid #ffffff59; border-radius: 8px; backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none; }
 .fish-zones i, .fish-tension i { background: linear-gradient(0deg, #89edcf, #fff2ae); }
@@ -259,16 +259,16 @@
 @keyframes fish-route-flow { to { stroke-dashoffset: -130; } }
 @keyframes fish-boat-drift { from { transform: translate(-4px, 1px) rotate(-4deg); } to { transform: translate(5px, -3px) rotate(4deg); } }
 @keyframes fish-particle-drift { 0%, 100% { opacity: 0; transform: translate(0, 5px); } 35% { opacity: .8; } 75% { opacity: .3; transform: translate(10px, -13px); } }
-.fish-shop-open { position: absolute; z-index: 5; left: auto; bottom: 18px; transform: none; display: none; align-items: center; gap: 7px; min-height: 44px; padding: 10px 20px; border: 0; border-radius: 6px; color: var(--fish-ink); background: var(--fish-paper); box-shadow: none; backdrop-filter: none; right: 18px; font-size: 14px; }
+.fish-shop-open { position: absolute; z-index: 5; left: auto; bottom: 18px; transform: none; display: none; align-items: center; gap: 7px; min-height: 44px; padding: 10px 20px; border: 0; border-radius: 10px; color: var(--fish-ink); background: var(--fish-paper); box-shadow: none; backdrop-filter: none; right: 18px; font-size: 14px; }
 .fishing-game[data-view="map"] .fish-shop-open { display: flex; }
-.fish-loadout-open { display: none; place-items: center; width: auto; height: 44px; border-radius: 6px; border: 0; color: var(--fish-ink); background: var(--fish-paper); font-size: 12px; backdrop-filter: none; box-shadow: none; -webkit-backdrop-filter: none; padding: 8px 12px; }
+.fish-loadout-open { display: none; place-items: center; width: auto; height: 44px; border-radius: 10px; border: 0; color: var(--fish-ink); background: var(--fish-paper); font-size: 12px; backdrop-filter: none; box-shadow: none; -webkit-backdrop-filter: none; padding: 8px 12px; }
 .fishing-game[data-view="fishing"][data-state="idle"] .fish-loadout-open { display: grid; }
 .fish-store { position: absolute; inset: 0; z-index: 9; overflow-y: auto; padding: 18px 16px 28px; color: var(--fish-ink); background: var(--fish-paper); animation: fish-reveal .45s ease-out both; }
 .fish-store header { position: sticky; top: -18px; z-index: 2; display: grid; grid-template-columns: 42px 1fr auto; align-items: center; gap: 8px; margin: -2px -2px 0; padding: 12px 0; background: var(--fish-paper); backdrop-filter: none; border-bottom: 1px solid var(--fish-divider); }
 .fish-store header div { min-width: 0; }
 .fish-store header small { display: none; margin-bottom: 1px; color: #8179a2; font-family: var(--font-sans); font-size: 8px; font-weight: 700; letter-spacing: normal; }
 .fish-store h2 { margin: 0; color: var(--fish-ink); font: 600 clamp(21px, 5vw, 28px)/1.2 var(--font-sans); letter-spacing: normal; }
-.fish-store-back { width: 44px; height: 44px; border: 0; border-radius: 6px; color: var(--fish-ink); background: transparent; font-size: 23px; }
+.fish-store-back { width: 44px; height: 44px; border: 0; border-radius: 10px; color: var(--fish-ink); background: transparent; font-size: 23px; }
 .fish-store-wallet { padding: 0; border-radius: 0; color: var(--fish-muted); background: transparent; font-size: 12px; white-space: nowrap; }
 .fish-store-intro { max-width: 390px; margin: 16px 0 4px; color: var(--fish-muted); font-size: 12px; line-height: 1.55; }
 .fish-store-message { min-height: 14px; margin: 6px 0; color: #8b493c; font-size: 12px; }
@@ -280,20 +280,20 @@
 .fish-store-card h3 { margin: 0 0 5px; color: var(--fish-ink); font: 600 14px/1.35 var(--font-sans); }
 .fish-store-card p { margin: 0 0 5px; color: var(--fish-muted); font-size: 12px; line-height: 1.5; }
 .fish-store-card small { color: var(--fish-muted); font-size: 11px; }
-.fish-store-card button { min-width: 76px; min-height: 44px; padding: 8px 12px; border: 0; border-radius: 6px; color: #fff; background: var(--fish-accent); font-family: var(--font-sans); font-size: 12px; font-weight: 600; }
+.fish-store-card button { min-width: 76px; min-height: 44px; padding: 8px 12px; border: 0; border-radius: 10px; color: #fff; background: var(--fish-accent); font-family: var(--font-sans); font-size: 12px; font-weight: 600; }
 .fish-store-card button:disabled { color: var(--fish-muted); background: #e4e8e1; opacity: 1; }
 .fish-store-loading { margin: 70px auto; color: #756f91; font-size: 11px; }
 @media (max-width: 380px) {
 .fish-store { padding-inline: 11px; background: var(--fish-paper); color: var(--fish-ink); }
 .fish-store-card { grid-template-columns: minmax(0, 1fr) auto; gap: 16px; padding: 16px 0; border: 0; border-bottom: 1px solid var(--fish-divider); border-radius: 0; background: transparent; box-shadow: none; }
-.fish-store-card button { min-width: 76px; padding-inline: 7px; min-height: 44px; padding: 8px 12px; border-radius: 6px; color: #fff; background: var(--fish-accent); font-size: 12px; }
+.fish-store-card button { min-width: 76px; padding-inline: 7px; min-height: 44px; padding: 8px 12px; border-radius: 10px; color: #fff; background: var(--fish-accent); font-size: 12px; }
 }
 @media (max-width: 350px) {
   .fish-hud { inset: 14px 10px auto; }
   .fish-hud-buttons { gap: 5px; }
-.fish-help-toggle { width: 44px; height: 44px; color: var(--fish-ink); background: var(--fish-paper); border: 0; border-radius: 6px; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.fish-help-toggle { width: 44px; height: 44px; color: var(--fish-ink); background: var(--fish-paper); border: 0; border-radius: 10px; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
 .fish-count { padding: 8px 10px; color: var(--fish-ink); background: var(--fish-paper); border: 0; border-radius: 6px; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; font-size: 14px; }
-.fish-map-return { padding-inline: 4px; font-size: 12px; top: 64px; left: 14px; transform: none; min-height: 44px; padding: 8px 12px; color: var(--fish-ink); background: var(--fish-paper); border: 0; border-radius: 6px; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.fish-map-return { padding-inline: 4px; font-size: 12px; top: 64px; left: 14px; transform: none; min-height: 44px; padding: 8px 12px; color: var(--fish-ink); background: var(--fish-paper); border: 0; border-radius: 10px; backdrop-filter: none; -webkit-backdrop-filter: none; }
 }
 .fish-catch-plus { position: absolute; z-index: 5; left: 74%; top: 55%; color: #fff8b8; font: 800 clamp(25px, 7vw, 38px)/1 var(--font-sans); text-shadow: 0 3px 12px #42397699; pointer-events: none; }
 .fish-catch-plus span { color: #9ef0d5; font-family: var(--font-sans); }
@@ -326,7 +326,7 @@
 }
 .fish-help { position: absolute; z-index: 14; inset: 12% 8%; max-height: 76%; overflow-y: auto; padding: 23px 20px 20px; border-radius: 10px; box-shadow: 0 12px 32px #142c3933; backdrop-filter: none; -webkit-backdrop-filter: none; animation: fish-help-in .3s cubic-bezier(.2,.8,.2,1) both; background: var(--fish-paper); color: var(--fish-ink); border: 0; }
 .fish-help h2 { margin: 0 32px 12px 0; color: var(--fish-ink); font: 600 23px/1.2 var(--font-sans); letter-spacing: normal; }
-.fish-help-close { position: absolute; top: 6px; right: 6px; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 6px; color: var(--fish-ink); background: transparent; font-size: 24px; line-height: 1; }
+.fish-help-close { position: absolute; top: 6px; right: 6px; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 10px; color: var(--fish-ink); background: transparent; font-size: 24px; line-height: 1; }
 @keyframes fish-toast-in { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
 @keyframes fish-help-in { from { opacity: 0; transform: scale(.96) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
 
@@ -447,12 +447,15 @@
 @keyframes fish-step-right { from { transform: translateY(-3px) rotate(2deg); } }
 
 /* Navigation states remain explicit on the illustrated map. */
-.fish-map-point:disabled strong { background: #e1e4e0; color: #5d6962; }
+.fish-map-point:disabled strong { color: #fff; background: transparent; }
 .fish-map-point small { display: block; margin-top: 3px; font-size: 10px; font-weight: 400; }
-.fish-map-point:not(:disabled):hover strong { background: #fff; }
-.fish-map-point[aria-current="true"] strong { outline: 2px solid var(--fish-accent); outline-offset: 2px; }
+.fish-map-point:not(:disabled):hover strong { text-decoration: underline; text-underline-offset: 4px; }
+.fish-map-point[aria-current="true"] strong { text-decoration: underline; text-underline-offset: 4px; }
 .fishing-game button:focus-visible { outline: 3px solid #da7840; outline-offset: 3px; }
-.fish-loadout-back { width: 44px; height: 44px; border: 0; border-radius: 6px; color: var(--fish-ink); background: transparent; font-size: 23px; }
+.fish-loadout-back { width: 44px; height: 44px; border: 0; border-radius: 10px; color: var(--fish-ink); background: transparent; font-size: 23px; }
 .fish-loadout-wallet { color: var(--fish-muted); font-size: 12px; white-space: nowrap; }
 .fish-store-card button:not(:disabled):hover, .fish-again:hover { background: #1d503e; }
 .fish-store-card button:not(:disabled):active { transform: translateY(1px); }
+
+/* The label and island share one transparent navigation target. */
+.fish-map-point::after { content: ""; position: absolute; top: 100%; left: 50%; width: 90px; height: 80px; transform: translateX(-50%); }

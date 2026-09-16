@@ -5,7 +5,7 @@ import { setupEnvironment } from './environment.js?v=85';
 import { bindStrikeInput } from './input.js?v=85';
 import { bindCatchChoiceInput, catchChoiceKeyframes, withCatchChoice } from './catch-choice.js?v=85';
 import { ownerLine } from './collection.js?v=85';
-import { getLocation, worldMapMarkup } from './locations.js?v=86';
+import { getLocation, worldMapMarkup } from './locations.js?v=88';
 import { devBaitOptions, devCatchOptions, devRodOptions, optionsMarkup, renderLoadout, renderShop, storeMarkup } from './storefront.js?v=86';
 
 import { createLocationNotice } from './location-notice.js?v=85';
