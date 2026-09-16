@@ -36,8 +36,9 @@ test('lake scene is drawn in a native portrait coordinate system', () => {
   assert.ok(scene.includes('class="fish-raccoon-ears"'));
   assert.equal((scene.match(/class="fish-raccoon-ears"/g) || []).length, 1);
 });
-test('world map home is a detailed fishing hut', () => {
+test('world map home is an isolated island with a clear fishing hut', () => {
   const map = worldMapMarkup();
+  assert.ok(map.includes('class="fish-map-home-island"'));
   assert.ok(map.includes('class="fish-map-hut"'));
   assert.ok(map.includes('class="fish-map-hut-smoke"'));
   assert.ok(map.includes('class="fish-map-hut-sign"'));

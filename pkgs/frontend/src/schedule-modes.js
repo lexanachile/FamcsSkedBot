@@ -1,5 +1,5 @@
-import { createTeacherDirectory, setupTeacherSuggestions, hasTeacher } from './teacher-suggestions.js?v=92';
-import { setupComparison } from './comparison.js?v=92';
+import { createTeacherDirectory, setupTeacherSuggestions, hasTeacher } from './teacher-suggestions.js?v=95';
+import { setupComparison } from './comparison.js?v=95';
 
 export function filterSubgroup(data, subgroup) {
   if (subgroup === 'both') return data;

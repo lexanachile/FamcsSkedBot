@@ -1,4 +1,4 @@
-import { FISHING_RIG } from './rig.js?v=92';
+import { FISHING_RIG } from './rig.js?v=95';
 
 export function lakeScene() {
   const { hand, tip, cast } = FISHING_RIG;
@@ -65,10 +65,10 @@ export function lakeScene() {
       <path class="fish-arm-cuff" d="M${hand.x - 5} ${hand.y + 8}h10" fill="none" stroke="#f5e6ff" stroke-width="6" stroke-linecap="round"/>
     </g>
     <g class="fish-raccoon-ears">
-      <path d="M338 347 333 307Q348 296 363 320L360 348Z" fill="#c9baed" stroke="#4d4b77" stroke-width="3"/>
-      <path d="M376 322 395 299Q410 302 404 338L393 350Z" fill="#c9baed" stroke="#4d4b77" stroke-width="3"/>
-      <path d="M338 311Q348 303 357 320L355 333Z" fill="#62678b" stroke="none"/>
-      <path d="M394 306Q403 308 401 331L393 341Z" fill="#62678b" stroke="none"/>
+      <path d="M340 341C328 337 324 325 329 315C334 305 344 304 352 312C357 317 359 325 358 333Z" fill="#5a527f" stroke="#4d4b77" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="M379 331C382 319 390 309 399 310C408 312 410 322 405 332C402 338 397 342 390 344Z" fill="#5a527f" stroke="#4d4b77" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="M334 329C331 323 333 316 338 313C343 311 349 316 351 324C352 327 352 330 351 332Z" fill="#bd8fa8"/>
+      <path d="M388 329C390 321 395 316 399 317C403 319 403 325 400 331C398 334 395 336 392 337Z" fill="#bd8fa8"/>
     </g>
     <path d="M334 340q26-27 58-4 23 24-8 40-27 14-47-8-12-13-3-28" fill="url(#fish-fur)"/>
     <path d="M337 347q10-14 27-2l-6 16q-19 5-21-14m31-3q16-15 26 2-2 18-20 14z" fill="#494277"/>
