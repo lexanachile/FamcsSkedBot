@@ -1,18 +1,18 @@
-import { API_ROOT } from './src/api-root.js?v=95';
-import { createLessonColorRow } from "./src/lesson-color-picker.js?v=95";
+import { API_ROOT } from './src/api-root.js?v=97';
+import { createLessonColorRow } from "./src/lesson-color-picker.js?v=97";
 import {
   getStoredValue as safeGetStorage,
   readStoredJson as readJsonStorage,
   removeStoredValue as safeRemoveStorage,
   setStoredValue as safeSetStorage,
   writeStoredJson as writeJsonStorage,
-} from "./src/storage.js?v=95";
-import { initializeTelegramWebApp, triggerTelegramHaptic } from "./src/telegram.js?v=95";
-import { setStaleNotice, showToast } from "./src/feedback.js?v=95";
-import { setupScheduleModes, filterSubgroup, teacherSchedule } from "./src/schedule-modes.js?v=95";
-import { requestJson } from "./src/request.js?v=95";
-import { setupFishingLauncher } from "./src/fishing-loader.js?v=95";
-import { setupCloudColors } from "./src/cloud-colors.js?v=95";
+} from "./src/storage.js?v=97";
+import { initializeTelegramWebApp, triggerTelegramHaptic } from "./src/telegram.js?v=97";
+import { setStaleNotice, showToast } from "./src/feedback.js?v=97";
+import { setupScheduleModes, filterSubgroup, teacherSchedule } from "./src/schedule-modes.js?v=97";
+import { requestJson } from "./src/request.js?v=97";
+import { setupFishingLauncher } from "./src/fishing-loader.js?v=97";
+import { setupCloudColors } from "./src/cloud-colors.js?v=97";
 
 let scheduleMode = null;
 let teacherRequest = 0;
@@ -79,8 +79,9 @@ const LESSON_COLOR_OPTIONS = [
 // (через \n) сохранится на экране благодаря white-space: pre-wrap в
 // styles.css (.info-panel-text). Пустая строка "" — плашка скрыта
 // автоматически (см. renderInfoPanel ниже по файлу). ---
-const INFO_PANEL_TEXT =
-  "Поздравляем команду Team Spirit с победой на The International 2026! И Мишу Флаффи с уверенным достижением ранга Рыцарь 5!!";
+// Предыдущая подпись для быстрого возврата:
+// "Поздравляем команду Team Spirit с победой на The International 2026! И Мишу Флаффи с уверенным достижением ранга Рыцарь 5!!"
+const INFO_PANEL_TEXT = "";
 
 // ═══════════════════════════════════════════════════════════════════
 // НАСТРОЙКА: КНОПКА "НАВЕРХ" (кружок со стрелкой в правом нижнем углу)

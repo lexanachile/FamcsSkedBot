@@ -1,5 +1,5 @@
-import { accountRequest as httpRequest, accountHint, API_ROOT } from '../account-api.js?v=95';
-import { createGameTransport } from './transport.js?v=95';
+import { accountRequest as httpRequest, accountHint, API_ROOT } from '../account-api.js?v=97';
+import { createGameTransport } from './transport.js?v=97';
 const RARE_CATCH_SMALL_FISH_BONUS = 30;
 const empty = () => ({ schemaVersion: 5, savedAt: 0, wallet: { smallFish: 0 }, stats: { totalCaught: 0 }, fish: {}, inventory: { rods: ['twig'], baits: {} }, equipped: { rod: 'twig', bait: null } });
 export async function requestRevealWithRetry(request, wait = delay => new Promise(resolve => setTimeout(resolve, delay))) {

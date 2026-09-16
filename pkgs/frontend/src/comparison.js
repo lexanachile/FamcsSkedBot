@@ -1,11 +1,46 @@
-import { COMPARISON_DAYS, comparisonDay, selectionKey, clockTime } from './comparison-model.js?v=95';
-import { readStoredJson, writeStoredJson } from './storage.js?v=95';
-import { requestJson } from './request.js?v=95';
+import { COMPARISON_DAYS, comparisonDay, selectionKey, clockTime } from './comparison-model.js?v=97';
+import { readStoredJson, writeStoredJson } from './storage.js?v=97';
+import { requestJson } from './request.js?v=97';
 
 async function requestData(url, options = {}) {
   const result = await requestJson(url, options);
   if (!result.success) throw new Error('Schedule request failed');
   return result.data;
+}
+
+export function bindComparisonDayInput(button, activate, readScrollTop = () => 0) {
+  let touch = null;
+  let moved = false;
+  let suppressClickUntil = 0;
+  const trackTouch = event => {
+    if (!touch) return;
+    const point = Array.from(event.changedTouches || []).find(item => item.identifier === touch.id);
+    if (point && (Math.hypot(point.clientX - touch.x, point.clientY - touch.y) > 10 || readScrollTop() !== touch.scrollTop)) moved = true;
+  };
+  button.addEventListener('touchstart', event => {
+    moved = event.touches.length !== 1;
+    const point = event.touches[0];
+    touch = moved ? null : { id: point.identifier, x: point.clientX, y: point.clientY, scrollTop: readScrollTop() };
+  }, { passive: true });
+  button.addEventListener('touchmove', trackTouch, { passive: true });
+  button.addEventListener('touchcancel', () => {
+    touch = null;
+    moved = true;
+    suppressClickUntil = Date.now() + 800;
+  });
+  button.addEventListener('touchend', event => {
+    trackTouch(event);
+    const tapped = touch && !moved && event.touches.length === 0;
+    touch = null;
+    suppressClickUntil = Date.now() + 800;
+    if (!tapped) return;
+    event.preventDefault();
+    activate(true);
+  }, { passive: false });
+  button.addEventListener('click', event => {
+    if (event.detail !== 0 && Date.now() < suppressClickUntil) return;
+    activate(false);
+  });
 }
 
 export function setupComparison({ panel, apiBase, buildLesson, decorateLesson, displayedTime }) {
@@ -62,11 +97,22 @@ export function setupComparison({ panel, apiBase, buildLesson, decorateLesson, d
     button.textContent = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'][index];
     button.title = name;
     button.dataset.day = name;
-    button.addEventListener('click', () => {
+    bindComparisonDayInput(button, immediate => {
       const target = [...content.querySelectorAll('.comparison-day-heading')].find(item => item.dataset.day === name);
       if (!target || !main) return;
-      main.scrollTo({ top: main.scrollTop + target.getBoundingClientRect().top - main.getBoundingClientRect().top - navigation.offsetHeight - 16, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
-    });
+      const top = Math.max(0, main.scrollTop + target.getBoundingClientRect().top - main.getBoundingClientRect().top - navigation.offsetHeight - 16);
+      day = name;
+      updateDayButtons();
+      if (immediate) {
+        main.scrollTop = top;
+        return;
+      }
+      try {
+        main.scrollTo({ top, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+      } catch {
+        main.scrollTop = top;
+      }
+    }, () => main?.scrollTop || 0);
     dayNav.append(button);
   }
   const updateWidth = width => {
