@@ -207,15 +207,15 @@ test('colors reject stale versions and do not modify the game row', async () => 
   assert.deepEqual(other.document.colors, {});
   f.db.close();
 });
-test('leaderboard ranks lifetime catch totals instead of spendable balances', async () => {
+test('leaderboard ranks spendable fish balances instead of lifetime catch totals', async () => {
   const f = fixture();
   for (let id = 1; id <= 3; id++) await f.request('fishing/profile', undefined, id);
   f.db.prepare('UPDATE fishing_players SET game_json = ? WHERE telegram_id = 1').run(JSON.stringify({ wallet: { smallFish: 3 }, fish: { kalinin: { count: 2, phrases: [0] } } }));
   f.db.prepare('UPDATE fishing_players SET game_json = ? WHERE telegram_id = 2').run(JSON.stringify({ wallet: { smallFish: 0 }, stats: { totalCaught: 12 }, fish: {} }));
   f.db.prepare('UPDATE fishing_players SET game_json = ? WHERE telegram_id = 3').run(JSON.stringify({ wallet: { smallFish: 1 }, stats: { totalCaught: 7 }, fish: {} }));
   const result = await (await f.request('fishing/leaderboard', undefined, 1)).json();
-  assert.deepEqual(result.leaders.map(row => [row.position, row.username, row.totalCaught]), [[1, 'user2', 12], [2, 'user3', 7], [3, 'user1', 5]]);
-  assert.deepEqual(result.me, { position: 3, username: 'user1', totalCaught: 5 });
+  assert.deepEqual(result.leaders.map(row => [row.position, row.username, row.totalCaught]), [[1, 'user1', 3], [2, 'user3', 1]]);
+  assert.deepEqual(result.me, { position: 1, username: 'user1', totalCaught: 3 });
   f.db.close();
 });
 test('concurrent reward batches merge instead of overwriting', async () => {
@@ -228,7 +228,7 @@ test('concurrent reward batches merge instead of overwriting', async () => {
       const cast = await (await f.request('fishing/cast', { spot: 'deep' })).json();
       now += 10000;
       const revealed = await (await f.request('fishing/reveal', { token: cast.token })).json();
-      receipts.push(revealed.receipt); expectedReward += revealed.catch.kind === 'small' ? revealed.catch.amount : 1;
+      receipts.push(revealed.receipt); expectedReward += revealed.catch.kind === 'small' ? revealed.catch.amount : 31;
     }
     await Promise.all(receipts.map(receipt => f.request('fishing/sync', { receipts: [receipt] })));
     const profile = await (await f.request('fishing/profile')).json();

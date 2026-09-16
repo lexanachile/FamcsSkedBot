@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createFight, advance, strike, displayedProgress, passPosition, PASS_MS, REST_MS } from '../src/fishing/engine.js';
 import { bindStrikeInput } from '../src/fishing/input.js';
 import { minskPeriod } from '../src/fishing/environment.js';
-import { anglerPose, biteFishPosition, orbitFishPose, orbitFishPosition, RARE_ORBIT_MS, rodTip, linePath } from '../src/fishing/game.js';
+import { anglerPose, biteFishPosition, castFloatPosition, CAST_MS, orbitFishPose, orbitFishPosition, RARE_ORBIT_MS, rodTip, linePath } from '../src/fishing/game.js';
 import { getLocation, worldMapMarkup } from '../src/fishing/locations.js';
 import { lakeScene } from '../src/fishing/scene.js';
 import { readTrophies, writeTrophies, TROPHIES_KEY } from '../src/fishing/trophies.js';
@@ -66,6 +66,16 @@ test('eat and release flights end at their requested scene targets', () => {
   assert.match(eat.at(-1).transform, /translate\(150px, 180px\).*scale\(0\.16\)/);
   assert.match(release.at(-1).transform, /translate\(150px, 180px\).*scale\(0\.52\)/);
   assert.notEqual(eat[1].transform, release[1].transform);
+});
+
+test('the cast is quick and the line endpoint follows the airborne float', () => {
+  const start = { x: 300, y: 220 }, end = { x: 120, y: 480 };
+  assert.equal(CAST_MS, 800);
+  assert.deepEqual(castFloatPosition(start, end, 0), start);
+  const airborne = castFloatPosition(start, end, CAST_MS / 2);
+  assert.deepEqual(airborne, { x: 210, y: 245 });
+  assert.deepEqual(castFloatPosition(start, end, CAST_MS), end);
+  assert.ok(linePath(start, airborne, .75).endsWith(`${airborne.x} ${airborne.y}`));
 });
 
 test('location title holds for three seconds and cancels old navigation timers', () => {

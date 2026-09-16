@@ -39,7 +39,7 @@ export function setupFishingLauncher() {
     host.innerHTML = '<section class="fishing-loading-screen" role="status">Готовим удочки…</section>';
     button.setAttribute('aria-expanded', 'true');
     try {
-      const [module] = await Promise.all([import('./fishing/game.js?v=88'), loadStyle()]);
+      const [module] = await Promise.all([import('./fishing/game.js?v=90'), loadStyle()]);
       host.hidden = false;
       game = module.mountFishing(host);
       reveal();

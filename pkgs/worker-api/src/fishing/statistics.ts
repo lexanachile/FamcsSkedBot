@@ -1,7 +1,7 @@
 // Only public aggregates are shared. Cache is scoped to the D1 binding and each
 // isolate; a cold isolate safely recomputes it. Never invalidate on every catch.
 type Owner = { fish_id: string; phrase_id: number; owners: number; usernames: (string | null)[] };
-type Rank = { telegram_id: number; username: string | null; total_caught: number; position: number };
+type Rank = { telegram_id: number; username: string | null; balance: number; position: number };
 function cached<T>(ttl: number, query: (db: D1Database) => Promise<T>) {
   const entries = new WeakMap<D1Database, { until: number; value: Promise<T> }>();
   return (db: D1Database) => {
@@ -29,14 +29,11 @@ export const owners = cached<Owner[]>(240000, async db => {
 });
 export const leaderboard = cached<Rank[]>(60000, async db => {
   const result = await db.prepare(`WITH scores AS (
-    SELECT telegram_id, username, MAX(0, CAST(COALESCE(
-      json_extract(game_json, '$.stats.totalCaught'),
-      COALESCE(json_extract(game_json, '$.wallet.smallFish'), 0) + COALESCE((
-        SELECT SUM(COALESCE(json_extract(f.value, '$.count'), 0)) FROM json_each(game_json, '$.fish') f
-      ), 0)
-    ) AS INTEGER)) AS total_caught FROM fishing_players
-  ) SELECT telegram_id, username, total_caught,
-    ROW_NUMBER() OVER (ORDER BY total_caught DESC, telegram_id ASC) AS position
-    FROM scores WHERE total_caught > 0 ORDER BY position`).all<Rank>();
+    SELECT telegram_id, username,
+      MAX(0, CAST(COALESCE(json_extract(game_json, '$.wallet.smallFish'), 0) AS INTEGER)) AS balance
+    FROM fishing_players
+  ) SELECT telegram_id, username, balance,
+    ROW_NUMBER() OVER (ORDER BY balance DESC, telegram_id ASC) AS position
+    FROM scores WHERE balance > 0 ORDER BY position`).all<Rank>();
   return result.results;
 });

@@ -22,7 +22,9 @@ export function registerFishingRoutes(app: Hono<AppEnvironment>) {
     let user; try { user = await authenticate(c); } catch (error) { return authError(c, error); }
     await ensurePlayer(c.env.DB, user.id, user.username);
     const rows = await leaderboard(c.env.DB);
-    const publicRow = (row: typeof rows[number]) => ({ position: row.position, username: row.username, totalCaught: row.total_caught });
+    // Keep the existing response key for client compatibility; it now contains
+    // the spendable small-fish balance used by the leaderboard.
+    const publicRow = (row: typeof rows[number]) => ({ position: row.position, username: row.username, totalCaught: row.balance });
     const me = rows.find(row => row.telegram_id === user.id);
     return c.json({ success: true, leaders: rows.slice(0, 50).map(publicRow), me: me ? publicRow(me) : null });
   });

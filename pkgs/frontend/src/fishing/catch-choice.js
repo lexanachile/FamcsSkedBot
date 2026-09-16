@@ -6,6 +6,17 @@ export async function withCatchChoice(buttons, operation) {
   finally { buttons.forEach(button => { button.disabled = false; }); }
 }
 
+export function prepareCatchChoice(choice, resultCard, portrait, stage) {
+  const stageRect = stage.getBoundingClientRect();
+  const portraitRect = portrait.getBoundingClientRect();
+  const startPoint = {
+    x: portraitRect.left - stageRect.left + portraitRect.width / 2,
+    y: portraitRect.top - stageRect.top + portraitRect.height / 2,
+  };
+  if (choice === 'release') resultCard.hidden = true;
+  return startPoint;
+}
+
 export function catchChoiceKeyframes(choice, start, end) {
   const dx = end.x - start.x, dy = end.y - start.y;
   const bend = choice === 'eat' ? -34 : 18;

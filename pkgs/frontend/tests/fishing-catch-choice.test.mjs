@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { bindCatchChoiceInput, withCatchChoice } from '../src/fishing/catch-choice.js';
+import { bindCatchChoiceInput, prepareCatchChoice, withCatchChoice } from '../src/fishing/catch-choice.js';
 import { ownerLine } from '../src/fishing/collection.js';
 
 test('release and eat remain clickable on every subsequent catch', async () => {
@@ -26,6 +26,15 @@ test('a failed save can be retried and rapid double taps save only once', async 
   assert.equal(calls, 1);
   finish(); await first;
   assert.ok(buttons.every(button => !button.disabled));
+});
+
+test('release immediately hides the catch card after preserving its animation origin', () => {
+  const card = { hidden: false };
+  const stage = { getBoundingClientRect: () => ({ left: 10, top: 20 }) };
+  const portrait = { getBoundingClientRect: () => ({ left: 70, top: 100, width: 40, height: 60 }) };
+  const start = prepareCatchChoice('release', card, portrait, stage);
+  assert.deepEqual(start, { x: 80, y: 110 });
+  assert.equal(card.hidden, true);
 });
 
 test('catch choices fire on touch contact and suppress the duplicate pointer event', () => {
