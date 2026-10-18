@@ -4,7 +4,12 @@ on:
   schedule:
     # Запуск каждый день в 14:30 UTC (17:30 по Минску)
     - cron: '30 14 * * *'
-  workflow_dispatch:   # Кнопка ручного запуска
+  workflow_dispatch:
+    inputs:
+      send_notifications:
+        description: 'Отправлять уведомления об изменениях расписания'
+        type: boolean
+        default: false
 
 jobs:
   parse:
@@ -30,12 +35,18 @@ jobs:
           cd pkgs/parser
           pip install -r requirements.txt
 
+      - name: Check parser
+        run: |
+          python -m compileall -q pkgs/parser/parser.py pkgs/parser/tests
+          python -B -m unittest discover -s pkgs/parser/tests -v
+
       - name: Run parser
         env:
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
           DRIVE_FOLDER_ID: ${{ secrets.DRIVE_FOLDER_ID }}
           BACKEND_URL: ${{ secrets.BACKEND_URL }}
           BACKEND_AUTH_TOKEN: ${{ secrets.BACKEND_AUTH_TOKEN }}
+          SEND_NOTIFICATIONS: ${{ github.event_name == 'schedule' || inputs.send_notifications == true }}
         run: |
           cd pkgs/parser
           python parser.py

@@ -6,14 +6,15 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from openpyxl import Workbook
+from openpyxl.cell.cell import Cell
 from openpyxl.worksheet.worksheet import Worksheet
 
 
 source = ast.parse((Path(__file__).parents[1] / 'parser.py').read_text(encoding='utf-8'))
 names = {'is_dp_title', 'extract_class', 'get_rect_values', 'get_cell_value',
-         'get_merged_range_for_cell', 'parse_time_range'}
+         'get_merged_range_for_cell', 'parse_time_range', 'cell_to_str'}
 namespace = dict(re=re, Any=Any, Dict=Dict, List=List, Optional=Optional,
-                 Tuple=Tuple, Worksheet=Worksheet, STANDARD_SLOT_HEIGHT=4)
+                 Tuple=Tuple, Cell=Cell, Worksheet=Worksheet, STANDARD_SLOT_HEIGHT=4)
 exec(compile(ast.Module(body=[node for node in source.body
                              if isinstance(node, ast.FunctionDef) and node.name in names],
                         type_ignores=[]), 'parser.py', 'exec'), namespace)

@@ -62,7 +62,7 @@ async function load(file) {
   data.set(groupKey('new', 1, '1'), { records: teacherRecords, updatedAt: 'today' });
   const routes = new Map();
   const { registerScheduleRoutes } = await load('routes/schedule');
-  registerScheduleRoutes({ get: (url, handler) => routes.set(url, handler), post() {} });
+  registerScheduleRoutes({ get: (url, handler) => routes.set(url, handler), post: (url, handler) => routes.set(url, handler) });
   const call = (url, params) => routes.get(url)({ req: { query: key => params[key] }, env: { SCHEDULE_KV: kv }, json: (body, status = 200) => ({ body, status }) });
   for (const name of ['Семёнов', 'семенов', 'СЕМЕНОВ', 'Семёнов А.А.']) {
     const result = await call('/api/teacher', { name });
@@ -85,5 +85,46 @@ async function load(file) {
   assert.equal(messages.filter(message => message.chat_id === '42').length, 2);
   assert.equal(messages.length, 4);
   assert.ok(messages.every(message => message.text.startsWith('Курс 5\n')));
+
+  // Silent finalization still publishes the snapshot and fingerprint, even if
+  // a client accidentally includes notification messages in its request.
+  for (const notify of [false, true, undefined]) {
+    const stored = new Map();
+    const importKv = {
+      get: async key => stored.has(key) ? JSON.parse(stored.get(key)) : null,
+      put: async (key, value) => stored.set(key, value),
+    };
+    const importEnv = { ...env, AUTH_TOKEN: 'import-test-token', SCHEDULE_KV: importKv };
+    const request = (payload, token = importEnv.AUTH_TOKEN) => routes.get('/api/schedule/import')({
+      req: { header: () => `Bearer ${token}`, json: async () => payload },
+      env: importEnv,
+      json: (body, status = 200) => ({ body, status }),
+    });
+    const classes = [{ course: 1, groupName: '1', dayOfWeek: 1, startTime: '08:15', endTime: '09:35', classroomA: '105' }];
+    const uploaded = await request({ mode: 'group', course: 1, group: '1', fingerprint: 'b'.repeat(64), classes });
+    assert.equal(uploaded.status, 200);
+    const payload = {
+      mode: 'finalize', course: 1, importId: 'published',
+      groups: { '1': uploaded.body.data.entry },
+      notifications: { '1': 'Изменение аудитории' },
+      ...(notify === undefined ? {} : { notify }),
+    };
+    const stagedWrites = stored.size;
+    for (const invalid of ['false', null, 0]) {
+      assert.equal((await request({ ...payload, notify: invalid })).status, 400);
+      assert.equal(stored.size, stagedWrites);
+    }
+    assert.equal((await request(payload, 'wrong-token')).status, 401);
+    messages.length = 0;
+    const published = await request(payload);
+    assert.equal(published.status, 200);
+    assert.equal(published.body.imported, 1);
+    assert.equal(messages.length, notify === false ? 0 : 2);
+    const state = await request({ mode: 'state', course: 1 });
+    assert.equal(state.body.data.groups['1'].fingerprint, 'b'.repeat(64));
+    const groupState = await request({ mode: 'group-state', course: 1, group: '1' });
+    assert.equal(groupState.body.data.records[0].classroomA, '105');
+    assert.equal(JSON.parse(stored.get(manifestKey(1))).current, 'published');
+  }
   console.log('Schedule regression checks passed');
 })().catch(error => { console.error(error); process.exitCode = 1; });

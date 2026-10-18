@@ -121,6 +121,7 @@ export function registerScheduleRoutes(app: Hono<AppEnvironment>) {
         previousVersion?: unknown;
         importId?: unknown;
         groups?: unknown;
+        notify?: unknown;
         notifications?: unknown;
       }>();
       const course = validCourse(String(body.course ?? ""));
@@ -154,6 +155,9 @@ export function registerScheduleRoutes(app: Hono<AppEnvironment>) {
       }
 
       if (body.mode === "finalize") {
+        if (body.notify !== undefined && typeof body.notify !== "boolean") {
+          return c.json({ success: false, error: "Invalid notify flag" }, 400);
+        }
         if (typeof body.importId !== "string" || !body.importId || !body.groups || typeof body.groups !== "object" || Array.isArray(body.groups)) {
           return c.json({ success: false, error: "Invalid finalize payload" }, 400);
         }
@@ -163,7 +167,7 @@ export function registerScheduleRoutes(app: Hono<AppEnvironment>) {
           typeof entry.fingerprint === "string" && typeof entry.recordCount === "number");
         if (!validEntries) return c.json({ success: false, error: "Invalid group manifest" }, 400);
         const manifest = await finalizeCourse(c.env.SCHEDULE_KV, course, body.importId, groups);
-        if (body.notifications && typeof body.notifications === "object" && !Array.isArray(body.notifications)) {
+        if (body.notify !== false && body.notifications && typeof body.notifications === "object" && !Array.isArray(body.notifications)) {
           await enqueueChanges(c.env, course, body.notifications as Record<string, unknown>);
         }
         return c.json({ success: true, imported: manifest.recordCount, version: manifest.current, groups: manifest.groupCount, message: `Расписание для курса ${course} обновлено` });

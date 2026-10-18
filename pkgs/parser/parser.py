@@ -22,6 +22,7 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
 from openpyxl import load_workbook
+from openpyxl.cell.cell import Cell
 from openpyxl.worksheet.worksheet import Worksheet
 
 
@@ -33,6 +34,7 @@ GOOGLE_SERVICE_ACCOUNT_JSON = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")
 DRIVE_FOLDER_ID = os.environ.get("DRIVE_FOLDER_ID")
 BACKEND_URL = os.environ.get("BACKEND_URL")
 BACKEND_AUTH_TOKEN = os.environ.get("BACKEND_AUTH_TOKEN")
+SEND_NOTIFICATIONS = os.environ.get("SEND_NOTIFICATIONS", "true").strip().lower() == "true"
 
 if not GOOGLE_SERVICE_ACCOUNT_JSON:
     raise ValueError("Не задана переменная GOOGLE_SERVICE_ACCOUNT_JSON")
@@ -137,14 +139,14 @@ def get_merged_range_for_cell(ws: Worksheet, row: int, col: int):
     return None
 
 
-def cell_to_str(cell: openpyxl.cell.cell.Cell) -> Any:
-    # cell.value: [str, float, int, datetime.datetime]
-    # Docs: https://openpyxl.readthedocs.io/en/stable/api/openpyxl.cell.cell.html#openpyxl.cell.cell.Cell.value
-    if cell.value is None:
+def cell_to_str(cell: Cell) -> Optional[str]:
+    value = cell.value
+    if value is None:
         return None
-    if type(cell.value) in [float, int]:
-        return str(int(cell.value))
-    return str(cell.value)
+    # Remove the decimal suffix only when the number is an integer.
+    if isinstance(value, float) and value.is_integer():
+        return str(int(value))
+    return str(value)
 
 
 def get_cell_value(ws: Worksheet, row: int, col: int) -> Any:
@@ -1030,7 +1032,10 @@ def _post_import(url: str, headers: Dict[str, str], payload: Dict) -> Dict:
     raise RuntimeError(f"Backend не принял данные: {last_error}")
 
 
-def send_to_backend(parsed: List[Dict], course: int, allow_removals: bool = True):
+def send_to_backend(
+    parsed: List[Dict], course: int, allow_removals: bool = True,
+    *, send_notifications: bool = True,
+):
     if not BACKEND_URL or not BACKEND_AUTH_TOKEN:
         return
 
@@ -1063,7 +1068,7 @@ def send_to_backend(parsed: List[Dict], course: int, allow_removals: bool = True
             continue
 
         previous_records = []
-        if old_entry:
+        if send_notifications and old_entry:
             previous_result = _post_import(url, headers, {
                 "mode": "group-state", "course": course, "group": group_name
             })
@@ -1101,7 +1106,7 @@ def send_to_backend(parsed: List[Dict], course: int, allow_removals: bool = True
         for group_name in removed_groups:
             next_groups[group_name] = old_groups[group_name]
         removed_groups = []
-    else:
+    elif send_notifications:
         for group_name in removed_groups:
             previous_result = _post_import(url, headers, {
                 "mode": "group-state", "course": course, "group": group_name
@@ -1123,6 +1128,7 @@ def send_to_backend(parsed: List[Dict], course: int, allow_removals: bool = True
             "course": course,
             "importId": str(uuid.uuid4()),
             "groups": next_groups,
+            "notify": send_notifications,
             "notifications": notifications,
         },
     )
@@ -1156,6 +1162,7 @@ def parse_excel_file(file_content: bytes, course_number: int) -> List[Dict]:
 
 def main():
     print("Начало работы парсера...")
+    print("Уведомления об изменениях: " + ("включены" if SEND_NOTIFICATIONS else "выключены"))
     service = get_drive_service()
     files = list_files_in_folder(service, DRIVE_FOLDER_ID)
 
@@ -1210,7 +1217,10 @@ def main():
         if BACKEND_URL and BACKEND_AUTH_TOKEN:
             sorted_data = sorted(all_parsed, key=lambda x: x["course"])
             for course, group in groupby(sorted_data, key=lambda x: x["course"]):
-                send_to_backend(list(group), course, allow_removals=not failed_files)
+                send_to_backend(
+                    list(group), course, allow_removals=not failed_files,
+                    send_notifications=SEND_NOTIFICATIONS,
+                )
     print("\nПарсер завершил работу.")
 
 
