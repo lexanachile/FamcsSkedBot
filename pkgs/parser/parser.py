@@ -149,6 +149,14 @@ def cell_to_str(cell: Cell) -> Optional[str]:
     return str(value)
 
 
+def normalize_classroom(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+    text = re.sub(r"\s+", " ", str(value)).strip()
+    # Excel exports may contain textual rooms such as "105.0 ФМО".
+    return re.sub(r"(?<![\w.])(\d+)\.0+(?![\d.])", r"\1", text) or None
+
+
 def get_cell_value(ws: Worksheet, row: int, col: int) -> Any:
     cell = ws.cell(row=row, column=col)
     if cell.value is not None:
@@ -776,12 +784,7 @@ def extract_class(
                 if min_row + 3 <= max_row
                 else None
             )
-        # Раньше здесь было .replace(" ", ""), которое склеивало "130 ФМО" в "130ФМО".
-        # Убираем только лишние/повторяющиеся пробелы по краям и внутри, сохраняя
-        # значащий пробел между номером аудитории и названием корпуса.
-        classroom = (
-            re.sub(r"\s+", " ", str(classroom_val)).strip() if classroom_val else None
-        )
+        classroom = normalize_classroom(classroom_val)
 
         comments_values = []
         if min_row + 3 <= max_row:
@@ -834,7 +837,8 @@ def extract_class(
         " ".join(dict.fromkeys(filter(None, [clean_val(row1[1]), clean_val(row2[1])])))
         or None
     )
-    classroom_a, classroom_b = clean_val(row3[0]), clean_val(row3[1])
+    classroom_a = normalize_classroom(row3[0])
+    classroom_b = normalize_classroom(row3[1])
 
     # УДАЛЕНИЕ ПРИЗРАЧНЫХ ПОДГРУПП:
     # Если названия предметов совпадают (или растянуты), но у одной стороны нет препода и аудитории,
